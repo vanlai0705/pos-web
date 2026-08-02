@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { Search } from 'lucide-react'
 import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
+import { translateKnownText, translateMenuTitle } from '@/i18n/nav-title-map'
 
 // ─── Currency format ──────────────────────────────────────────────────────────
 
@@ -34,13 +36,14 @@ export function defaultDateTo() {
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 export function StatusBadge({ status }: { status?: { Id?: number; Name?: string } }) {
+  const { t } = useTranslation()
   if (!status) return <span className="text-muted-foreground text-xs">—</span>
   const id = status.Id ?? 0
   const variant =
     id === 1 ? 'default' :
     id === 2 ? 'secondary' :
     id === 4 ? 'destructive' : 'outline'
-  return <Badge variant={variant} className="text-xs">{status.Name ?? '—'}</Badge>
+  return <Badge variant={variant} className="text-xs">{translateKnownText(status.Name, t) ?? t('common.status')}</Badge>
 }
 
 // ─── DateRange filter ─────────────────────────────────────────────────────────
@@ -63,17 +66,18 @@ export function DateRangeFilter({
 // ─── Search bar ───────────────────────────────────────────────────────────────
 
 export function SearchBar({
-  value, onChange, placeholder = 'Tìm kiếm...',
+  value, onChange, placeholder,
 }: {
   value: string; onChange: (v: string) => void; placeholder?: string
 }) {
+  const { t } = useTranslation()
   return (
     <div className="relative">
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
       <Input
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={translateKnownText(placeholder, t) ?? t('common.search')}
         className="pl-8 h-8 w-52 text-sm"
       />
     </div>
@@ -105,9 +109,10 @@ export function Pagination({
 // ─── Summary card ─────────────────────────────────────────────────────────────
 
 export function SummaryCard({ label, value, currency = false }: { label: string; value?: number | null; currency?: boolean }) {
+  const { t } = useTranslation()
   return (
     <div className="rounded-lg border bg-card px-4 py-3 flex flex-col gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs text-muted-foreground">{translateKnownText(label, t)}</span>
       <span className="text-base font-semibold tabular-nums">
         {currency ? fmtCurrency(value) : (value?.toLocaleString('vi-VN') ?? '—')}
       </span>
@@ -122,11 +127,12 @@ export function ListPageHeader({
 }: {
   title: string; icon: React.ComponentType<{ className?: string }>; children?: React.ReactNode
 }) {
+  const { t } = useTranslation()
   return (
     <div className="sticky top-0 z-30 bg-background -mx-4 px-4 py-2 border-b mb-3 flex flex-wrap items-center gap-2">
       <h1 className="text-sm font-bold flex items-center gap-1.5 mr-auto shrink-0">
         <Icon className="w-4 h-4 text-primary" />
-        {title}
+        {translateMenuTitle(title, t)}
       </h1>
       {children && (
         <div className="flex flex-wrap items-center justify-end gap-2">

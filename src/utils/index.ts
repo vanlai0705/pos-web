@@ -1,6 +1,8 @@
 import { type ClassValue, clsx } from "clsx";
 import CryptoJS from "crypto-js";
-export * from "./excel";
+// NOTE: "./excel" is dead code from the warehouse project — none of its exports
+// are used and it imports store slices that do not exist here. Re-exporting it
+// dragged those broken imports into every build.
 import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

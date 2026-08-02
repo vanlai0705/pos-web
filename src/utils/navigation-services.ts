@@ -1,5 +1,6 @@
 // navigationService.ts
 import { NavigateFunction } from "react-router-dom";
+import { withDomainPath } from "./domain-route";
 
 let navigate: NavigateFunction | null = null;
 
@@ -9,7 +10,7 @@ export const setNavigate = (navigateFunction: NavigateFunction) => {
 
 export const navigateTo = (path: string, state?: object) => {
   if (navigate) {
-    navigate(path, { state });
+    navigate(withDomainPath(path), { state });
   } else {
     console.warn("Navigate function is not set");
   }

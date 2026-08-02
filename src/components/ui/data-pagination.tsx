@@ -11,6 +11,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { useTranslation } from 'react-i18next'
 
 export const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100]
 
@@ -64,6 +65,7 @@ export function DataPagination({
   hideWhenSingle = false,
   className,
 }: DataPaginationProps) {
+  const { t } = useTranslation()
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   if (hideWhenSingle && totalPages <= 1 && !onPageSizeChange) return null
 
@@ -79,13 +81,13 @@ export function DataPagination({
   return (
     <div className={cn('flex flex-wrap items-center justify-between gap-2 pt-3 border-t', className)}>
       <span className="text-xs text-muted-foreground whitespace-nowrap">
-        {total === 0 ? 'Không có dữ liệu' : `${from}–${to} / ${total}`}
+        {total === 0 ? t('common.noData') : `${from}–${to} / ${total}`}
       </span>
 
       <div className="flex items-center gap-3 ml-auto">
         {onPageSizeChange && (
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Số dòng</span>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{t('common.rows')}</span>
             <Select
               value={String(pageSize)}
               onValueChange={v => onPageSizeChange(Number(v))}

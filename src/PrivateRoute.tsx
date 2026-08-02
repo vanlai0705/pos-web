@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { routeConfig } from './constants/data';
 import { useAuth } from './hooks/useAuth';
+import { stripDisplayedDomain } from './utils/domain-route';
 
 const PrivateRoute = () => {
   const { user } = useAuth();
@@ -11,12 +12,13 @@ const PrivateRoute = () => {
     return <Navigate to="/login" replace />;
   }
 
-  const role = user?.info?.role;
+  const role = (user?.info as any)?.role;
+  const routePathname = stripDisplayedDomain(location.pathname);
 
   const allowedRoles =
-    routeConfig[location.pathname] ||
+    routeConfig[routePathname] ||
     Object.entries(routeConfig)
-      .filter(([path]) => location.pathname.startsWith(`${path}/`))
+      .filter(([path]) => routePathname.startsWith(`${path}/`))
       .sort((a, b) => b[0].length - a[0].length)[0]?.[1];
 
   if (role && role !== "" && allowedRoles && !allowedRoles.includes(role)) {

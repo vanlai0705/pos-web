@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import {
-  useLazyFilterNotificationsQuery,
   useFilterNotificationsQuery,
   useUpdateNotificationStatusMutation,
   useMarkAllNotificationsReadMutation,

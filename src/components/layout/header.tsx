@@ -2,9 +2,9 @@ import React from 'react'
 import { cn } from '@/utils'
 // Separator removed per design: no vertical divider in header
 import { Menu } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { useAppState } from '@/context/app-provider'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useTranslation } from 'react-i18next'
 
 interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   fixed?: boolean
@@ -20,6 +20,7 @@ export const Header = ({
   const [offset, setOffset] = React.useState(0)
   const { isMobileMenuOpen, setMobileMenuOpen } = useAppState()
   const isMobile = useIsMobile()
+  const { t } = useTranslation()
 
   React.useEffect(() => {
     const onScroll = () => {
@@ -49,7 +50,7 @@ export const Header = ({
           type="button"
           className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-colors"
           onClick={() => setMobileMenuOpen(!isMobileMenuOpen)}
-          aria-label="Toggle menu"
+          aria-label={t('common.toggleMenu')}
         >
           <Menu className="h-4 w-4" />
         </button>

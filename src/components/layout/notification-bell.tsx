@@ -15,6 +15,7 @@ import {
 } from '@/store/slice/users/api/api'
 import type { TPosNotificationItem } from '@/store/slice/users/types/pos-types'
 import { getImageUrl } from '@/utils/common'
+import { withDomainPath } from '@/utils/domain-route'
 
 function timeAgo(dateStr?: string) {
   if (!dateStr) return ''
@@ -53,7 +54,7 @@ export function NotificationBell() {
       await updateStatus({ id: item.Id, statusId: 1 }).unwrap().catch(() => {})
     }
     setOpen(false)
-    navigate('/notifications')
+    navigate(withDomainPath('/notifications'))
   }
 
   const handleMarkAll = async () => {
@@ -69,7 +70,7 @@ export function NotificationBell() {
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange} modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-full scale-95">
+        <Button variant="ghost" size="icon" className="relative rounded-full scale-95 text-white hover:bg-white/10 hover:text-white">
           <Bell className="h-[1.2rem] w-[1.2rem]" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold leading-[18px] text-center">
@@ -167,7 +168,7 @@ export function NotificationBell() {
         {/* Footer */}
         <div className="border-t px-4 py-2.5">
           <button
-            onClick={() => { setOpen(false); navigate('/notifications') }}
+            onClick={() => { setOpen(false); navigate(withDomainPath('/notifications')) }}
             className="w-full text-center text-sm text-primary hover:text-primary/80 font-medium transition-colors"
           >
             Xem tất cả thông báo →

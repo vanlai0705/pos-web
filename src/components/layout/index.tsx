@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { useDispatch } from "react-redux"
-import { Settings, Menu, Globe, SunMoon, Palette, Search, LayoutGrid } from "lucide-react"
+import { Check, Settings, Menu, Globe, SunMoon, Palette, Search, LayoutGrid } from "lucide-react"
 import Sidebar from './sidebar'
 import { ProfileDropdown } from '../profile-dropdown'
 import { ThemeSwitch } from '../theme-switch'
@@ -9,19 +9,27 @@ import { ThemeCustomizer } from '../theme-customizer'
 import { HeaderNav } from './header-nav'
 import { ShopSwitcher } from './shop-switcher'
 import { NotificationBell } from './notification-bell'
-import { LanguageSwitcher } from './language-switcher'
 import { useAppState } from '@/context/app-provider'
 import type { TLayoutMode } from '@/context/app-provider'
 import { useLazyGetMenuQuery } from "@/store/slice/users/api/api"
 import { setMenu } from "@/store/slice/users/app"
 import { useSearch } from "@/context/search-context"
 import { Button } from "@/components/ui/button"
+import { useTranslation } from "react-i18next"
+import { withDomainPath } from "@/utils/domain-route"
 
 const HEADER_GRADIENT = 'linear-gradient(to right, hsl(var(--primary) / 0.85), hsl(var(--primary)), hsl(var(--primary) / 0.85))'
 
+const SETTINGS_LANGUAGES = [
+  { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'km', label: 'ភាសាខ្មែរ', flag: '🇰🇭' },
+  { code: 'zh', label: '中文', flag: '🇨🇳' },
+] as const
+
 function CompanyLogo() {
   return (
-    <a href="/" className="flex flex-none items-center gap-2 mr-1 hover:opacity-80 transition-opacity">
+    <a href={withDomainPath('/dashboard')} className="flex flex-none items-center gap-2 mr-1 hover:opacity-80 transition-opacity">
       <img src="/logo.png" alt="POS Mobile" className="h-8 w-8 rounded-full object-contain bg-white/10 p-0.5" />
     </a>
   )
@@ -94,6 +102,8 @@ function SettingsPanel() {
   const [open, setOpen] = useState(false)
   const { setOpen: openSearch } = useSearch()
   const { layoutMode, setLayoutMode } = useAppState()
+  const { t, i18n } = useTranslation()
+  const currentLanguage = (i18n.resolvedLanguage ?? i18n.language).split('-')[0]
 
   function Row({ icon: Icon, label, children }: { icon: React.ElementType; label: string; children: React.ReactNode }) {
     return (
@@ -114,7 +124,7 @@ function SettingsPanel() {
         size="icon"
         className="scale-95 rounded-full text-white hover:bg-white/10"
         onClick={() => setOpen(v => !v)}
-        title="Cài đặt"
+        title={t('nav.settings')}
       >
         <Settings className="size-[1.2rem]" />
       </Button>
@@ -122,40 +132,63 @@ function SettingsPanel() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-xl border bg-popover text-popover-foreground shadow-xl overflow-hidden">
+          <div className="absolute right-0 top-full mt-2 z-50 w-72 rounded-xl border bg-popover text-popover-foreground shadow-xl overflow-hidden">
 
             {/* Search */}
-            <Row icon={Search} label="Tìm kiếm">
+            <Row icon={Search} label={t('common.search')}>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 text-xs rounded-lg"
                 onClick={() => { openSearch(true); setOpen(false) }}
               >
-                Mở
+                {t('common.open')}
               </Button>
             </Row>
 
             <div className="border-t mx-0" />
 
             {/* Language */}
-            <Row icon={Globe} label="Ngôn ngữ">
-              <div onClick={() => setOpen(false)}>
-                <LanguageSwitcher />
+            <div className="px-3 py-2.5">
+              <div className="mb-2.5 flex items-center gap-2 text-xs font-medium text-foreground">
+                <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                {t('language.label')}
               </div>
-            </Row>
+              <div className="grid grid-cols-2 gap-1.5">
+                {SETTINGS_LANGUAGES.map(language => {
+                  const active = currentLanguage === language.code
+
+                  return (
+                    <button
+                      key={language.code}
+                      type="button"
+                      onClick={() => i18n.changeLanguage(language.code)}
+                      className={`flex h-9 items-center gap-2 rounded-lg border px-2.5 text-left text-xs font-semibold transition-colors ${
+                        active
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-background text-foreground hover:bg-accent'
+                      }`}
+                    >
+                      <span className="text-base leading-none">{language.flag}</span>
+                      <span className="min-w-0 flex-1 truncate">{language.label}</span>
+                      {active && <Check className="h-3.5 w-3.5 flex-none" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
             <div className="border-t mx-0" />
 
             {/* Theme */}
-            <Row icon={SunMoon} label="Giao diện">
+            <Row icon={SunMoon} label={t('common.theme')}>
               <ThemeSwitch />
             </Row>
 
             <div className="border-t mx-0" />
 
             {/* Color */}
-            <Row icon={Palette} label="Màu sắc">
+            <Row icon={Palette} label={t('common.color')}>
               <ThemeCustomizer />
             </Row>
 
@@ -165,7 +198,7 @@ function SettingsPanel() {
             <div className="px-3 py-2.5">
               <div className="flex items-center gap-2 text-xs font-medium text-foreground mb-2.5">
                 <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                Bố cục trang
+                {t('common.layout')}
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {LAYOUT_OPTIONS.map(({ key, label, desc }) => (
@@ -195,7 +228,7 @@ function SettingsPanel() {
 
 function RightActions() {
   return (
-    <div className="flex items-center gap-1 [&_button]:text-white [&_button]:hover:bg-white/10">
+    <div className="flex items-center gap-1">
       <NotificationBell />
       <SettingsPanel />
       <ProfileDropdown />
@@ -207,6 +240,7 @@ function RightActions() {
 
 export default function AppLayout() {
   const { layoutMode, setMobileMenuOpen } = useAppState()
+  const { t } = useTranslation()
   const dispatch = useDispatch()
   const [fetchMenu] = useLazyGetMenuQuery()
 
@@ -251,7 +285,7 @@ export default function AppLayout() {
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="flex-none h-8 w-8 flex items-center justify-center rounded-full border border-white/20 bg-white/10 hover:bg-white/25 transition-colors text-white"
-            aria-label="Mở menu"
+            aria-label={t('common.toggleMenu')}
           >
             <Menu className="h-4 w-4" />
           </button>

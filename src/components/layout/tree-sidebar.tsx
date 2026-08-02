@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/utils'
+import { useTranslation } from 'react-i18next'
+import { translateKnownText, translateMenuTitle } from '@/i18n/nav-title-map'
 
 export interface TreeSidebarNode {
   Id: number
@@ -72,6 +74,7 @@ function TreeRows<T extends TreeSidebarNode>({
   onDeleteItem?: (item: T) => void
   renderMeta?: (item: T) => ReactNode
 }) {
+  const { t } = useTranslation()
   return (
     <>
       {items.map(item => {
@@ -115,17 +118,17 @@ function TreeRows<T extends TreeSidebarNode>({
               {renderMeta?.(item)}
               <span className={cn('flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100', selected && 'opacity-100')}>
                 {onCreateChild && canShowActions ? (
-                  <ItemAction title="Thêm nhóm con" className="text-emerald-600 hover:bg-emerald-100" onClick={() => onCreateChild(item)}>
+                  <ItemAction title={t('common.addChildGroup')} className="text-emerald-600 hover:bg-emerald-100" onClick={() => onCreateChild(item)}>
                     <Plus className="h-3.5 w-3.5" />
                   </ItemAction>
                 ) : null}
                 {onEditItem && canShowActions ? (
-                  <ItemAction title="Sửa nhóm" className="text-indigo-600 hover:bg-indigo-100" onClick={() => onEditItem(item)}>
+                  <ItemAction title={t('common.editGroup')} className="text-indigo-600 hover:bg-indigo-100" onClick={() => onEditItem(item)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </ItemAction>
                 ) : null}
                 {onDeleteItem && canShowActions ? (
-                  <ItemAction title="Xóa nhóm" className="text-red-600 hover:bg-red-100" onClick={() => onDeleteItem(item)}>
+                  <ItemAction title={t('common.deleteGroup')} className="text-red-600 hover:bg-red-100" onClick={() => onDeleteItem(item)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </ItemAction>
                 ) : null}
@@ -152,12 +155,12 @@ function TreeRows<T extends TreeSidebarNode>({
 
 export function TreeSidebar<T extends TreeSidebarNode>({
   title,
-  searchPlaceholder = 'Tìm kiếm...',
+  searchPlaceholder,
   items,
   selectedId,
   searchText,
   loading = false,
-  emptyText = 'Không có dữ liệu',
+  emptyText,
   onSearchTextChange,
   onSelect,
   onCreate,
@@ -168,6 +171,7 @@ export function TreeSidebar<T extends TreeSidebarNode>({
   onDeleteSelected,
   renderMeta,
 }: TreeSidebarProps<T>) {
+  const { t } = useTranslation()
   const filteredItems = filterTree(items, searchText)
 
   return (
@@ -179,15 +183,15 @@ export function TreeSidebar<T extends TreeSidebarNode>({
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/15 text-white shadow-sm ring-1 ring-white/20">
                 <FolderOpen className="h-4 w-4" />
               </span>
-              <h2 className="min-w-0 truncate text-xs font-bold uppercase tracking-wide text-white">{title}</h2>
+              <h2 className="min-w-0 truncate text-xs font-bold uppercase tracking-wide text-white">{translateMenuTitle(title, t)}</h2>
             </div>
             <p className="mt-1 truncate pl-9 text-[10px] font-medium text-indigo-100">
-              {loading ? 'Đang tải dữ liệu' : `${filteredItems.length} nhóm hiển thị`}
+              {loading ? t('common.loading') : `${filteredItems.length} ${t('common.all').toLowerCase()}`}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {onCreate ? (
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-md bg-white/15 text-white hover:bg-white/25 hover:text-white" onClick={onCreate} title="Thêm mới">
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-md bg-white/15 text-white hover:bg-white/25 hover:text-white" onClick={onCreate} title={t('common.addNew')}>
                 <Plus className="h-4 w-4" />
               </Button>
             ) : null}
@@ -201,7 +205,7 @@ export function TreeSidebar<T extends TreeSidebarNode>({
           <Input
             value={searchText}
             onChange={event => onSearchTextChange(event.target.value)}
-            placeholder={searchPlaceholder}
+            placeholder={translateKnownText(searchPlaceholder, t) ?? t('common.search')}
             className="h-9 rounded-md border-slate-200 bg-slate-50 pl-8 text-sm shadow-none transition-colors focus:bg-white"
           />
         </div>
@@ -232,7 +236,7 @@ export function TreeSidebar<T extends TreeSidebarNode>({
           </div>
         ) : (
           <div className="mx-3 mt-4 rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-8 text-center text-sm text-muted-foreground">
-            {emptyText}
+            {translateKnownText(emptyText, t) ?? t('common.noData')}
           </div>
         )}
       </div>

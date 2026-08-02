@@ -7,12 +7,35 @@ import viLang from "./locales/vi";
 import enLang from "./locales/en";
 import kmLang from "./locales/km";
 import zhLang from "./locales/zh";
+import { extraResources } from "./extra-resources";
+
+function mergeDeep<T extends Record<string, any>>(base: T, extra: Record<string, any>): T {
+  const output: Record<string, any> = { ...base };
+
+  Object.entries(extra).forEach(([key, value]) => {
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      output[key] &&
+      typeof output[key] === "object" &&
+      !Array.isArray(output[key])
+    ) {
+      output[key] = mergeDeep(output[key], value);
+      return;
+    }
+
+    output[key] = value;
+  });
+
+  return output as T;
+}
 
 const resources = {
-  vi: { translation: viLang.app },
-  en: { translation: enLang.app },
-  km: { translation: kmLang.app },
-  zh: { translation: zhLang.app },
+  vi: { translation: mergeDeep(viLang.app, extraResources.vi) },
+  en: { translation: mergeDeep(enLang.app, extraResources.en) },
+  km: { translation: mergeDeep(kmLang.app, extraResources.km) },
+  zh: { translation: mergeDeep(zhLang.app, extraResources.zh) },
 };
 
 i18n
@@ -21,7 +44,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: "vi",
+    fallbackLng: ["vi", "en"],
     interpolation: {
       escapeValue: false,
     },

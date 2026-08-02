@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Receipt, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { withDomainPath } from '@/utils/domain-route'
 import { Button } from '@/components/ui/button'
 import { useAppSelector } from '@/store/hooks'
 import { selectAuth } from '@/store/slice/users/app'
@@ -127,8 +128,10 @@ export default function InvoicesPage() {
       }
     } else {
       try {
+        // baseUrl has no trailing slash, so join explicitly instead of
+        // concatenating — otherwise the path becomes ".../v1order-invoices".
         const resp = await fetch(
-          `${baseUrl}order-invoices/get-invoice-pdf?orderInvoiceId=${invoice.Id}`,
+          `${baseUrl.replace(/\/+$/, '')}/order-invoices/get-invoice-pdf?orderInvoiceId=${invoice.Id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         )
         if (!resp.ok) throw new Error('fetch failed')
@@ -166,7 +169,7 @@ export default function InvoicesPage() {
 
   const goOrder = useCallback((invoice: TPosOrderInvoice) => {
     if (invoice.PublishStatus === 2 || !invoice.OrderId) return
-    navigate(`/actives/order?orderId=${invoice.OrderId}`)
+    navigate(withDomainPath(`/actives/order?orderId=${invoice.OrderId}`))
   }, [navigate])
 
   const handleCancel = useCallback(async (invoice: TPosOrderInvoice) => {
@@ -355,6 +358,16 @@ export default function InvoicesPage() {
             >
               Kiểm tra
             </Button>
+            {inv.PublishStatus === 2 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs border-rose-400 text-rose-600 hover:bg-rose-50"
+                onClick={() => handleCancel(inv)}
+              >
+                Huỷ
+              </Button>
+            )}
           </div>
         )
       },

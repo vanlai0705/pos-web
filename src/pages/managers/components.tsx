@@ -12,13 +12,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Loader2 } from "lucide-react"
 import { DataPagination } from '@/components/ui/data-pagination'
+import { useTranslation } from "react-i18next"
+import { translateKnownText } from "@/i18n/nav-title-map"
 
 // ─── Status ────────────────────────────────────────────────────────────────────
 
 export function StatusBadge({ statusId }: { statusId?: number }) {
-  if (statusId === 1) return <Badge variant="secondary" className="text-yellow-600 bg-yellow-50 border-yellow-200">Khoá</Badge>
-  if (statusId === 2) return <Badge variant="destructive">Đã xoá</Badge>
-  return <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200">Hoạt động</Badge>
+  const { t } = useTranslation()
+  if (statusId === 1) return <Badge variant="secondary" className="text-yellow-600 bg-yellow-50 border-yellow-200">{t('common.locked')}</Badge>
+  if (statusId === 2) return <Badge variant="destructive">{t('common.deleted')}</Badge>
+  return <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200">{t('common.active')}</Badge>
 }
 
 // ─── Search bar ────────────────────────────────────────────────────────────────
@@ -35,9 +38,10 @@ interface SearchBarProps {
 
 export function SearchBar({
   keyword, onKeyword, statusId, onStatus, onAdd,
-  addLabel = "Thêm mới",
-  placeholder = "Tìm kiếm...",
+  addLabel,
+  placeholder,
 }: SearchBarProps) {
+  const { t } = useTranslation()
   return (
     <div className="flex flex-col sm:flex-row gap-2">
       <div className="relative flex-1 max-w-xs">
@@ -45,7 +49,7 @@ export function SearchBar({
         <Input
           value={keyword}
           onChange={e => onKeyword(e.target.value)}
-          placeholder={placeholder}
+          placeholder={translateKnownText(placeholder, t) ?? t('common.search')}
           className="pl-8 h-9"
         />
       </div>
@@ -54,13 +58,13 @@ export function SearchBar({
         onChange={e => onStatus(e.target.value === "" ? "" : Number(e.target.value) as number)}
         className="h-9 rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-40"
       >
-        <option value="">Tất cả trạng thái</option>
-        <option value={0}>Hoạt động</option>
-        <option value={1}>Khoá</option>
+        <option value="">{t('common.allStatuses')}</option>
+        <option value={0}>{t('common.active')}</option>
+        <option value={1}>{t('common.locked')}</option>
       </select>
       <Button size="sm" className="h-9 gap-1.5" onClick={onAdd}>
         <Plus className="h-4 w-4" />
-        {addLabel}
+        {translateKnownText(addLabel, t) ?? t('common.addNew')}
       </Button>
     </div>
   )
@@ -101,6 +105,7 @@ interface RowActionsProps {
 }
 
 export function RowActions({ statusId, onEdit, onActivate, onLock, onDelete }: RowActionsProps) {
+  const { t } = useTranslation()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -110,22 +115,22 @@ export function RowActions({ statusId, onEdit, onActivate, onLock, onDelete }: R
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={onEdit}>
-          <Pencil className="h-3.5 w-3.5 mr-2" /> Chỉnh sửa
+          <Pencil className="h-3.5 w-3.5 mr-2" /> {t('manager.edit')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {statusId !== 0 && onActivate && (
           <DropdownMenuItem onClick={onActivate}>
-            <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> Kích hoạt
+            <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> {t('manager.activate')}
           </DropdownMenuItem>
         )}
         {statusId !== 1 && onLock && (
           <DropdownMenuItem onClick={onLock}>
-            <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> Khoá
+            <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> {t('manager.lock')}
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-          <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
+          <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('manager.delete')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -144,18 +149,19 @@ interface CrudModalProps {
 }
 
 export function CrudModal({ open, onClose, title, onSave, loading, children }: CrudModalProps) {
+  const { t } = useTranslation()
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{translateKnownText(title, t)}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">{children}</div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Huỷ</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>{t('common.cancel')}</Button>
           <Button onClick={onSave} disabled={loading} className="gap-1.5">
             {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Lưu
+            {t('common.save')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -166,10 +172,11 @@ export function CrudModal({ open, onClose, title, onSave, loading, children }: C
 // ─── Field helpers ─────────────────────────────────────────────────────────────
 
 export function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-1.5">
       <label className="text-sm font-medium leading-none">
-        {label}{required && <span className="text-destructive ml-0.5">*</span>}
+        {translateKnownText(label, t)}{required && <span className="text-destructive ml-0.5">*</span>}
       </label>
       {children}
     </div>
@@ -197,7 +204,9 @@ export function THead({ children }: { children: React.ReactNode }) {
 }
 
 export function Th({ children, className = "" }: { children?: React.ReactNode; className?: string }) {
-  return <th className={`px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide ${className}`}>{children}</th>
+  const { t } = useTranslation()
+  const label = typeof children === "string" ? translateKnownText(children, t) : children
+  return <th className={`px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide ${className}`}>{label}</th>
 }
 
 export function Td({ children, className = "" }: { children?: React.ReactNode; className?: string }) {

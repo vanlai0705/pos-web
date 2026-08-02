@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { ClipboardList, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
   useFilterOrdersQuery,

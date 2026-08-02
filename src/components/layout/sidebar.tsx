@@ -5,6 +5,7 @@ import { useAppState } from '@/context/app-provider';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavItems } from '@/hooks/useNavItems';
+import { withDomainPath } from '@/utils/domain-route';
 
 const SIDEBAR_GRADIENT = 'linear-gradient(to right, hsl(var(--primary) / 0.85), hsl(var(--primary)), hsl(var(--primary) / 0.85))'
 
@@ -31,7 +32,7 @@ export default function Sidebar({ className, forceCollapsed = false, forceSheet 
         className="flex-none flex items-center justify-between px-4 h-14 text-white"
         style={{ background: SIDEBAR_GRADIENT }}
       >
-        <a href="/" className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity">
+        <a href={withDomainPath('/dashboard')} className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity">
           <img src="/logo.png" alt="POS Mobile" className="h-8 w-8 rounded-full object-contain bg-white/10 p-0.5 flex-none" />
           {!collapsed && <span className="font-semibold text-sm truncate">POS Mobile</span>}
         </a>

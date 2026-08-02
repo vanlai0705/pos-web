@@ -4,6 +4,7 @@ import { NavItem, TNavChildren } from '@/constants/data'
 import { useNavItems } from '@/hooks/useNavItems'
 import { Icons } from '@/components/icons'
 import { cn } from '@/utils'
+import { isRouteActive, withDomainPath } from '@/utils/domain-route'
 import { ChevronDown, ChevronRight, MoreHorizontal } from 'lucide-react'
 import {
   DropdownMenu,
@@ -13,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useTranslation } from 'react-i18next'
 
 // ─── Recursive dropdown child (supports sub-menus) ───────────────────────────
 
@@ -24,10 +26,7 @@ function DropdownChildItem({ child, onClose }: { child: TNavChildren; onClose: (
     ? (Icons[child.icon as keyof typeof Icons] ?? Icons.arrowRight)
     : Icons.arrowRight
   const hasChildren = (child.children?.length ?? 0) > 0
-  const isActive = !!child.href && (
-    location.pathname === child.href ||
-    location.pathname.startsWith(child.href + '/')
-  )
+  const isActive = isRouteActive(location.pathname, child.href)
 
   if (hasChildren) {
     return (
@@ -60,7 +59,7 @@ function DropdownChildItem({ child, onClose }: { child: TNavChildren; onClose: (
   return (
     <div className="px-1">
       <button
-        onClick={() => { child.href && navigate(child.href); onClose() }}
+        onClick={() => { child.href && navigate(withDomainPath(child.href)); onClose() }}
         className={cn(
           'flex w-full items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-left hover:bg-accent transition-colors',
           isActive && 'bg-accent/70 font-medium',
@@ -79,8 +78,6 @@ function DropdownChildItem({ child, onClose }: { child: TNavChildren; onClose: (
 
 function NavDropdownItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
   const [open, setOpen] = useState(false)
-  const navigate = useNavigate()
-  const location = useLocation()
   const Icon = Icons[item.icon as keyof typeof Icons] ?? Icons.arrowRight
 
   return (
@@ -126,7 +123,7 @@ function NavLinkItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
   return (
     <button
       disabled={!item.href || item.disabled}
-      onClick={() => item.href && navigate(item.href)}
+      onClick={() => item.href && navigate(withDomainPath(item.href))}
       className={cn(
         'flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
         isActive ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white',
@@ -150,12 +147,13 @@ function NavItemRenderer({ item, isActive }: { item: NavItem; isActive: boolean 
 function MoreMenu({ items }: { items: NavItem[] }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white whitespace-nowrap transition-colors outline-none">
         <MoreHorizontal className="size-4" />
-        <span className="text-xs">Thêm</span>
+        <span className="text-xs">{t('common.more')}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[200px] max-h-[70vh] overflow-y-auto">
         {items.map(item => {
@@ -172,9 +170,7 @@ function MoreMenu({ items }: { items: NavItem[] }) {
                   const ChildIcon = child.icon
                     ? (Icons[child.icon as keyof typeof Icons] ?? Icons.arrowRight)
                     : Icons.arrowRight
-                  const childActive =
-                    location.pathname === child.href ||
-                    location.pathname.startsWith((child.href ?? '') + '/')
+                  const childActive = isRouteActive(location.pathname, child.href)
 
                   // Sub-folder: render grandchildren inline with extra indent
                   if ((child.children?.length ?? 0) > 0) {
@@ -187,11 +183,11 @@ function MoreMenu({ items }: { items: NavItem[] }) {
                           const SubIcon = sub.icon
                             ? (Icons[sub.icon as keyof typeof Icons] ?? Icons.arrowRight)
                             : Icons.arrowRight
-                          const subActive = location.pathname === sub.href || location.pathname.startsWith((sub.href ?? '') + '/')
+                          const subActive = isRouteActive(location.pathname, sub.href)
                           return (
                             <DropdownMenuItem
                               key={sub.title}
-                              onClick={() => sub.href && navigate(sub.href)}
+                              onClick={() => sub.href && navigate(withDomainPath(sub.href))}
                               className={cn('pl-8 gap-2', subActive && 'bg-accent font-medium')}
                             >
                               <SubIcon className="size-3.5 text-muted-foreground" />
@@ -206,7 +202,7 @@ function MoreMenu({ items }: { items: NavItem[] }) {
                   return (
                     <DropdownMenuItem
                       key={child.title}
-                      onClick={() => child.href && navigate(child.href)}
+                      onClick={() => child.href && navigate(withDomainPath(child.href))}
                       className={cn('pl-5 gap-2', childActive && 'bg-accent font-medium')}
                     >
                       <ChildIcon className="size-4 text-muted-foreground" />
@@ -220,14 +216,11 @@ function MoreMenu({ items }: { items: NavItem[] }) {
           }
 
           const isActive =
-            !!item.href && (
-              location.pathname === item.href ||
-              location.pathname.startsWith(item.href + '/')
-            )
+            isRouteActive(location.pathname, item.href)
           return (
             <DropdownMenuItem
               key={item.title}
-              onClick={() => item.href && navigate(item.href)}
+              onClick={() => item.href && navigate(withDomainPath(item.href))}
               className={cn('gap-2', isActive && 'bg-accent font-medium')}
             >
               <Icon className="size-4 text-muted-foreground" />
@@ -282,16 +275,15 @@ export function HeaderNav() {
     return () => ro.disconnect()
   }, [filtered.length])
 
-  const visible = filtered.slice(0, visibleCount)
   const overflow = filtered.slice(visibleCount)
 
   const isItemActive = (item: NavItem) => {
     const children = item.children ?? []
     if (item.href) {
-      return location.pathname === item.href || location.pathname.startsWith(item.href + '/')
+      return isRouteActive(location.pathname, item.href)
     }
     return children.some(
-      c => location.pathname === c.href || location.pathname.startsWith((c.href ?? '') + '/')
+      c => isRouteActive(location.pathname, c.href)
     )
   }
 

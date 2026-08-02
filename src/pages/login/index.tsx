@@ -1,33 +1,23 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Eye, EyeOff, Store } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Eye, EyeOff, Store } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useLoginMutation, useLazyGetMeQuery, useLazyGetMenuQuery } from "@/store/slice/users/api/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppDispatch } from "@/store/hooks";
+import { useLazyGetMeQuery, useLazyGetMenuQuery, useLoginMutation } from "@/store/slice/users/api/api";
 import { setMenu } from "@/store/slice/users/app";
 import { computePasswordSalt } from "@/utils/crypto";
-import { LanguageSwitcher } from "@/components/layout/language-switcher";
-
-const DOMAIN_KEY = "activeDomainName";
+import { DOMAIN_KEY, normalizeDomainName, setStoredDomainName, withDomainPath } from "@/utils/domain-route";
 
 interface LoginForm {
   DomainName: string;
   UserName: string;
   Password: string;
-}
-
-function normalizeDomainName(raw: string): string {
-  return raw
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/[^a-z0-9-]/g, "");
 }
 
 export default function LoginPage() {
@@ -69,7 +59,7 @@ export default function LoginPage() {
       return;
     }
 
-    localStorage.setItem(DOMAIN_KEY, domain);
+    setStoredDomainName(domain);
 
     try {
       const loginData = await login({
@@ -89,7 +79,7 @@ export default function LoginPage() {
         }),
       ]);
 
-      navigate("/dashboard", { replace: true });
+      navigate(withDomainPath("/dashboard", domain), { replace: true });
     } catch (err: any) {
       const msg =
         typeof err === "string"

@@ -8,12 +8,12 @@ interface BaseNavItem {
 
 type NavLink = BaseNavItem & {
   url: LinkProps["to"];
-  items?: never;
+  items?: (BaseNavItem & { url: LinkProps["to"] })[];
 };
 
 type NavCollapsible = BaseNavItem & {
   items: (BaseNavItem & { url: LinkProps["to"] })[];
-  url?: never;
+  url?: LinkProps["to"];
 };
 
 type NavItem = NavCollapsible | NavLink;

@@ -66,16 +66,17 @@ export function posIconToKey(faClass?: string): string {
 }
 
 // ─── URL mapping ─────────────────────────────────────────────────────────────
-// Maps Angular /report-custom/* routes to React /report/* equivalents.
-// Items with a Code property navigate to the DevExpress report viewer.
+// Report-custom routes are handled in React too. Items with Code keep the
+// Angular behavior of passing Code as reportUrl; leaves without Code fall back
+// to path segments so nested custom templates still open.
 
 const REPORT_CUSTOM_MAP: Record<string, string> = {
-  '/report-custom/order':    '/report/order',
-  '/report-custom/booking':  '/report/booking',
-  '/report-custom/currency': '/report/currency',
-  '/report-custom/stock':    '/report/stock',
-  '/report-custom/viewer':   '/report/viewer',
-  '/report-custom/designer': '/report/viewer',
+  '/report-custom/order':    '/report-custom/order',
+  '/report-custom/booking':  '/report-custom/booking',
+  '/report-custom/currency': '/report-custom/currency',
+  '/report-custom/stock':    '/report-custom/stock',
+  '/report-custom/viewer':   '/report-custom/viewer',
+  '/report-custom/designer': '/report-custom/designer',
 }
 
 function resolveMenuUrl(item: TPosMenuItem): string | undefined {
@@ -87,8 +88,7 @@ function resolveMenuUrl(item: TPosMenuItem): string | undefined {
     }
     const mapped = REPORT_CUSTOM_MAP[url]
     if (mapped) return mapped
-    // Intermediate folder (has children) — no href
-    return undefined
+    return item.Childrens?.length ? undefined : url
   }
   return url || undefined
 }

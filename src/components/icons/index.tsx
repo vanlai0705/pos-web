@@ -34,7 +34,6 @@ import {
     LucideProps,
     MessageCircleIcon,
     Moon,
-    MoreVertical,
     Package,
     Pizza,
     Plus,

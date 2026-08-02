@@ -3,6 +3,8 @@ import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/utils'
+import { useTranslation } from 'react-i18next'
+import { translateKnownText } from '@/i18n/nav-title-map'
 
 type ToolbarButtonTone = 'primary' | 'neutral' | 'danger'
 
@@ -32,7 +34,7 @@ export function ToolbarButton({
 export function ListToolbar({
   left,
   searchValue,
-  searchPlaceholder = 'Tìm kiếm...',
+  searchPlaceholder,
   onSearchChange,
   filters,
   actions,
@@ -46,6 +48,7 @@ export function ListToolbar({
   actions?: ReactNode
   className?: string
 }) {
+  const { t } = useTranslation()
   return (
     <div className={cn('flex shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-white p-3 shadow-sm', className)}>
       {left ? <div className="flex shrink-0 items-center gap-2">{left}</div> : null}
@@ -56,7 +59,7 @@ export function ListToolbar({
             <Input
               value={searchValue || ''}
               onChange={event => onSearchChange(event.target.value)}
-              placeholder={searchPlaceholder}
+              placeholder={translateKnownText(searchPlaceholder, t) ?? t('common.search')}
               className="h-10 rounded-md border-slate-200 bg-white pl-9 shadow-sm"
             />
           </div>

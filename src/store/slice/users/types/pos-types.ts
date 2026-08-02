@@ -67,14 +67,24 @@ export interface TPosLoginRequest {
   PasswordSalt: string;
 }
 
+/** Shop registration payload — ABP style, so several name/tenant aliases ride along. */
 export interface TPosRegisterRequest {
-  DomainName: string;
-  FullName: string;
+  DomainName?: string;
+  FullName?: string;
   Email: string;
   Phone?: string;
   Address?: string;
-  ProvinceId?: number;
-  ProductCategoryId?: number;
+  ProvinceId?: number | string | null;
+  ProductCategoryId?: number | string | null;
+  productCategoryId?: number | string | null;
+  ShopName?: string;
+  Name?: string;
+  Surname?: string;
+  TenantDisplayName?: string;
+  TenancyName?: string;
+  UserName?: string;
+  PasswordSalt?: string;
+  ConfirmPasswordSalt?: string;
 }
 
 export interface TForgotPasswordRequest {
@@ -98,12 +108,45 @@ export interface TPosProductCategory {
 }
 
 export interface TPosAppCountInfo {
+  ShowCount?: number;
+  MemberCount?: number;
+  ShowManagerCount?: number;
   OrderCount: number;
   CustomerCount: number;
   ProductCount: number;
   TodayRevenue: number;
   ThisMonthRevenue: number;
   TodayOrderCount: number;
+}
+
+export interface TPosSystemInfo {
+  SystemPhone?: string;
+  SystemEmail?: string;
+  SystemAddress?: string;
+  SystemWebsite?: string;
+}
+
+export interface TPosAppInfo {
+  RateAndroid?: string;
+  RateIos?: string;
+  ShareAndroid?: string;
+  ShareIos?: string;
+}
+
+export interface TPosFunctionItem {
+  Name: string;
+}
+
+export interface TPosFunctionGroup {
+  Name: string;
+  Functions?: TPosFunctionItem[];
+}
+
+export interface TPosSupportWebRequest {
+  Name: string;
+  Email: string;
+  PhoneNumber: string;
+  Description: string;
 }
 
 export interface TPosChartMonth {
@@ -148,6 +191,7 @@ export interface TPosCustomerActivityItem {
   Point?: number;
   PointPercent?: number;
   CustomerGroup?: { Name: string; Image?: { Url: string } };
+  NextCustomerGroup?: { Name: string; Image?: { Url: string } };
   LastActivity?: { Name: string; Date: string };
 }
 export interface TPosCustomerActivity {
@@ -209,7 +253,7 @@ export interface TPosSettingGeneral {
   Address?: string
   ProductCategory?: { Id: number; Name: string }
   Province?: { Id: number; Name: string }
-  Image?: { Url: string; Id?: number }
+  Image?: TPosImage
 }
 
 export interface TPosSettingOrder {
@@ -272,7 +316,7 @@ export interface TPosSettingNotification {
 
 export interface TPosImage {
   Id?: number
-  Url?: string
+  Url: string
 }
 
 export interface TPosSettingGeneral {

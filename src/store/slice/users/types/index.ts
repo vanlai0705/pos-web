@@ -63,6 +63,7 @@ export interface TUpdateProfileRequest {
   email?: string;
   phone?: string;
   department?: string;
+  avatar?: string;
   id_card_issue_place?: string;
   id_card_number?: string;
   date_of_birth?: string;

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/utils'
+import { stripDisplayedDomain } from '@/utils/domain-route'
 import { navigateTo } from '@/utils/navigation-services'
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
@@ -32,18 +33,118 @@ export function DashboardNav({
   setOpen
 }: DashboardNavProps) {
   const location = useLocation()
-  const currentPathname = location.pathname
+  const currentPathname = stripDisplayedDomain(location.pathname)
   const [openItems, setOpenItems] = useState<string[]>([])
   const { user } = useAuth()
-  const userRole = user.info?.role || ''
+  const userRole = (user.info as any)?.role || ''
 
-  const toggleItem = (title: string) => {
-    setOpenItems(prev =>
-      prev.includes(title)
-        ? prev.filter(item => item !== title)
-        : [...prev, title]
+  const filterChildrenByRole = (children: TNavChildren[] = []): TNavChildren[] =>
+    children
+      .filter(child => !child.role || child.role.length === 0 || child.role.includes(userRole))
+      .map(child => ({
+        ...child,
+        children: filterChildrenByRole(child.children || []),
+      }))
+
+  const isChildActive = (child: TNavChildren): boolean => {
+    const selfActive = !!child.href && (
+      currentPathname === child.href ||
+      currentPathname.startsWith(child.href + '/')
     )
+    return selfActive || (child.children || []).some(isChildActive)
   }
+
+  const renderChildren = (children: TNavChildren[], depth = 0) => (
+    children.map((child, i) => {
+      const ChildIcon = child.icon
+        ? (Icons[child.icon as keyof typeof Icons] ?? Icons.arrowRight)
+        : Icons.arrowRight
+      const childKey = `${depth}-${child.title}-${child.href || i}`
+      const hasChildren = (child.children?.length ?? 0) > 0
+      const childActive = isChildActive(child)
+      const childOpen = openItems.includes(childKey) || (childActive && !openItems.includes(`__closed_${childKey}`))
+
+      if (isOpenMenu && !isMobileNav) {
+        return (
+          <Tooltip key={childKey}>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => {
+                  if (child.href) navigateTo(child.href)
+                }}
+                className={cn(
+                  'w-9 h-9 flex items-center justify-center rounded-md transition-colors',
+                  'hover:bg-accent',
+                  childActive && 'bg-accent text-accent-foreground'
+                )}
+              >
+                <ChildIcon className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" align="center">{child.title}</TooltipContent>
+          </Tooltip>
+        )
+      }
+
+      if (hasChildren) {
+        return (
+          <Collapsible
+            key={childKey}
+            open={childOpen}
+            onOpenChange={(open) => {
+              if (!open) {
+                setOpenItems(prev => [...prev.filter(item => item !== childKey), `__closed_${childKey}`])
+              } else {
+                setOpenItems(prev => [...prev.filter(item => item !== `__closed_${childKey}`), childKey])
+              }
+            }}
+          >
+            <CollapsibleTrigger asChild>
+              <button
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-md py-1.5 px-2 text-sm transition-colors',
+                  'hover:bg-accent hover:text-accent-foreground',
+                  childActive
+                    ? 'bg-accent/60 text-accent-foreground font-medium'
+                    : 'text-foreground/60'
+                )}
+              >
+                <ChildIcon className="size-3.5 flex-none" />
+                <span className="truncate flex-1 text-left">{child.title}</span>
+                <ChevronDown className={cn('size-3.5 transition-transform text-muted-foreground', childOpen && 'rotate-180')} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="ml-4 border-l border-border/50 pl-2">
+              {renderChildren(child.children || [], depth + 1)}
+            </CollapsibleContent>
+          </Collapsible>
+        )
+      }
+
+      return (
+        <button
+          key={childKey}
+          onClick={() => {
+            if (child.href) {
+              navigateTo(child.href)
+              if (isMobileNav && setOpen) setOpen(false)
+            }
+          }}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md py-1.5 px-2 text-sm transition-colors',
+            'hover:bg-accent hover:text-accent-foreground',
+            childActive
+              ? 'bg-accent/60 text-accent-foreground font-medium'
+              : 'text-foreground/60',
+            !child.href && 'cursor-not-allowed opacity-60'
+          )}
+        >
+          <ChildIcon className="size-3.5 flex-none" />
+          <span className="truncate">{child.title}</span>
+        </button>
+      )
+    })
+  )
 
   if (!items?.length) return null
 
@@ -72,12 +173,9 @@ export function DashboardNav({
           const Icon = Icons[item.icon as keyof typeof Icons] ?? Icons.arrowRight
           const isOpen = openItems.includes(item.title)
 
-          const filteredChildren = (item.children || []).filter((child: TNavChildren) => {
-            if (!child.role || child.role.length === 0) return true
-            return child.role.includes(userRole)
-          })
+          const filteredChildren = filterChildrenByRole(item.children || [])
 
-          const isAnyChildActive = filteredChildren.some(c => currentPathname === c.href || currentPathname.startsWith((c.href ?? '') + '/'))
+          const isAnyChildActive = filteredChildren.some(isChildActive)
           const isActive = item.href
             ? currentPathname === item.href || currentPathname.startsWith(item.href + '/')
             : isAnyChildActive
@@ -159,56 +257,7 @@ export function DashboardNav({
                   ? 'ml-3 mt-1 w-10 rounded-md bg-popover p-1 shadow-sm'
                   : 'ml-3 border-l border-border/50 pl-2 mt-0.5'
               )}>
-                {filteredChildren.map((child: TNavChildren, i: number) => {
-                  const ChildIcon = child.icon
-                    ? (Icons[child.icon as keyof typeof Icons] ?? Icons.arrowRight)
-                    : Icons.arrowRight
-                  const childActive =
-                    currentPathname === child.href ||
-                    currentPathname.startsWith((child.href ?? '') + '/')
-
-                  if (isOpenMenu && !isMobileNav) {
-                    return (
-                      <Tooltip key={i}>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => { if (child.href) navigateTo(child.href) }}
-                            className={cn(
-                              'w-9 h-9 flex items-center justify-center rounded-md transition-colors',
-                              'hover:bg-accent',
-                              childActive && 'bg-accent text-accent-foreground'
-                            )}
-                          >
-                            <ChildIcon className="size-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" align="center">{child.title}</TooltipContent>
-                      </Tooltip>
-                    )
-                  }
-
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        if (child.href) {
-                          navigateTo(child.href)
-                          if (isMobileNav && setOpen) setOpen(false)
-                        }
-                      }}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-md py-1.5 px-2 text-sm transition-colors',
-                        'hover:bg-accent hover:text-accent-foreground',
-                        childActive
-                          ? 'bg-accent/60 text-accent-foreground font-medium'
-                          : 'text-foreground/60'
-                      )}
-                    >
-                      <ChildIcon className="size-3.5 flex-none" />
-                      <span className="truncate">{child.title}</span>
-                    </button>
-                  )
-                })}
+                {renderChildren(filteredChildren)}
               </CollapsibleContent>
             </Collapsible>
           )

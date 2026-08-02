@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
-import { ArrowLeft, ArrowRight, Check, Store } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowRight, Check, Store } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -277,7 +276,7 @@ export default function RegisterPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {provinces.map((p) => (
-                          <SelectItem key={p.Id} value={p.Id}>
+                          <SelectItem key={p.Id} value={String(p.Id)}>
                             {p.Name}
                           </SelectItem>
                         ))}
@@ -303,7 +302,7 @@ export default function RegisterPage() {
                           input?.click();
                         }}
                         className={`rounded-lg border px-3 py-2.5 text-sm text-left transition-colors ${
-                          selectedCatId === cat.Id
+                          selectedCatId === String(cat.Id)
                             ? "border-primary bg-primary/5 text-primary font-medium"
                             : "border-border hover:border-primary/50 text-foreground"
                         }`}

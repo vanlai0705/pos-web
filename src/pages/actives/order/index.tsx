@@ -18,6 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { withDomainPath } from '@/utils/domain-route'
 import {
   useFilterActiveProductsQuery,
   useGetProductGroupsSimpleQuery,
@@ -716,7 +717,7 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
       // refetches the tables; only the standalone POS jumps to the order list.
       if (isTableMode) onBack?.()
       else {
-        navigate('/actives/order-manager')
+        navigate(withDomainPath('/actives/order-manager'))
         onBack?.()
       }
     } catch { toast.error('Không thể thanh toán đơn hàng') }

@@ -13,9 +13,13 @@ import {
   TPosProductCategory,
   TPosLoginData,
   TPosAppCountInfo,
+  TPosAppInfo,
   TPosChartMonth,
+  TPosFunctionGroup,
   TPosSimpleChart,
   TPosStatisticChart,
+  TPosSupportWebRequest,
+  TPosSystemInfo,
   TPosCustomerActivity,
   TPosOrderActivity,
   TPosProductStatistic,
@@ -330,6 +334,37 @@ export const userApiSlice = createApi({
       query: () => ({ url: "setting/app-count-info", method: "GET" }),
       transformResponse: (response: TPosResponse<TPosAppCountInfo>) =>
         response.Data,
+      transformErrorResponse: (response: any) =>
+        response?.data?.Errors?.[0]?.Message || response.status,
+    }),
+
+    getSystemInfo: builder.query<TPosSystemInfo, void>({
+      query: () => ({ url: "setting/system-info", method: "GET" }),
+      transformResponse: (response: TPosResponse<TPosSystemInfo>) =>
+        response.Data ?? {},
+      transformErrorResponse: (response: any) =>
+        response?.data?.Errors?.[0]?.Message || response.status,
+    }),
+
+    getAppInfo: builder.query<TPosAppInfo, void>({
+      query: () => ({ url: "setting/app-info", method: "GET" }),
+      transformResponse: (response: TPosResponse<TPosAppInfo>) =>
+        response.Data ?? {},
+      transformErrorResponse: (response: any) =>
+        response?.data?.Errors?.[0]?.Message || response.status,
+    }),
+
+    getFunctionGroups: builder.query<TPosFunctionGroup[], void>({
+      query: () => ({ url: "functions/get-list", method: "GET" }),
+      transformResponse: (response: TPosResponse<TPosFunctionGroup[]>) =>
+        response.Data ?? [],
+      transformErrorResponse: (response: any) =>
+        response?.data?.Errors?.[0]?.Message || response.status,
+    }),
+
+    createSupportWeb: builder.mutation<void, TPosSupportWebRequest>({
+      query: (body) => ({ url: "supports/create-web", method: "POST", body }),
+      transformResponse: () => undefined,
       transformErrorResponse: (response: any) =>
         response?.data?.Errors?.[0]?.Message || response.status,
     }),
@@ -1023,6 +1058,9 @@ export const userApiSlice = createApi({
     }),
 
     // ─── Generic POST mutation ────────────────────────────────────────────────
+    genericGet: builder.query<any, { url: string; params?: Record<string, any> }>({
+      query: ({ url, params }) => ({ url: `${url}${params ? query(params) : ''}` }),
+    }),
     genericPost: builder.mutation<any, { url: string; method?: string; body?: any }>({
       query: ({ url, method = 'POST', body }) => ({ url, method, body }),
     }),
@@ -1061,6 +1099,10 @@ export const {
   useUpdateUserMutation,
   useDeleteUserMutation,
   useGetAppCountInfoQuery,
+  useGetSystemInfoQuery,
+  useGetAppInfoQuery,
+  useGetFunctionGroupsQuery,
+  useCreateSupportWebMutation,
   useGetChartByMonthQuery,
   useGetSimpleChartQuery,
   useGetStatisticChartQuery,
@@ -1191,6 +1233,7 @@ export const {
   useFilterReportQuery,
   useLazyFilterReportQuery,
   // Generic
+  useLazyGenericGetQuery,
   useGenericPostMutation,
   useGenericDownloadMutation,
 } = userApiSlice;

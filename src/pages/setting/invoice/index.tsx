@@ -8,7 +8,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { PageHeader, SettingCard, ToggleRow, SaveBar } from "../components"
 import type { TPosSettingInvoice } from "@/store/slice/users/types"

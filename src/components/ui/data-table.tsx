@@ -8,6 +8,8 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { Skeleton } from './skeleton'
 import { DataPagination } from './data-pagination'
 import { cn } from '@/utils'
+import { useTranslation } from 'react-i18next'
+import { translateKnownText } from '@/i18n/nav-title-map'
 
 export type { ColumnDef } from '@tanstack/react-table'
 
@@ -47,6 +49,7 @@ export function DataTable<TData>({
   rowClassName,
   emptyText = 'Không có dữ liệu',
 }: DataTableProps<TData>) {
+  const { t } = useTranslation()
   const tableData = useMemo(
     () => loading ? (Array(pageSize).fill({}) as TData[]) : data,
     [loading, data, pageSize],
@@ -77,7 +80,9 @@ export function DataTable<TData>({
                     >
                       {header.isPlaceholder
                         ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
+                        : typeof header.column.columnDef.header === 'string'
+                          ? translateKnownText(header.column.columnDef.header, t)
+                          : flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
                   )
                 })}
@@ -88,7 +93,7 @@ export function DataTable<TData>({
             {table.getRowModel().rows.length === 0 && !loading ? (
               <tr>
                 <td colSpan={columns.length} className="text-center py-12 text-muted-foreground">
-                  {emptyText}
+                  {translateKnownText(emptyText, t)}
                 </td>
               </tr>
             ) : (

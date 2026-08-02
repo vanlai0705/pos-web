@@ -5,6 +5,8 @@ import {
   SearchBar, PaginationBar, RowActions,
   CrudModal, TableCard, THead, Th, Td, StatusBadge,
 } from "./components"
+import { useTranslation } from "react-i18next"
+import { translateKnownText } from "@/i18n/nav-title-map"
 
 export interface Column<T> {
   header: string
@@ -56,6 +58,7 @@ export function GenericManagerPage<T extends { Id?: number; Name: string; Status
   modal, onAdd, onCloseModal, modalTitle, onSave, saving,
   children,
 }: Props<T>) {
+  const { t } = useTranslation()
   const items = data?.Items ?? []
   const total = data?.TotalItemCount ?? 0
 
@@ -63,7 +66,7 @@ export function GenericManagerPage<T extends { Id?: number; Name: string; Status
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Icon className="h-5 w-5 text-primary" />
-        <h1 className="text-lg font-semibold">{title}</h1>
+        <h1 className="text-lg font-semibold">{translateKnownText(title, t)}</h1>
       </div>
 
       <SearchBar
@@ -81,16 +84,16 @@ export function GenericManagerPage<T extends { Id?: number; Name: string; Status
           <THead>
             <Th className="w-10">#</Th>
             {columns.map(col => (
-              <Th key={col.header} className={col.className}>{col.header}</Th>
+              <Th key={col.header} className={col.className}>{translateKnownText(col.header, t)}</Th>
             ))}
-            <Th>Trạng thái</Th>
+            <Th>{t('common.status')}</Th>
             <Th className="w-10"></Th>
           </THead>
           <tbody className="divide-y">
             {items.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + 3} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                  Không có dữ liệu
+                  {t('common.noData')}
                 </td>
               </tr>
             ) : items.map((item, i) => (

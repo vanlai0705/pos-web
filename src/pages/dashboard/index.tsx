@@ -1,531 +1,473 @@
-import { useState, useMemo } from "react"
+import { useMemo, useState } from "react"
 import {
-  AreaChart, Area, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts"
-import { useAuth } from "@/hooks/useAuth"
+import { BarChart3, Package, ReceiptText, Users } from "lucide-react"
+import { useTranslation } from "react-i18next"
+
 import {
-  useGetAppCountInfoQuery,
-  useGetSimpleChartQuery,
-  useGetStatisticChartQuery,
+  useGetCustomerActivityQuery,
   useGetOrderActivityQuery,
   useGetProductStatisticQuery,
-  useGetCustomerActivityQuery,
+  useGetSimpleChartQuery,
+  useGetStatisticChartQuery,
 } from "@/store/slice/users/api/api"
-import type { TDatePreset } from "@/store/slice/users/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import {
-  TrendingUp, ShoppingCart, Users, Package,
-  BarChart3, RefreshCw, DollarSign,
-} from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// ─── Date utils ───────────────────────────────────────────────────────────────
-
-function pad(n: number) { return String(n).padStart(2, "0") }
-function fmtDate(d: Date, isEnd = false) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${isEnd ? "23:59:59" : "00:00:00"}+07:00`
+function pad(n: number) {
+  return String(n).padStart(2, "0")
 }
 
-function getRange(preset: TDatePreset): { from: string; to: string } {
-  const now = new Date()
-  switch (preset) {
-    case "today":
-      return { from: fmtDate(now), to: fmtDate(now, true) }
-    case "week": {
-      const day = now.getDay() || 7
-      const mon = new Date(now); mon.setDate(now.getDate() - day + 1)
-      return { from: fmtDate(mon), to: fmtDate(now, true) }
-    }
-    case "month": {
-      const first = new Date(now.getFullYear(), now.getMonth(), 1)
-      return { from: fmtDate(first), to: fmtDate(now, true) }
-    }
-    case "year": {
-      const first = new Date(now.getFullYear(), 0, 1)
-      const last = new Date(now.getFullYear(), 11, 31)
-      return { from: fmtDate(first), to: fmtDate(last, true) }
-    }
-  }
+function toInputDate(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-// ─── Formatters ───────────────────────────────────────────────────────────────
-
-function fmtCurrency(n: number = 0): string {
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
-  return n.toLocaleString("vi-VN")
+function toApiDate(value: string, isEnd = false) {
+  return `${value}T${isEnd ? "23:59:59" : "00:00:00"}+07:00`
 }
 
-function fmtDateShort(iso: string): string {
-  try {
-    const d = new Date(iso)
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-  } catch {
-    return iso
-  }
+function formatDisplayDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`
 }
 
-// ─── Sparkline card ───────────────────────────────────────────────────────────
-
-interface SparkCardProps {
-  title: string
-  value: string
-  sub: string
-  icon: React.ElementType
-  iconBg: string
-  chartData: { Label: string; Value: number }[]
-  color: string
-  loading: boolean
+function formatDateTime(value?: string) {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} | ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-function SparkCard({ title, value, sub, icon: Icon, iconBg, chartData, color, loading }: SparkCardProps) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="flex items-start justify-between p-4 pb-2">
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{title}</p>
-            {loading ? (
-              <Skeleton className="mt-1.5 h-7 w-28" />
-            ) : (
-              <p className="mt-1 text-2xl font-bold">{value}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
-          </div>
-          <span className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl ${iconBg}`}>
-            <Icon className="h-5 w-5 text-white" />
-          </span>
-        </div>
-        <div className="h-16 w-full">
-          {!loading && chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id={`spark-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={color} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="Value"
-                  stroke={color}
-                  strokeWidth={2}
-                  fill={`url(#spark-${color.replace("#", "")})`}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full bg-muted/20" />
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  )
+function formatNumber(value = 0) {
+  return value.toLocaleString("vi-VN")
 }
 
-// ─── Date preset buttons ──────────────────────────────────────────────────────
+function formatShort(value = 0) {
+  if (Math.abs(value) >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`
+  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+  if (Math.abs(value) >= 1_000) return `${Math.round(value / 1_000)}K`
+  return formatNumber(value)
+}
 
-const DATE_PRESETS: { key: TDatePreset; label: string }[] = [
-  { key: "today", label: "Hôm nay" },
-  { key: "week", label: "Tuần này" },
-  { key: "month", label: "Tháng này" },
-  { key: "year", label: "Năm nay" },
+const SIMPLE_CHARTS = [
+  { type: 0, color: "#2563eb" },
+  { type: 1, color: "#059669" },
+  { type: 3, color: "#d97706" },
+  { type: 2, color: "#7c3aed" },
 ]
 
 const CHART_TYPES = [
-  { key: 0, label: "Ngày" },
-  { key: 1, label: "Tháng" },
-  { key: 2, label: "Năm" },
+  { key: 0, labelKey: "dashboard.day" },
+  { key: 1, labelKey: "dashboard.month" },
+  { key: 2, labelKey: "dashboard.year" },
 ]
 
-const SERIES_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
+const SERIES_COLORS = ["#38bdf8", "#22c55e", "#ef4444", "#f59e0b", "#8b5cf6"]
 
 export default function DashboardPage() {
-  const { user } = useAuth()
-  const posUser = (user.data as any)?.User
-  const name = posUser?.FullName ?? posUser?.Name ?? "bạn"
-
-  const [tablePreset, setTablePreset] = useState<TDatePreset>("today")
-  const tableRange = useMemo(() => getRange(tablePreset), [tablePreset])
-  const yearRange = useMemo(() => getRange("year"), [])
-  const [chartType, setChartType] = useState(1)
+  const { t } = useTranslation()
   const now = new Date()
+  const [simpleFrom, setSimpleFrom] = useState(toInputDate(new Date(now.getFullYear(), 0, 1)))
+  const [simpleTo, setSimpleTo] = useState(toInputDate(new Date(now.getFullYear(), 11, 31)))
+  const [activityFrom, setActivityFrom] = useState(toInputDate(now))
+  const [activityTo, setActivityTo] = useState(toInputDate(now))
+  const [chartType, setChartType] = useState(0)
 
-  // ── Queries ──────────────────────────────────────────────────────────────────
-  const { data: counts, isFetching: countLoading, refetch: refetchCounts } = useGetAppCountInfoQuery()
-
-  const { data: revenueChart, isFetching: rev0Loading } = useGetSimpleChartQuery(
-    { type: 0, DateFrom: yearRange.from, DateTo: yearRange.to }
+  const simpleRange = useMemo(
+    () => ({ DateFrom: toApiDate(simpleFrom), DateTo: toApiDate(simpleTo, true) }),
+    [simpleFrom, simpleTo]
   )
-  const { data: orderChart, isFetching: ord1Loading } = useGetSimpleChartQuery(
-    { type: 1, DateFrom: yearRange.from, DateTo: yearRange.to }
-  )
-  const { data: customerChart, isFetching: cus2Loading } = useGetSimpleChartQuery(
-    { type: 2, DateFrom: yearRange.from, DateTo: yearRange.to }
-  )
-  const { data: paymentChart, isFetching: pay3Loading } = useGetSimpleChartQuery(
-    { type: 3, DateFrom: yearRange.from, DateTo: yearRange.to }
+  const activityRange = useMemo(
+    () => ({ dateFrom: toApiDate(activityFrom), dateTo: toApiDate(activityTo, true) }),
+    [activityFrom, activityTo]
   )
 
   const { data: statChart, isFetching: statLoading } = useGetStatisticChartQuery({
     Type: chartType,
     Month: now.getMonth() + 1,
     Year: now.getFullYear(),
-    YearFrom: now.getFullYear() - 5,
+    YearFrom: now.getFullYear() - 10,
     YearTo: now.getFullYear(),
   })
 
+  const { data: customers, isFetching: customersLoading } = useGetCustomerActivityQuery({ PageSize: 10, PageIndex: 0 })
   const { data: orders, isFetching: ordersLoading } = useGetOrderActivityQuery({
-    PageSize: 10, PageIndex: 0,
-    dateFrom: tableRange.from, dateTo: tableRange.to,
+    PageSize: 10,
+    PageIndex: 0,
+    ...activityRange,
   })
-
   const { data: products, isFetching: productsLoading } = useGetProductStatisticQuery({
-    PageSize: 10, PageIndex: 0,
-    dateFrom: tableRange.from, dateTo: tableRange.to,
+    PageSize: 10,
+    PageIndex: 0,
+    ...activityRange,
   })
 
-  const { data: customers, isFetching: customersLoading } = useGetCustomerActivityQuery({
-    PageSize: 5, PageIndex: 0,
-  })
-
-  // ── Stat chart data ───────────────────────────────────────────────────────────
   const statChartData = useMemo(() => {
     if (!statChart?.Titles?.length || !statChart?.ChartItems?.length) return []
-    return statChart.Titles.map((label, i) => {
-      const row: Record<string, unknown> = { label }
-      statChart.ChartItems.forEach(series => {
-        row[series.Label] = series.Values[i] ?? 0
+    return statChart.Titles.map((label, index) => {
+      const row: Record<string, string | number> = { label }
+      statChart.ChartItems.forEach(item => {
+        row[item.Label] = item.Values[index] ?? 0
       })
       return row
     })
   }, [statChart])
 
-  const statSeriesKeys = statChart?.ChartItems?.map(s => s.Label) ?? []
+  const statSeriesKeys = statChart?.ChartItems?.map(item => item.Label) ?? []
 
   return (
-    <div className="space-y-5 p-1">
-
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">Xin chào, {name} 👋</h1>
-          <p className="text-sm text-muted-foreground">Tổng quan hoạt động kinh doanh</p>
-        </div>
-        <button
-          onClick={() => refetchCounts()}
-          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent transition-colors"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          Làm mới
-        </button>
-      </div>
-
-      {/* ── 4 Sparkline stat cards ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SparkCard
-          title="Doanh thu hôm nay"
-          value={counts ? fmtCurrency(counts.TodayRevenue) + " ₫" : "—"}
-          sub={`Tháng: ${counts ? fmtCurrency(counts.ThisMonthRevenue) + " ₫" : "—"}`}
-          icon={TrendingUp}
-          iconBg="bg-blue-500"
-          chartData={revenueChart?.ChartItems ?? []}
-          color="#3b82f6"
-          loading={countLoading || rev0Loading}
-        />
-        <SparkCard
-          title="Đơn hàng hôm nay"
-          value={String(counts?.TodayOrderCount ?? "—")}
-          sub={`Tổng: ${counts?.OrderCount ?? "—"} đơn`}
-          icon={ShoppingCart}
-          iconBg="bg-emerald-500"
-          chartData={orderChart?.ChartItems ?? []}
-          color="#10b981"
-          loading={countLoading || ord1Loading}
-        />
-        <SparkCard
-          title="Khách hàng"
-          value={String(counts?.CustomerCount ?? "—")}
-          sub={`Hoạt động trong năm: ${customerChart?.TotalCount ?? "—"}`}
-          icon={Users}
-          iconBg="bg-violet-500"
-          chartData={customerChart?.ChartItems ?? []}
-          color="#8b5cf6"
-          loading={countLoading || cus2Loading}
-        />
-        <SparkCard
-          title="Sản phẩm"
-          value={String(counts?.ProductCount ?? "—")}
-          sub={`Thanh toán năm: ${paymentChart ? fmtCurrency(paymentChart.TotalCount) + " ₫" : "—"}`}
-          icon={Package}
-          iconBg="bg-orange-500"
-          chartData={paymentChart?.ChartItems ?? []}
-          color="#f59e0b"
-          loading={countLoading || pay3Loading}
-        />
-      </div>
-
-      {/* ── Main profit/revenue chart ──────────────────────────────────────── */}
+    <div className="animate-fadeIn space-y-4 pb-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <BarChart3 className="h-4 w-4 text-primary" />
-            Biểu đồ lợi nhuận
-          </CardTitle>
-          <div className="flex rounded-lg border overflow-hidden">
-            {CHART_TYPES.map(ct => (
-              <button
-                key={ct.key}
-                onClick={() => setChartType(ct.key)}
-                className={`px-3 py-1 text-xs font-medium transition-colors ${
-                  chartType === ct.key
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                {ct.label}
-              </button>
-            ))}
+        <CardHeader className="pb-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="md:col-span-2">
+              <CardTitle className="text-lg">{t("dashboard.monthlyActivity")}</CardTitle>
+              <div className="mt-1 text-sm text-muted-foreground">
+                <div>{t("common.from")} {formatDisplayDate(simpleFrom)}</div>
+                <div>{t("common.to")} {formatDisplayDate(simpleTo)}</div>
+              </div>
+            </div>
+            <DateRangeInputs from={simpleFrom} to={simpleTo} onFromChange={setSimpleFrom} onToChange={setSimpleTo} />
           </div>
         </CardHeader>
         <CardContent>
-          {statLoading ? (
-            <Skeleton className="h-52 w-full" />
-          ) : statChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={statChartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  tickFormatter={v => fmtCurrency(v as number)}
-                  width={60}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                  formatter={(v: unknown) => [fmtCurrency(v as number), ""]}
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                {statSeriesKeys.map((key, i) => (
-                  <Line
-                    key={key}
-                    type="monotone"
-                    dataKey={key}
-                    stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
-              Không có dữ liệu
-            </div>
-          )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {SIMPLE_CHARTS.map(item => (
+              <SimpleChartCard key={item.type} type={item.type} color={item.color} range={simpleRange} />
+            ))}
+          </div>
         </CardContent>
       </Card>
 
-      {/* ── Date preset filter for tables ──────────────────────────────────── */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Lọc theo:</span>
-        <div className="flex rounded-lg border overflow-hidden">
-          {DATE_PRESETS.map(p => (
-            <button
-              key={p.key}
-              onClick={() => setTablePreset(p.key)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                tablePreset === p.key
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Two-column: Orders + Products ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-
-        {/* Orders table */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <ShoppingCart className="h-4 w-4 text-primary" />
-              Đơn hàng gần đây
-              {orders && (
-                <Badge variant="secondary" className="ml-auto">{orders.TotalItemCount} đơn</Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {ordersLoading ? (
-              <div className="space-y-2 p-4">
-                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
-              </div>
-            ) : !orders?.Items?.length ? (
-              <p className="p-4 text-center text-sm text-muted-foreground">Không có đơn hàng</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/40">
-                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Hóa đơn</th>
-                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Khách hàng</th>
-                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Thời gian</th>
-                      <th className="px-4 py-2 text-right font-medium text-muted-foreground">Tổng tiền</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.Items.map((o, i) => (
-                      <tr key={i} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-2.5 font-medium text-primary">{o.Name}</td>
-                        <td className="px-4 py-2.5 text-muted-foreground">{o.Customer?.Name ?? "—"}</td>
-                        <td className="px-4 py-2.5 text-muted-foreground text-xs">{fmtDateShort(o.Date)}</td>
-                        <td className="px-4 py-2.5 text-right font-semibold">{fmtCurrency(o.Total)} ₫</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-muted/20">
-                      <td colSpan={3} className="px-4 py-2 text-sm font-semibold">Tổng cộng</td>
-                      <td className="px-4 py-2 text-right text-sm font-bold text-primary">
-                        {fmtCurrency(orders.Items.reduce((s, o) => s + o.Total, 0))} ₫
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Products table */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-              <Package className="h-4 w-4 text-primary" />
-              Top sản phẩm bán chạy
-              {products?.Sumary && (
-                <Badge variant="secondary" className="ml-auto">
-                  Lợi nhuận: {fmtCurrency(products.Sumary.Profit)} ₫
-                </Badge>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {productsLoading ? (
-              <div className="space-y-2 p-4">
-                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
-              </div>
-            ) : !products?.Items?.length ? (
-              <p className="p-4 text-center text-sm text-muted-foreground">Không có dữ liệu</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/40">
-                      <th className="px-4 py-2 text-left font-medium text-muted-foreground">Sản phẩm</th>
-                      <th className="px-4 py-2 text-right font-medium text-muted-foreground">SL</th>
-                      <th className="px-4 py-2 text-right font-medium text-muted-foreground">Doanh thu</th>
-                      <th className="px-4 py-2 text-right font-medium text-muted-foreground">Lợi nhuận</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.Items.map((p, i) => (
-                      <tr key={i} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-2.5">
-                          <p className="font-medium leading-tight">{p.Product.Name}</p>
-                          <p className="text-xs text-muted-foreground">{p.Product.ProductCode}</p>
-                        </td>
-                        <td className="px-4 py-2.5 text-right tabular-nums">{p.Quantity}</td>
-                        <td className="px-4 py-2.5 text-right tabular-nums">{fmtCurrency(p.Amount)} ₫</td>
-                        <td className="px-4 py-2.5 text-right">
-                          <span className={`font-semibold ${p.Profit >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                            {fmtCurrency(p.Profit)} ₫
-                          </span>
-                          <span className="ml-1 text-xs text-muted-foreground">
-                            ({(p.ProfitPercent * 100).toFixed(0)}%)
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Recent customers ──────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Users className="h-4 w-4 text-primary" />
-            Khách hàng hoạt động gần đây
-            {customers && (
-              <Badge variant="secondary" className="ml-auto">{customers.TotalItemCount} khách</Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {customersLoading ? (
-            <div className="space-y-2 p-4">
-              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+      <Tabs defaultValue="chart" className="space-y-3">
+        <Card className="overflow-hidden">
+          <div className="flex flex-col gap-3 border-b bg-white p-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">{t("nav.dashboard")}</h2>
+              <p className="text-xs text-muted-foreground">{t("dashboard.monthlyActivity")}</p>
             </div>
-          ) : !customers?.Items?.length ? (
-            <p className="p-4 text-center text-sm text-muted-foreground">Không có dữ liệu</p>
-          ) : (
-            <div className="divide-y">
-              {customers.Items.map((c, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
-                  <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold">
-                    {c.Name?.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium leading-tight truncate">{c.Name}</p>
-                    <p className="text-xs text-muted-foreground">{c.Phone ?? c.Address ?? "—"}</p>
-                  </div>
-                  <div className="text-right flex-none">
-                    {c.CustomerGroup && (
-                      <Badge variant="outline" className="text-xs">{c.CustomerGroup.Name}</Badge>
-                    )}
-                    {c.LastActivity && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {c.LastActivity.Name} · {fmtDateShort(c.LastActivity.Date)}
-                      </p>
-                    )}
-                  </div>
-                  {c.Point !== undefined && (
-                    <div className="flex items-center gap-1 text-xs text-amber-600 font-medium flex-none">
-                      <DollarSign className="h-3 w-3" />
-                      {c.Point.toLocaleString()}đ
-                    </div>
-                  )}
+            <TabsList className="grid h-auto w-full grid-cols-2 rounded-lg bg-slate-100 p-1 md:w-auto md:grid-cols-4">
+              <TabsTrigger value="chart" className="gap-2 rounded-md px-3 py-2 text-xs">
+                <BarChart3 className="h-4 w-4" />
+                {t("dashboard.profitChart")}
+              </TabsTrigger>
+              <TabsTrigger value="customers" className="gap-2 rounded-md px-3 py-2 text-xs">
+                <Users className="h-4 w-4" />
+                {t("common.customer")}
+              </TabsTrigger>
+              <TabsTrigger value="orders" className="gap-2 rounded-md px-3 py-2 text-xs">
+                <ReceiptText className="h-4 w-4" />
+                {t("dashboard.salesActivity")}
+              </TabsTrigger>
+              <TabsTrigger value="products" className="gap-2 rounded-md px-3 py-2 text-xs">
+                <Package className="h-4 w-4" />
+                {t("dashboard.productActivity")}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="chart" className="m-0">
+            <CardHeader>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  {t("dashboard.profitChart")}
+                </CardTitle>
+                <div className="flex w-fit items-center rounded-xl border bg-muted/40 p-1">
+                  {CHART_TYPES.map(type => (
+                    <button
+                      key={type.key}
+                      type="button"
+                      onClick={() => setChartType(type.key)}
+                      className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-all ${
+                        chartType === type.key
+                          ? "bg-background text-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {t(type.labelKey)}
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {statLoading ? (
+                <Skeleton className="h-[300px] w-full" />
+              ) : statChartData.length ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={statChartData} margin={{ top: 8, right: 20, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tickFormatter={value => formatShort(Number(value))} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={64} />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                      formatter={value => [formatNumber(Number(value)), ""]}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    {statSeriesKeys.map((key, index) => (
+                      <Line key={key} dataKey={key} type="monotone" stroke={SERIES_COLORS[index % SERIES_COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <EmptyState height="h-[300px]" />
+              )}
+            </CardContent>
+          </TabsContent>
 
+          <TabsContent value="customers" className="m-0">
+            <div className="p-4">
+              <CustomerActivityTable loading={customersLoading} data={customers} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="orders" className="m-0">
+            <div className="space-y-3 p-4">
+              <ActivitySectionHeader title={t("dashboard.salesActivity")} from={activityFrom} to={activityTo} onFromChange={setActivityFrom} onToChange={setActivityTo} />
+              <OrderActivityTable loading={ordersLoading} data={orders} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="products" className="m-0">
+            <div className="space-y-3 p-4">
+              <ActivitySectionHeader title={t("dashboard.productActivity")} from={activityFrom} to={activityTo} onFromChange={setActivityFrom} onToChange={setActivityTo} />
+              <ProductActivityTable loading={productsLoading} data={products} />
+            </div>
+          </TabsContent>
+        </Card>
+      </Tabs>
+    </div>
+  )
+}
+
+function SimpleChartCard({ type, color, range }: { type: number; color: string; range: { DateFrom: string; DateTo: string } }) {
+  const { data, isFetching } = useGetSimpleChartQuery({ type, ...range })
+  const chartItems = data?.ChartItems ?? []
+
+  return (
+    <div className="overflow-hidden rounded-lg bg-blue-600 text-white shadow">
+      <div className="p-6 pb-0">
+        {isFetching ? <Skeleton className="h-8 w-24 bg-white/25" /> : <h4 className="text-2xl font-bold">{formatNumber(data?.TotalCount ?? 0)}</h4>}
+        <p className="text-sm font-medium text-blue-100">{data?.Title || "..."}</p>
+      </div>
+      <div className="h-[70px] px-3">
+        {!isFetching && chartItems.length ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartItems} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
+              <Area dataKey="Value" type="monotone" stroke={color} strokeWidth={2} fill="rgba(255,255,255,0.22)" dot={false} isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function DateRangeInputs({ from, to, onFromChange, onToChange }: { from: string; to: string; onFromChange: (value: string) => void; onToChange: (value: string) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <input type="date" value={from} onChange={event => onFromChange(event.target.value)} className="h-10 rounded-lg border bg-background px-3 text-sm" />
+      <input type="date" value={to} onChange={event => onToChange(event.target.value)} className="h-10 rounded-lg border bg-background px-3 text-sm" />
+    </div>
+  )
+}
+
+function ActivitySectionHeader({ title, from, to, onFromChange, onToChange }: { title: string; from: string; to: string; onFromChange: (value: string) => void; onToChange: (value: string) => void }) {
+  const { t } = useTranslation()
+  return (
+    <Card>
+      <CardHeader className="pb-4">
+        <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-5">
+          <div className="md:col-span-3">
+            <CardTitle className="text-lg">{title}</CardTitle>
+            <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
+              <span>{t("common.from")}: {formatDisplayDate(from)}</span>
+              <span>{t("common.to")}: {formatDisplayDate(to)}</span>
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <DateRangeInputs from={from} to={to} onFromChange={onFromChange} onToChange={onToChange} />
+          </div>
+        </div>
+      </CardHeader>
+    </Card>
+  )
+}
+
+function CustomerActivityTable({ loading, data }: { loading: boolean; data?: { TotalItemCount: number; Items: Array<any> } }) {
+  const { t } = useTranslation()
+  return (
+    <Card className="overflow-hidden">
+      <TableLoadingOrEmpty loading={loading} empty={!data?.Items?.length}>
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
+            <tr>
+              <th className="px-6 py-4 text-center"><Users className="mx-auto h-4 w-4" /></th>
+              <th className="px-6 py-4">{t("common.customer")}</th>
+              <th className="px-6 py-4 text-right">{t("common.points")}</th>
+              <th className="px-6 py-4 text-center">{t("dashboard.level")}</th>
+              <th className="px-6 py-4">{t("dashboard.levelProgress")}</th>
+              <th className="px-6 py-4">{t("dashboard.lastActivity")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {data?.Items.map((item, index) => (
+              <tr key={`${item.Name}-${index}`} className="transition-colors hover:bg-muted/30">
+                <td className="px-6 py-4 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                    {item.Name?.charAt(0)?.toUpperCase() || "K"}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="font-semibold text-foreground">{item.Name}</div>
+                  <div className="text-xs text-muted-foreground">ĐT: {item.Phone || ""} | {item.Address || ""}</div>
+                </td>
+                <td className="px-6 py-4 text-right font-mono font-medium">{formatNumber(item.Point ?? 0)}</td>
+                <td className="px-6 py-4 text-center text-xs font-medium">{item.CustomerGroup?.Name || "N/A"}</td>
+                <td className="min-w-[200px] px-6 py-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-xs font-bold text-primary">{formatNumber(item.PointPercent ?? 0)}%</span>
+                      <span className="text-xs text-muted-foreground">{item.NextCustomerGroup?.Name || ""}</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(item.PointPercent ?? 0, 100)}%` }} />
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-xs text-muted-foreground">
+                  <div className="font-medium text-foreground">{item.LastActivity?.Name || ""}</div>
+                  <div>{formatDateTime(item.LastActivity?.Date)}</div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableLoadingOrEmpty>
+      <TableFooter total={data?.TotalItemCount} />
+    </Card>
+  )
+}
+
+function OrderActivityTable({ loading, data }: { loading: boolean; data?: { TotalItemCount: number; Items: Array<any> } }) {
+  const { t } = useTranslation()
+  return (
+    <Card className="overflow-hidden">
+      <TableLoadingOrEmpty loading={loading} empty={!data?.Items?.length}>
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
+            <tr>
+              <th className="px-4 py-4 text-center">#</th>
+              <th className="px-4 py-4 text-center">{t("common.receiptNo")}</th>
+              <th className="px-4 py-4 text-left">{t("common.customer")}</th>
+              <th className="px-4 py-4 text-right">{t("common.total")}</th>
+              <th className="px-4 py-4 text-right">{t("common.cash")}</th>
+              <th className="px-4 py-4 text-right">{t("common.transfer")}</th>
+              <th className="px-4 py-4 text-right">{t("common.debt")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {data?.Items.map((item, index) => (
+              <tr key={`${item.Name}-${index}`} className="transition-colors hover:bg-muted/30">
+                <td className="px-4 py-4 text-center text-muted-foreground">{index + 1}</td>
+                <td className="px-4 py-4 text-center">
+                  <div className="font-medium text-foreground">{item.Name}</div>
+                  <div className="text-xs text-muted-foreground">{formatDateTime(item.Date)}</div>
+                </td>
+                <td className="px-4 py-4 font-medium">{item.Customer?.Name || t("common.retailCustomer")}</td>
+                <td className="px-4 py-4 text-right font-semibold">{formatNumber(item.Total)}</td>
+                <td className="px-4 py-4 text-right text-muted-foreground">{formatNumber(item.Cash)}</td>
+                <td className="px-4 py-4 text-right text-muted-foreground">{formatNumber(item.Card)}</td>
+                <td className="px-4 py-4 text-right font-medium text-rose-600">{formatNumber(item.Shortage)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableLoadingOrEmpty>
+      <TableFooter total={data?.TotalItemCount} />
+    </Card>
+  )
+}
+
+function ProductActivityTable({ loading, data }: { loading: boolean; data?: { TotalItemCount: number; Items: Array<any> } }) {
+  const { t } = useTranslation()
+  return (
+    <Card className="overflow-hidden">
+      <TableLoadingOrEmpty loading={loading} empty={!data?.Items?.length}>
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
+            <tr>
+              <th className="px-4 py-4 text-center">#</th>
+              <th className="px-4 py-4 text-left">{t("common.product")}</th>
+              <th className="px-4 py-4 text-center">{t("common.unit")}</th>
+              <th className="px-4 py-4 text-right">{t("common.quantity")}</th>
+              <th className="px-4 py-4 text-right">{t("common.price")}</th>
+              <th className="px-4 py-4 text-right">{t("common.discount")}</th>
+              <th className="px-4 py-4 text-right">{t("common.amount")}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {data?.Items.map((item, index) => (
+              <tr key={`${item.Product?.ProductCode}-${index}`} className="transition-colors hover:bg-muted/30">
+                <td className="px-4 py-4 text-center text-muted-foreground">{index + 1}</td>
+                <td className="px-4 py-4">
+                  <div className="font-medium text-foreground">{item.Product?.Name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    {t("common.code")}: <span className="font-mono">{item.Product?.ProductCode}</span> | {t("common.barcode")}: <span className="font-mono">{item.Product?.Barcode || ""}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-4 text-center text-xs">{item.Unit?.Name || ""}</td>
+                <td className="px-4 py-4 text-right font-medium">{formatNumber(item.Quantity)}</td>
+                <td className="px-4 py-4 text-right text-muted-foreground">{formatNumber(item.Price)}</td>
+                <td className="px-4 py-4 text-right text-muted-foreground">{formatNumber((item.DiscountPercent ?? 0) * 100)}%</td>
+                <td className="px-4 py-4 text-right font-semibold text-primary">{formatNumber(item.Amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableLoadingOrEmpty>
+      <TableFooter total={data?.TotalItemCount} />
+    </Card>
+  )
+}
+
+function TableLoadingOrEmpty({ loading, empty, children }: { loading: boolean; empty: boolean; children: React.ReactNode }) {
+  if (loading) {
+    return (
+      <div className="space-y-2 p-6">
+        {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-10 w-full" />)}
+      </div>
+    )
+  }
+
+  if (empty) return <EmptyState height="h-32" />
+
+  return <div className="w-full overflow-x-auto">{children}</div>
+}
+
+function EmptyState({ height }: { height: string }) {
+  const { t } = useTranslation()
+  return <div className={`flex ${height} items-center justify-center text-sm text-muted-foreground`}>{t("common.noData")}</div>
+}
+
+function TableFooter({ total }: { total?: number }) {
+  const { t } = useTranslation()
+  return (
+    <div className="border-t bg-muted/30 px-6 py-4 text-sm text-muted-foreground">
+      {t("common.total")}: <span className="font-semibold text-foreground">{formatNumber(total ?? 0)}</span>
     </div>
   )
 }

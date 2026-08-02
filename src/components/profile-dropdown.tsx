@@ -13,6 +13,7 @@ import {
 import { useLogout } from '@/hooks'
 import { useAuth } from '@/hooks/useAuth'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 function getInitials(name?: string): string {
   if (!name) return 'U'
@@ -24,17 +25,18 @@ function getInitials(name?: string): string {
 export function ProfileDropdown() {
   const { user } = useAuth()
   const { logout } = useLogout()
+  const { t } = useTranslation()
 
   // Dùng trực tiếp từ Redux state — data đã được set khi login + getMe
   const posUser = user.data?.User
-  const displayName = posUser?.FullName ?? posUser?.Name ?? 'Người dùng'
+  const displayName = posUser?.FullName ?? posUser?.Name ?? t('common.user')
   const email = posUser?.Email ?? ''
   const initials = getInitials(displayName)
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
+        <Button variant='ghost' className='relative h-8 w-8 rounded-full text-white hover:bg-white/10 hover:text-white'>
           <Avatar className='h-8 w-8'>
             <AvatarFallback className='bg-primary text-primary-foreground text-xs font-semibold'>
               {initials}
@@ -55,20 +57,20 @@ export function ProfileDropdown() {
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
             <Link to='/profile'>
-              Hồ Sơ
+              {t('common.profile')}
               <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link to='/change-password'>
-              Đổi Mật Khẩu
+              {t('common.changePassword')}
               <DropdownMenuShortcut>⌘C</DropdownMenuShortcut>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout} className='text-destructive focus:text-destructive'>
-          Đăng Xuất
+          {t('auth.logout')}
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

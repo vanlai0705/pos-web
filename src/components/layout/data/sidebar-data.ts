@@ -10,6 +10,8 @@ import {
   IconSettings,
   IconBell,
   IconUserCircle,
+  IconArrowsShuffle,
+  IconLifebuoy,
 } from "@tabler/icons-react"
 import { type SidebarData } from "../types"
 
@@ -110,6 +112,25 @@ export const sidebarData: SidebarData = {
           title: "Thông báo",
           url: "/notifications",
           icon: IconBell,
+        },
+        {
+          title: "Hỗ trợ",
+          url: "/supports",
+          icon: IconLifebuoy,
+          items: [
+            { title: "Hướng dẫn", url: "/supports/helps" },
+            { title: "Hỗ trợ", url: "/supports/supports" },
+          ],
+        },
+        {
+          title: "Dữ liệu ban đầu",
+          url: "/managers/opening-balances",
+          icon: IconArrowsShuffle,
+          items: [
+            { title: "Công nợ khách hàng", url: "/managers/opening-balances/customer" },
+            { title: "Công nợ nhà cung cấp", url: "/managers/opening-balances/supplier" },
+            { title: "Tồn kho ban đầu", url: "/managers/opening-balances/inventory" },
+          ],
         },
         {
           title: "Cài đặt",

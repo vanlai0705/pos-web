@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 4200",
-    "build": "tsc -b && vite build",
-    "deploy_test": "tsc -b && vite build --mode development && scp -P 22 -r dist/* pi@192.168.100.164:/home/pi/item-management-FE/",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

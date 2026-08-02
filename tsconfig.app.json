@@ -29,5 +29,9 @@
       "@utils/*": ["src/utils/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Dead files carried over from the warehouse project: nothing imports them and
+  // they reference store slices (@/store/slice/warehouse, inbound, outbound,
+  // imported-goods…) that do not exist here. Safe to delete once confirmed.
+  "exclude": ["src/components/voucher-content.tsx", "src/utils/excel.ts"]
 }
