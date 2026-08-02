@@ -16,12 +16,13 @@ const EMPTY = (): TFundType => ({ Name: '' })
 export default function FundTypePage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<TFundType>(EMPTY())
 
   const { data, isLoading, refetch } = useFilterReportQuery({
     path: 'fundType/filter',
-    params: { Keyword: keyword || undefined, PageIndex: page - 1, PageSize: PAGE_SIZE },
+    params: { Keyword: keyword || undefined, PageIndex: page - 1, PageSize: pageSize },
   })
 
   const { mutate: save, isLoading: saving } = useApiMutation(
@@ -38,7 +39,7 @@ export default function FundTypePage() {
   const total = data?.TotalItemCount ?? 0
 
   const columns: ColumnDef<TFundType>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'name', header: 'Tên loại quỹ', cell: ({ row }) => <span className="font-medium">{row.original.Name}</span> },
     { id: 'note', header: 'Ghi chú', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.Note ?? '—'}</span> },
     { id: 'status', header: 'TT', cell: ({ row }) => <StatusBadge status={row.original.Status} /> },
@@ -67,7 +68,7 @@ export default function FundTypePage() {
         </Button>
       </ListPageHeader>
 
-      <DataTable columns={columns} data={items} loading={isLoading} total={total} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} emptyText="Không có loại quỹ nào" />
+      <DataTable columns={columns} data={items} loading={isLoading} total={total} page={page} pageSize={pageSize} onPageSizeChange={setPageSize} onPageChange={setPage} emptyText="Không có loại quỹ nào" />
 
       <Dialog open={modal} onOpenChange={setModal}>
         <DialogContent className="max-w-md">

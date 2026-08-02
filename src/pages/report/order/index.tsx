@@ -35,10 +35,11 @@ function OrderReport({
   dateFrom: string; dateTo: string; customerId: number | null; shopId: number | null
 }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-order',
     params: {
-      DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE,
+      DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize,
       ...(customerId ? { CustomerId: customerId } : {}),
       ...(shopId ? { ShopId: shopId } : {}),
     },
@@ -88,7 +89,7 @@ function OrderReport({
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={13} /> : items.length === 0 ? <TableNoData cols={13} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD center>
                   <div>{fmtDateOnly(item.Date)}</div>
                   <div className="text-[10px] text-slate-400">{item.Date ? new Date(item.Date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}</div>
@@ -110,7 +111,7 @@ function OrderReport({
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }
@@ -123,10 +124,11 @@ function OrderItemReport({
   dateFrom: string; dateTo: string; productGroupId: number | null; shopId: number | null
 }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-order-item',
     params: {
-      DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE,
+      DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize,
       ...(productGroupId ? { ProductGroupId: productGroupId } : {}),
       ...(shopId ? { ShopId: shopId } : {}),
     },
@@ -163,7 +165,7 @@ function OrderItemReport({
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={8} /> : items.length === 0 ? <TableNoData cols={8} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD className="text-slate-500">{item.Product?.Barcode || '—'}</TD>
                 <TD bold>{item.Product?.Name || '—'}</TD>
                 <TD>{item.Unit?.Name || '—'}</TD>
@@ -177,7 +179,7 @@ function OrderItemReport({
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }

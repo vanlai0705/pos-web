@@ -8,11 +8,12 @@ import { ListPageHeader, SearchBar, fmtCurrency, fmtDate, PAGE_SIZE } from '../s
 export default function CustomerRoyalPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [groupId, setGroupId] = useState<number | ''>('')
 
   const { data, isLoading } = useFilterRoyalCustomersQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     Keyword: keyword || undefined,
     GroupId: groupId || undefined,
   })
@@ -26,7 +27,7 @@ export default function CustomerRoyalPage() {
     {
       id: 'stt',
       header: 'STT',
-      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'code',
@@ -115,7 +116,7 @@ export default function CustomerRoyalPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có khách hàng thân thiết"
       />

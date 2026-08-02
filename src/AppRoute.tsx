@@ -1,5 +1,5 @@
 import { Navigate, Route, BrowserRouter as Router, Routes, useNavigate } from "react-router-dom"
-import { useEffect } from "react"
+import { useEffect, lazy, Suspense } from "react"
 
 import AppLayout from "./components/layout"
 import PageNotFound from "./PageNotFound"
@@ -24,6 +24,7 @@ import RevenueStatisticsPage from "./pages/actives/revenue-statistics"
 import CustomersPage from "./pages/actives/customers"
 import CustomerRoyalPage from "./pages/actives/customer-royal"
 import PosOrderPage from "./pages/actives/order"
+import TablesManagePage from "./pages/actives/tables"
 import TablesOrderPage from "./pages/actives/tables-order"
 import ActiveInvoicesPage from "./pages/actives/invoices"
 import SalesInvoicePage from "./pages/invoices/sales"
@@ -45,8 +46,11 @@ import ReportOrderPage from "./pages/report/order"
 import ReportBookingPage from "./pages/report/booking"
 import ReportCurrencyPage from "./pages/report/currency"
 import ReportStockPage from "./pages/report/stock"
-import ReportViewerPage from "./pages/report/viewer"
-import ReportCustomViewerPage from "./pages/report/viewer-custom"
+// DevExpress pulls in jQuery/knockout/ace; loading it eagerly means a failure
+// there takes down the whole app, so keep it behind lazy() + Suspense.
+const ReportViewerPage = lazy(() => import("./pages/report/viewer"))
+const ReportCustomViewerPage = lazy(() => import("./pages/report/viewer-custom"))
+const ReportDesignerPage = lazy(() => import("./pages/report/designer"))
 import WarehousesPage from "./pages/stocks/stocks"
 import StockInventoryPage from "./pages/stocks/stock-inventory"
 import StockInputsPage from "./pages/stocks/stock-inputs"
@@ -86,6 +90,7 @@ function AppRoute() {
   return (
     <Router>
       <NavigationInitializer />
+      <Suspense fallback={null}>
       <Routes>
         {/* Public */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -106,7 +111,7 @@ function AppRoute() {
 
             {/* Hoạt động */}
             <Route path="/actives/order" element={<PosOrderPage />} />
-            <Route path="/actives/tables" element={<TablesOrderPage />} />
+            <Route path="/actives/tables" element={<TablesManagePage />} />
             <Route path="/actives/tables-order" element={<TablesOrderPage />} />
             <Route path="/actives/order-manager" element={<OrderManagerPage />} />
             <Route path="/actives/booking" element={<BookingPage />} />
@@ -216,10 +221,29 @@ function AppRoute() {
             <Route path="/report/currency" element={<ReportCurrencyPage />} />
             <Route path="/report/stock" element={<ReportStockPage />} />
             <Route path="/report/viewer" element={<ReportViewerPage />} />
-            <Route path="/report/designer" element={<ReportViewerPage />} />
+            <Route path="/report/designer" element={<ReportDesignerPage />} />
             <Route path="/report/:code" element={<ReportViewerPage />} />
-            <Route path="/report/*" element={<ComingSoonPage />} />
-            <Route path="/reports/*" element={<ComingSoonPage />} />
+            <Route path="/report/*" element={<ReportViewerPage />} />
+
+            <Route path="/reports" element={<Navigate to="/reports/order" replace />} />
+            <Route path="/reports/order" element={<ReportOrderPage />} />
+            <Route path="/reports/booking" element={<ReportBookingPage />} />
+            <Route path="/reports/currency" element={<ReportCurrencyPage />} />
+            <Route path="/reports/stock" element={<ReportStockPage />} />
+            <Route path="/reports/viewer" element={<ReportViewerPage />} />
+            <Route path="/reports/designer" element={<ReportDesignerPage />} />
+            <Route path="/reports/:code" element={<ReportViewerPage />} />
+            <Route path="/reports/*" element={<ReportViewerPage />} />
+
+            {/* Report custom mirrors the Angular report module routes. */}
+            <Route path="/report-custom" element={<Navigate to="/report-custom/order" replace />} />
+            <Route path="/report-custom/order" element={<ReportOrderPage />} />
+            <Route path="/report-custom/booking" element={<ReportBookingPage />} />
+            <Route path="/report-custom/currency" element={<ReportCurrencyPage />} />
+            <Route path="/report-custom/stock" element={<ReportStockPage />} />
+            <Route path="/report-custom/viewer" element={<ReportCustomViewerPage />} />
+            <Route path="/report-custom/designer" element={<ReportDesignerPage />} />
+            <Route path="/report-custom/:code" element={<ReportCustomViewerPage />} />
             <Route path="/report-custom/*" element={<ReportCustomViewerPage />} />
 
             {/* Cài đặt */}
@@ -248,6 +272,7 @@ function AppRoute() {
 
         <Route path="*" element={<PageNotFound />} />
       </Routes>
+      </Suspense>
     </Router>
   )
 }

@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { DataPagination } from '@/components/ui/data-pagination'
+import { Search } from 'lucide-react'
 import dayjs from 'dayjs'
 
 // ─── Currency format ──────────────────────────────────────────────────────────
@@ -82,26 +82,23 @@ export function SearchBar({
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
+/** 1-based pagination — thin wrapper so every list shares one look. */
 export function Pagination({
-  page, total, pageSize, onChange,
+  page, total, pageSize, onChange, onPageSizeChange,
 }: {
-  page: number; total: number; pageSize: number; onChange: (p: number) => void
+  page: number; total: number; pageSize: number
+  onChange: (p: number) => void
+  onPageSizeChange?: (size: number) => void
 }) {
-  const totalPages = Math.ceil(total / pageSize)
-  if (totalPages <= 1) return null
   return (
-    <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t">
-      <span>{total} kết quả</span>
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1} onClick={() => onChange(page - 1)}>
-          <ChevronLeft className="h-3.5 w-3.5" />
-        </Button>
-        <span className="px-2">{page} / {totalPages}</span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-    </div>
+    <DataPagination
+      page={page}
+      total={total}
+      pageSize={pageSize}
+      onPageChange={onChange}
+      onPageSizeChange={onPageSizeChange}
+      hideWhenSingle
+    />
   )
 }
 
@@ -145,6 +142,7 @@ export function ListPageHeader({
 export function useListFilter(initDateFrom?: string, initDateTo?: string) {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(initDateFrom ?? defaultDateFrom())
   const [dateTo, setDateTo] = useState(initDateTo ?? defaultDateTo())
 
@@ -152,8 +150,16 @@ export function useListFilter(initDateFrom?: string, initDateTo?: string) {
   const onKeyword = useCallback((v: string) => { setKeyword(v); setPage(1) }, [])
   const onDateFrom = useCallback((v: string) => { setDateFrom(v); setPage(1) }, [])
   const onDateTo = useCallback((v: string) => { setDateTo(v); setPage(1) }, [])
+  // Changing size shifts every row, so start over from page 1.
+  const onPageSize = useCallback((s: number) => { setPageSize(s); setPage(1) }, [])
 
-  return { keyword, setKeyword: onKeyword, page, goPage, dateFrom, setDateFrom: onDateFrom, dateTo, setDateTo: onDateTo }
+  return {
+    keyword, setKeyword: onKeyword,
+    page, goPage,
+    pageSize, setPageSize: onPageSize,
+    dateFrom, setDateFrom: onDateFrom,
+    dateTo, setDateTo: onDateTo,
+  }
 }
 
 export const PAGE_SIZE = 15

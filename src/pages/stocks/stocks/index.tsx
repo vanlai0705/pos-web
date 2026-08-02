@@ -23,13 +23,14 @@ const EMPTY = (): TWarehouse => ({ Name: '', IsAllowNegative: false })
 export default function WarehousesPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<TWarehouse>(EMPTY())
 
   const { data, isLoading, refetch } = useFilterWarehousesQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     Keyword: keyword || undefined,
     StatusId: statusId,
   })
@@ -60,7 +61,7 @@ export default function WarehousesPage() {
   }
 
   const columns: ColumnDef<TWarehouse>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'name', header: 'Tên kho', cell: ({ row }) => <span className="font-medium">{row.original.Name}</span> },
     {
       id: 'allowNeg', header: 'Cho phép âm kho',
@@ -111,7 +112,7 @@ export default function WarehousesPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có kho hàng nào"
       />

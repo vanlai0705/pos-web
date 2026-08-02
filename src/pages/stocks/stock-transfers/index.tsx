@@ -16,6 +16,7 @@ const EMPTY = (): TPosStockTransfer => ({ Name: '', Date: new Date().toISOString
 export default function StockTransfersPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
   const [modal, setModal] = useState(false)
@@ -23,7 +24,7 @@ export default function StockTransfersPage() {
 
   const { data, isLoading, refetch } = useFilterReportQuery({
     path: 'stocktransfers/filter',
-    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: PAGE_SIZE },
+    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: pageSize },
   })
   const [createStockTransfer, { isLoading: saving }] = useCreateStockTransferMutation()
 
@@ -44,7 +45,7 @@ export default function StockTransfersPage() {
   }
 
   const columns: ColumnDef<TPosStockTransfer>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'name', header: 'Số phiếu', cell: ({ row }) => <span className="font-medium text-primary">{row.original.Name ?? '—'}</span> },
     { id: 'date', header: 'Ngày', cell: ({ row }) => <span>{fmtDateTime(row.original.Date)}</span> },
     { id: 'user', header: 'Nhân viên', cell: ({ row }) => <span>{row.original.User?.Name ?? '—'}</span> },
@@ -69,7 +70,7 @@ export default function StockTransfersPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có phiếu chuyển kho nào"
       />

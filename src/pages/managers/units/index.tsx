@@ -31,7 +31,7 @@ export default function UnitsPage() {
       keyword={mp.keyword} onKeyword={mp.setKeyword}
       statusId={mp.statusId} onStatus={mp.setStatusId}
       searchPlaceholder="Tìm đơn vị tính..."
-      page={mp.page} pageSize={mp.PAGE_SIZE} onPage={mp.goPage}
+      page={mp.page} pageSize={mp.pageSize} onPage={mp.goPage} onPageSize={mp.setPageSize}
       onAdd={mp.openAdd} onEdit={mp.openEdit} onChangeStatus={onChangeStatus}
       modal={mp.modal} onCloseModal={mp.closeModal}
       modalTitle={mp.form.Id ? "Chỉnh sửa đơn vị tính" : "Thêm đơn vị tính"}

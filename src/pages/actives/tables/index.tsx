@@ -1,0 +1,796 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Download, FileDown, MoreHorizontal, Plus, QrCode, RefreshCw, Table2, Zap } from 'lucide-react'
+import { toast } from 'sonner'
+import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
+import { TreeSidebar, type TreeSidebarNode } from '@/components/layout/tree-sidebar'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import {
+  useGenericDownloadMutation,
+  useGenericPostMutation,
+} from '@/store/slice/users/api/api'
+import { cn, query } from '@/utils'
+
+const PAGE_SIZE = 10
+
+interface Area extends TreeSidebarNode {
+  IsActive?: boolean
+  Note?: string
+  Stock?: { Id?: number; Name?: string }
+  Users?: Array<{ Id?: number; Name?: string }>
+}
+
+interface RestaurantTable {
+  Id?: number
+  Name?: string
+  Code?: string
+  Guid?: string
+  Notes?: string
+  Note?: string
+  PricingMode?: number
+  DisplayGroup?: string
+  IsActive?: boolean
+  Area?: { Id?: number; Name?: string }
+}
+
+interface SimpleOption {
+  Id: number
+  Name: string
+}
+
+interface AreaForm {
+  Id?: number
+  Name: string
+  IsActive: boolean
+  StockId: number
+  UserIds: number[]
+  Note: string
+}
+
+interface TableForm {
+  Id?: number
+  Name: string
+  PricingMode: number
+  AreaId: number
+  Note: string
+}
+
+interface BatchRow {
+  AreaId: number
+  AreaName: string
+  FromNumber: string
+  ToNumber: string
+  StartNameWith: string
+}
+
+const emptyAreaForm = (): AreaForm => ({ Name: '', IsActive: true, StockId: 0, UserIds: [], Note: '' })
+const emptyTableForm = (): TableForm => ({ Name: '', PricingMode: 1, AreaId: 0, Note: '' })
+
+function buildMultipart(model: Record<string, unknown>) {
+  const form = new FormData()
+  form.append('model', new Blob([JSON.stringify(model)], { type: 'application/json' }))
+  return form
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  URL.revokeObjectURL(url)
+  link.remove()
+}
+
+export default function TablesManagePage() {
+  const [areas, setAreas] = useState<Area[]>([])
+  const [tables, setTables] = useState<RestaurantTable[]>([])
+  const [selectedAreaId, setSelectedAreaId] = useState(0)
+  const [areaSearch, setAreaSearch] = useState('')
+  const [keyword, setKeyword] = useState('')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [areasLoading, setAreasLoading] = useState(false)
+  const [tablesLoading, setTablesLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const [stocks, setStocks] = useState<SimpleOption[]>([])
+  const [users, setUsers] = useState<SimpleOption[]>([])
+
+  const [areaModal, setAreaModal] = useState(false)
+  const [areaForm, setAreaForm] = useState<AreaForm>(emptyAreaForm())
+
+  const [tableModal, setTableModal] = useState(false)
+  const [tableForm, setTableForm] = useState<TableForm>(emptyTableForm())
+
+  const [batchMode, setBatchMode] = useState(false)
+  const [batchRows, setBatchRows] = useState<BatchRow[]>([])
+
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
+  const [previewFileName, setPreviewFileName] = useState('qr.png')
+
+  const searchTimer = useRef<number | null>(null)
+  const [request] = useGenericPostMutation()
+  const [downloadFile, { isLoading: downloading }] = useGenericDownloadMutation()
+
+  const selectedArea = areas.find(area => area.Id === selectedAreaId)
+
+  const loadAreas = useCallback(async (keywordValue = areaSearch) => {
+    setAreasLoading(true)
+    try {
+      const response = await request({
+        url: `area/filter${query({ PageIndex: 0, PageSize: 100, Keyword: keywordValue || undefined })}`,
+        method: 'GET',
+      }).unwrap()
+      setAreas((response?.Data?.Items || []) as Area[])
+    } catch {
+      toast.error('Không thể tải khu vực')
+    } finally {
+      setAreasLoading(false)
+    }
+  }, [areaSearch, request])
+
+  const loadTables = useCallback(async (nextPage: number, keywordValue: string, areaId: number) => {
+    setTablesLoading(true)
+    try {
+      const response = await request({
+        url: `tables/filter${query({
+          PageIndex: nextPage - 1,
+          PageSize: PAGE_SIZE,
+          Keyword: keywordValue || undefined,
+          areaId: areaId > 0 ? areaId : undefined,
+        })}`,
+        method: 'GET',
+      }).unwrap()
+      setTables((response?.Data?.Items || []) as RestaurantTable[])
+      setTotal(response?.Data?.TotalItemCount || 0)
+    } catch {
+      setTables([])
+      setTotal(0)
+      toast.error('Không thể tải danh sách bàn')
+    } finally {
+      setTablesLoading(false)
+    }
+  }, [request])
+
+  const loadOptions = useCallback(async () => {
+    try {
+      const [stockRes, userRes] = await Promise.all([
+        request({ url: 'stock/filter-simple', method: 'GET' }).unwrap(),
+        request({ url: 'users/filter-simple', method: 'GET' }).unwrap(),
+      ])
+      setStocks((stockRes?.Data?.Items || []) as SimpleOption[])
+      setUsers((userRes?.Data?.Items || []) as SimpleOption[])
+    } catch {
+      toast.error('Không thể tải dữ liệu chọn khu vực')
+    }
+  }, [request])
+
+  useEffect(() => {
+    loadAreas('')
+    loadOptions()
+  }, [loadAreas, loadOptions])
+
+  useEffect(() => {
+    if (searchTimer.current) window.clearTimeout(searchTimer.current)
+    searchTimer.current = window.setTimeout(() => {
+      setPage(1)
+      loadTables(1, keyword, selectedAreaId)
+    }, 450)
+    return () => {
+      if (searchTimer.current) window.clearTimeout(searchTimer.current)
+    }
+  }, [keyword, loadTables, selectedAreaId])
+
+  const openCreateArea = () => {
+    setAreaForm(emptyAreaForm())
+    setAreaModal(true)
+  }
+
+  const openEditArea = async (area: Area) => {
+    setSelectedAreaId(area.Id)
+    try {
+      const response = await request({ url: `area/detail${query({ id: area.Id })}`, method: 'GET' }).unwrap()
+      const detail = response?.Data || area
+      setAreaForm({
+        Id: detail.Id,
+        Name: detail.Name || '',
+        IsActive: detail.IsActive ?? true,
+        StockId: detail.Stock?.Id || 0,
+        UserIds: (detail.Users || []).map((user: any) => user.Id).filter(Boolean),
+        Note: detail.Note || detail.Notes || '',
+      })
+      setAreaModal(true)
+    } catch {
+      toast.error('Không lấy được chi tiết khu vực')
+    }
+  }
+
+  const saveArea = async () => {
+    if (!areaForm.Name.trim()) {
+      toast.error('Vui lòng nhập tên khu vực')
+      return
+    }
+    if (!areaForm.StockId) {
+      toast.error('Vui lòng chọn kho bán hàng')
+      return
+    }
+    if (areaForm.UserIds.length === 0) {
+      toast.error('Vui lòng chọn ít nhất 1 nhân viên')
+      return
+    }
+
+    const isUpdate = !!areaForm.Id
+    const payload = {
+      id: areaForm.Id || 0,
+      name: areaForm.Name,
+      isActive: areaForm.IsActive,
+      stock: { id: areaForm.StockId },
+      users: areaForm.UserIds.map(id => ({ id })),
+      note: areaForm.Note,
+    }
+
+    setSaving(true)
+    try {
+      await request({
+        url: isUpdate ? 'area/update' : 'area/create',
+        method: isUpdate ? 'PUT' : 'POST',
+        body: buildMultipart(payload),
+      }).unwrap()
+      toast.success(isUpdate ? 'Cập nhật khu vực thành công' : 'Tạo khu vực thành công')
+      setAreaModal(false)
+      await loadAreas()
+    } catch {
+      toast.error('Không thể lưu khu vực')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteArea = async (area: Area) => {
+    if (!window.confirm(`Xóa khu vực "${area.Name || area.Code}"?`)) return
+    try {
+      await request({ url: `area/delete${query({ id: area.Id })}`, method: 'DELETE' }).unwrap()
+      toast.success('Xóa khu vực thành công')
+      if (selectedAreaId === area.Id) setSelectedAreaId(0)
+      await loadAreas()
+      await loadTables(1, keyword, selectedAreaId === area.Id ? 0 : selectedAreaId)
+    } catch {
+      toast.error('Không thể xóa khu vực')
+    }
+  }
+
+  const openCreateTable = () => {
+    setTableForm({ ...emptyTableForm(), AreaId: selectedAreaId || areas[0]?.Id || 0 })
+    setTableModal(true)
+  }
+
+  const openEditTable = async (table: RestaurantTable) => {
+    try {
+      const response = await request({ url: `tables/detail${query({ id: table.Id })}`, method: 'GET' }).unwrap()
+      const detail = response?.Data || table
+      setTableForm({
+        Id: detail.Id,
+        Name: detail.Name || '',
+        PricingMode: detail.PricingMode || 1,
+        AreaId: selectedAreaId || detail.Area?.Id || 0,
+        Note: detail.Note || detail.Notes || '',
+      })
+      setTableModal(true)
+    } catch {
+      toast.error('Không lấy được chi tiết bàn')
+    }
+  }
+
+  const saveTable = async () => {
+    if (!tableForm.Name.trim()) {
+      toast.error('Vui lòng nhập tên phòng bàn')
+      return
+    }
+    if (!tableForm.AreaId) {
+      toast.error('Vui lòng chọn khu vực')
+      return
+    }
+
+    const isUpdate = !!tableForm.Id
+    const payload = {
+      id: tableForm.Id || 0,
+      name: tableForm.Name,
+      pricingMode: tableForm.PricingMode,
+      area: { id: Number(tableForm.AreaId) },
+      displayGroup: '',
+      note: tableForm.Note,
+      isActive: true,
+      isTennisCourt: true,
+      qrCodeUrl: '',
+      code: '',
+    }
+
+    setSaving(true)
+    try {
+      await request({
+        url: isUpdate ? 'tables/update' : 'tables/create',
+        method: isUpdate ? 'PUT' : 'POST',
+        body: buildMultipart(payload),
+      }).unwrap()
+      toast.success(isUpdate ? 'Cập nhật bàn thành công' : 'Tạo bàn thành công')
+      setTableModal(false)
+      await loadTables(page, keyword, selectedAreaId)
+    } catch {
+      toast.error('Không thể lưu bàn')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteTable = async (table: RestaurantTable) => {
+    if (!window.confirm(`Xóa bàn "${table.Name || table.Code}"?`)) return
+    try {
+      await request({ url: `tables/delete${query({ id: table.Id })}`, method: 'DELETE' }).unwrap()
+      toast.success('Xóa bàn thành công')
+      await loadTables(page, keyword, selectedAreaId)
+    } catch {
+      toast.error('Không thể xóa bàn')
+    }
+  }
+
+  const prepareBatchRows = () => {
+    const rows = selectedAreaId > 0 && selectedArea
+      ? [{ AreaId: selectedArea.Id, AreaName: selectedArea.Name || '', FromNumber: '', ToNumber: '', StartNameWith: '' }]
+      : areas.map(area => ({ AreaId: area.Id, AreaName: area.Name || '', FromNumber: '', ToNumber: '', StartNameWith: '' }))
+    setBatchRows(rows)
+    setBatchMode(true)
+  }
+
+  const submitBatch = async () => {
+    if (batchRows.some(row => !row.AreaId || !row.FromNumber || !row.ToNumber || !row.StartNameWith.trim())) {
+      toast.error('Vui lòng nhập đủ từ số, đến số và tiền tố')
+      return
+    }
+    try {
+      await request({
+        url: 'tables/batch-create',
+        method: 'POST',
+        body: batchRows.map(row => ({
+          areaId: row.AreaId,
+          fromNumber: Number(row.FromNumber),
+          toNumber: Number(row.ToNumber),
+          startNameWith: row.StartNameWith,
+        })),
+      }).unwrap()
+      toast.success('Đã thêm nhanh bàn')
+      setBatchMode(false)
+      await loadTables(1, keyword, selectedAreaId)
+    } catch {
+      toast.error('Không thể thêm nhanh bàn')
+    }
+  }
+
+  const downloadAllQr = async () => {
+    try {
+      const blob = await downloadFile({ url: 'tables/get-qr-image-files' }).unwrap()
+      downloadBlob(blob, 'tat-ca-qr-ban.zip')
+    } catch {
+      toast.error('Không thể tải tất cả QR')
+    }
+  }
+
+  const previewQr = async (table: RestaurantTable) => {
+    if (!table.Id) return
+    try {
+      const blob = await downloadFile({ url: `tables/get-qr-image-file${query({ id: table.Id })}` }).unwrap()
+      const url = URL.createObjectURL(blob)
+      setPreviewBlob(blob)
+      setPreviewUrl(url)
+      setPreviewFileName(`${table.Name || 'qr'}.png`.replace(/[^\w.\- ]/g, ''))
+      setPreviewOpen(true)
+    } catch {
+      toast.error('Không thể tải QR')
+    }
+  }
+
+  const exportExcel = () => {
+    const rows = [
+      ['#', 'Tên bàn', 'Khu vực', 'Ghi chú'],
+      ...tables.map((table, index) => [
+        index + 1,
+        table.Name || '',
+        table.Area?.Name || '',
+        table.Notes || table.Note || '-',
+      ]),
+    ]
+    const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    downloadBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `Danh_sach_ban_${selectedArea?.Name || 'Tat_ca'}.csv`)
+  }
+
+  const areaTree = useMemo(() => areas, [areas])
+
+  const tableColumns: ColumnDef<RestaurantTable>[] = [
+    {
+      id: 'stt',
+      header: '#',
+      meta: { className: 'w-16 text-center' },
+      cell: ({ row }) => <span className="text-slate-400">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
+    },
+    {
+      id: 'name',
+      header: 'Tên bàn',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2 font-semibold text-slate-800">
+          <Table2 className="h-4 w-4 text-indigo-500" />
+          {row.original.Name || '-'}
+        </div>
+      ),
+    },
+    {
+      id: 'area',
+      header: 'Khu vực',
+      cell: ({ row }) => (
+        <span className="inline-flex rounded-md bg-blue-500 px-2 py-1 text-xs font-semibold text-white">
+          {row.original.Area?.Name || selectedArea?.Name || '-'}
+        </span>
+      ),
+    },
+    {
+      id: 'note',
+      header: 'Ghi chú',
+      meta: { cellClassName: 'text-xs text-slate-500' },
+      cell: ({ row }) => row.original.Notes || row.original.Note || '-',
+    },
+    {
+      id: 'actions',
+      header: 'Thao tác',
+      meta: { className: 'w-24 text-right' },
+      cell: ({ row }) => {
+        const table = row.original
+        return (
+          <div onClick={event => event.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openEditTable(table)}>Sửa bàn</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => previewQr(table)}>Xem / tải QR</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteTable(table)}>Xóa bàn</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )
+      },
+    },
+  ]
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
+        <TreeSidebar
+          title="Khu vực bàn"
+          items={areaTree}
+          selectedId={selectedAreaId}
+          searchText={areaSearch}
+          loading={areasLoading}
+          searchPlaceholder="Tìm khu vực..."
+          emptyText="Không tìm thấy khu vực"
+          onSearchTextChange={value => {
+            setAreaSearch(value)
+            loadAreas(value)
+          }}
+          onSelect={area => setSelectedAreaId(area.Id)}
+          onCreate={openCreateArea}
+          onEditItem={openEditArea}
+          onDeleteItem={deleteArea}
+        />
+
+        <section className="flex min-w-0 flex-1 flex-col gap-3">
+          <ListToolbar
+            searchValue={keyword}
+            searchPlaceholder="Tìm kiếm bàn..."
+            onSearchChange={setKeyword}
+            actions={(
+              <>
+                <ToolbarButton tone="primary" onClick={openCreateTable}>
+                  <Plus className="h-4 w-4" />
+                  Thêm bàn
+                </ToolbarButton>
+                <ToolbarButton tone="neutral" onClick={() => loadTables(page, keyword, selectedAreaId)}>
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </ToolbarButton>
+                <ToolbarButton tone="neutral" disabled={tables.length === 0} onClick={exportExcel}>
+                  <FileDown className="h-4 w-4" />
+                  Xuất excel
+                </ToolbarButton>
+                <ToolbarButton tone="neutral" onClick={prepareBatchRows}>
+                  <Zap className="h-4 w-4 text-orange-500" />
+                  Thêm nhanh
+                </ToolbarButton>
+                <ToolbarButton tone="neutral" disabled={downloading} onClick={downloadAllQr}>
+                  <QrCode className="h-4 w-4 text-cyan-600" />
+                  Tải tất cả QR
+                </ToolbarButton>
+              </>
+            )}
+          />
+
+          {batchMode ? (
+            <BatchPanel
+              rows={batchRows}
+              setRows={setBatchRows}
+              onSubmit={submitBatch}
+              onClose={() => setBatchMode(false)}
+            />
+          ) : (
+            <DataTable
+              columns={tableColumns}
+              data={tables}
+              loading={tablesLoading}
+              total={total}
+              page={page}
+              pageSize={PAGE_SIZE}
+              onPageChange={nextPage => {
+                setPage(nextPage)
+                loadTables(nextPage, keyword, selectedAreaId)
+              }}
+              emptyText="Chưa có bàn trong khu vực này"
+            />
+          )}
+        </section>
+      </div>
+
+      <AreaModal
+        open={areaModal}
+        form={areaForm}
+        setForm={setAreaForm}
+        stocks={stocks}
+        users={users}
+        saving={saving}
+        onClose={() => setAreaModal(false)}
+        onSave={saveArea}
+      />
+
+      <TableModal
+        open={tableModal}
+        form={tableForm}
+        setForm={setTableForm}
+        areas={areas}
+        selectedAreaId={selectedAreaId}
+        saving={saving}
+        onClose={() => setTableModal(false)}
+        onSave={saveTable}
+      />
+
+      <Dialog open={previewOpen} onOpenChange={open => {
+        setPreviewOpen(open)
+        if (!open && previewUrl) URL.revokeObjectURL(previewUrl)
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>QR bàn</DialogTitle></DialogHeader>
+          <div className="flex justify-center">
+            {previewUrl ? <img src={previewUrl} className="h-80 w-80 rounded-lg border object-contain" /> : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>Đóng</Button>
+            <Button disabled={!previewBlob} onClick={() => previewBlob && downloadBlob(previewBlob, previewFileName)}>
+              <Download className="mr-2 h-4 w-4" />
+              Tải ảnh
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function AreaModal({
+  open,
+  form,
+  setForm,
+  stocks,
+  users,
+  saving,
+  onClose,
+  onSave,
+}: {
+  open: boolean
+  form: AreaForm
+  setForm: React.Dispatch<React.SetStateAction<AreaForm>>
+  stocks: SimpleOption[]
+  users: SimpleOption[]
+  saving: boolean
+  onClose: () => void
+  onSave: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={value => !value && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>{form.Id ? 'Chỉnh sửa khu vực' : 'Thêm mới khu vực'}</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <Field label="Tên khu vực" required>
+            <Input value={form.Name} onChange={event => setForm(current => ({ ...current, Name: event.target.value }))} placeholder="Nhập tên khu vực" />
+          </Field>
+          <Field label="Kho bán hàng" required>
+            <select value={form.StockId || ''} onChange={event => setForm(current => ({ ...current, StockId: Number(event.target.value) }))} className="h-9 w-full rounded-md border bg-white px-3 text-sm">
+              <option value="">Chọn kho</option>
+              {stocks.map(stock => <option key={stock.Id} value={stock.Id}>{stock.Name}</option>)}
+            </select>
+          </Field>
+          <Field label="Nhân viên phụ trách" required>
+            <div className="grid max-h-44 gap-2 overflow-auto rounded-md border bg-slate-50 p-2 sm:grid-cols-2">
+              {users.map(user => {
+                const checked = form.UserIds.includes(user.Id)
+                return (
+                  <label key={user.Id} className={cn('flex items-center gap-2 rounded-md px-2 py-1.5 text-sm', checked ? 'bg-indigo-50 text-indigo-700' : 'bg-white')}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={event => setForm(current => ({
+                        ...current,
+                        UserIds: event.target.checked
+                          ? [...current.UserIds, user.Id]
+                          : current.UserIds.filter(id => id !== user.Id),
+                      }))}
+                    />
+                    {user.Name}
+                  </label>
+                )
+              })}
+            </div>
+          </Field>
+          <Field label="Ghi chú">
+            <Textarea rows={2} value={form.Note} onChange={event => setForm(current => ({ ...current, Note: event.target.value }))} />
+          </Field>
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+            <Switch checked={form.IsActive} onCheckedChange={value => setForm(current => ({ ...current, IsActive: value }))} />
+            Hoạt động
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Hủy</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? 'Đang lưu...' : form.Id ? 'Cập nhật' : 'Lưu'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function TableModal({
+  open,
+  form,
+  setForm,
+  areas,
+  selectedAreaId,
+  saving,
+  onClose,
+  onSave,
+}: {
+  open: boolean
+  form: TableForm
+  setForm: React.Dispatch<React.SetStateAction<TableForm>>
+  areas: Area[]
+  selectedAreaId: number
+  saving: boolean
+  onClose: () => void
+  onSave: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={value => !value && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>{form.Id ? 'Chỉnh sửa phòng bàn' : 'Thêm mới phòng bàn'}</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <Field label="Tên phòng bàn" required>
+            <Input value={form.Name} onChange={event => setForm(current => ({ ...current, Name: event.target.value }))} placeholder="Nhập tên phòng bàn" />
+          </Field>
+          <Field label="Cách tính giờ">
+            <div className="flex flex-wrap gap-3 text-sm">
+              {[{ id: 1, name: 'Theo giờ' }, { id: 2, name: 'Theo bảng giá' }, { id: 3, name: 'Theo khu vực' }].map(item => (
+                <label key={item.id} className="flex items-center gap-1">
+                  <input type="radio" checked={form.PricingMode === item.id} onChange={() => setForm(current => ({ ...current, PricingMode: item.id }))} />
+                  {item.name}
+                </label>
+              ))}
+            </div>
+          </Field>
+          {selectedAreaId === 0 ? (
+            <Field label="Khu vực" required>
+              <select value={form.AreaId || ''} onChange={event => setForm(current => ({ ...current, AreaId: Number(event.target.value) }))} className="h-9 w-full rounded-md border bg-white px-3 text-sm">
+                <option value="">Chọn khu vực</option>
+                {areas.map(area => <option key={area.Id} value={area.Id}>{area.Name}</option>)}
+              </select>
+            </Field>
+          ) : null}
+          <Field label="Ghi chú">
+            <Textarea rows={3} value={form.Note} onChange={event => setForm(current => ({ ...current, Note: event.target.value }))} />
+          </Field>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Hủy</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function BatchPanel({
+  rows,
+  setRows,
+  onSubmit,
+  onClose,
+}: {
+  rows: BatchRow[]
+  setRows: React.Dispatch<React.SetStateAction<BatchRow[]>>
+  onSubmit: () => void
+  onClose: () => void
+}) {
+  const update = (index: number, key: keyof BatchRow, value: string) => {
+    setRows(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, [key]: value } : row))
+  }
+
+  return (
+    <div className="rounded-lg border bg-white p-4 shadow-sm">
+      <div className="mb-4 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+        <strong>Thêm nhiều bàn vào hệ thống một lúc.</strong>
+        <div className="mt-1 text-blue-800">Ví dụ: Từ 1 đến 9, bắt đầu bằng B sẽ sinh B01-B09.</div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] border text-sm">
+          <thead className="bg-slate-100">
+            <tr>
+              <th className="border px-2 py-2">#</th>
+              <th className="border px-2 py-2">Khu vực</th>
+              <th className="border px-2 py-2">Bàn từ số</th>
+              <th className="border px-2 py-2">Bàn đến số</th>
+              <th className="border px-2 py-2">Bắt đầu bằng</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={row.AreaId}>
+                <td className="border px-2 py-2 text-center">{index + 1}</td>
+                <td className="border px-2 py-2">{row.AreaName}</td>
+                <td className="border px-2 py-2"><Input type="number" value={row.FromNumber} onChange={event => update(index, 'FromNumber', event.target.value)} className="text-center" /></td>
+                <td className="border px-2 py-2"><Input type="number" value={row.ToNumber} onChange={event => update(index, 'ToNumber', event.target.value)} className="text-center" /></td>
+                <td className="border px-2 py-2"><Input value={row.StartNameWith} onChange={event => update(index, 'StartNameWith', event.target.value)} className="text-center" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-4 flex justify-end gap-2">
+        <Button variant="outline" onClick={onClose}>Thoát</Button>
+        <Button onClick={onSubmit}>Thực hiện</Button>
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>
+        {label}
+        {required ? <span className="ml-0.5 text-destructive">*</span> : null}
+      </Label>
+      {children}
+    </div>
+  )
+}

@@ -4,16 +4,16 @@ import { useFilterProductStatisticsQuery, useGetProductGroupsSimpleQuery } from 
 import type { TPosProductStatisticItem } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {
-  ListPageHeader, DateRangeFilter, SummaryCard, fmtCurrency, useListFilter, PAGE_SIZE,
+  ListPageHeader, DateRangeFilter, SummaryCard, fmtCurrency, useListFilter,
 } from '../shared'
 
 export default function ProductStatisticsPage() {
-  const { page, goPage, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
+  const { page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [groupId, setGroupId] = useState<number | ''>('')
 
   const { data, isLoading } = useFilterProductStatisticsQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     DateFrom: dateFrom,
     DateTo: dateTo,
     GroupId: groupId || undefined,
@@ -29,7 +29,7 @@ export default function ProductStatisticsPage() {
     {
       id: 'stt',
       header: 'STT',
-      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'productCode',
@@ -118,7 +118,7 @@ export default function ProductStatisticsPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={goPage}
         emptyText="Không có dữ liệu"
       />

@@ -21,6 +21,7 @@ import {
   TPosProductStatistic,
   TPosSettingGeneral,
   TPosSettingOrder,
+  TPosFundType,
   TPosSettingProduct,
   TPosSettingStock,
   TPosSettingNotification,
@@ -36,7 +37,6 @@ import {
   TPosSupplierGroup,
   TPosUnit,
   TPosShop,
-  TPosNotificationItem,
   TPosNotificationListResponse,
   TPosFilterNotificationResponse,
   TPosOrder,
@@ -431,6 +431,12 @@ export const userApiSlice = createApi({
       query: (body) => ({ url: "setting/update-order", method: "POST", body }),
     }),
 
+    /** Payment methods, each with its linked bank/wallet accounts. */
+    getPaymentTypes: builder.query<TPosFundType[], void>({
+      query: () => ({ url: "fundType/get-payment-type", method: "GET" }),
+      transformResponse: (res: TPosResponse<TPosFundType[]>) => res.Data ?? [],
+    }),
+
     getSettingProduct: builder.query<TPosSettingProduct, void>({
       query: () => ({ url: "setting/get-product", method: "GET" }),
       transformResponse: (res: TPosResponse<TPosSettingProduct>) => res.Data,
@@ -566,6 +572,30 @@ export const userApiSlice = createApi({
         return { url: `tables/get-list${qs ? '?' + qs : ''}`, method: 'GET' }
       },
       transformResponse: (res: TPosResponse<TPosTable[]>) => res.Data ?? [],
+    }),
+
+    /**
+     * The order currently sitting on a table. Its identity fields (Id, Guid,
+     * Name, Type, Table, Shop) must be echoed back on save/pay, otherwise the
+     * server cannot match the order to the table and never frees it.
+     */
+    getTableOrderDetail: builder.query<TPosOrder | null, number>({
+      query: (tableId) => ({ url: `tables/get-order-detail?tableId=${tableId}`, method: "GET" }),
+      transformResponse: (res: TPosResponse<TPosOrder>) => res.Data ?? null,
+    }),
+
+    /** Create/update the order sitting on a table (restaurant flow). */
+    saveTableOrder: builder.mutation<{ OrderId?: number }, { order: TPosOrder; isUpdate: boolean }>({
+      query: ({ order, isUpdate }) => ({
+        url: isUpdate ? "tables/update-order" : "tables/create-order",
+        method: isUpdate ? "PUT" : "POST",
+        body: order,
+      }),
+      transformResponse: (res: TPosResponse<{ OrderId?: number }>) => res.Data ?? {},
+    }),
+
+    deleteTableOrder: builder.mutation<void, number>({
+      query: (tableId) => ({ url: `tables/delete-order?tableId=${tableId}`, method: "DELETE" }),
     }),
 
     getProductGroups: builder.query<TPosProductGroup[], void>({
@@ -996,6 +1026,14 @@ export const userApiSlice = createApi({
     genericPost: builder.mutation<any, { url: string; method?: string; body?: any }>({
       query: ({ url, method = 'POST', body }) => ({ url, method, body }),
     }),
+    genericDownload: builder.mutation<Blob, { url: string; method?: string; body?: any }>({
+      query: ({ url, method = 'GET', body }) => ({
+        url,
+        method,
+        body,
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
   }),
 });
 
@@ -1033,6 +1071,7 @@ export const {
   useUpdateSettingGeneralMutation,
   useRemoveShopDataMutation,
   useGetSettingOrderQuery,
+  useGetPaymentTypesQuery,
   useUpdateSettingOrderMutation,
   useGetSettingProductQuery,
   useUpdateSettingProductMutation,
@@ -1053,6 +1092,9 @@ export const {
   useUpdateSettingPrinterMutation,
   useGetAreasQuery,
   useGetTablesQuery,
+  useLazyGetTableOrderDetailQuery,
+  useSaveTableOrderMutation,
+  useDeleteTableOrderMutation,
   useGetProductGroupsQuery,
   useSelectShopMutation,
   useFilterProductGroupsQuery,
@@ -1150,4 +1192,5 @@ export const {
   useLazyFilterReportQuery,
   // Generic
   useGenericPostMutation,
+  useGenericDownloadMutation,
 } = userApiSlice;

@@ -13,9 +13,10 @@ const TABS = ['Danh sách thu chi', 'Phiếu thu', 'Phiếu chi', 'Tồn quỹ']
 
 function ReceiptPaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-receipt-payment',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -48,7 +49,7 @@ function ReceiptPaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: 
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={8} /> : items.length === 0 ? <TableNoData cols={8} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD center>{fmtDateOnly(item.Date)}</TD>
                 <TD bold className="text-indigo-600">{item.Name}</TD>
                 <TD>{item.ObjectName || '—'}</TD>
@@ -62,7 +63,7 @@ function ReceiptPaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: 
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }
@@ -71,9 +72,10 @@ function ReceiptPaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: 
 
 function ReceiptReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-receipt',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -103,7 +105,7 @@ function ReceiptReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={8} /> : items.length === 0 ? <TableNoData cols={8} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD center>{fmtDateOnly(item.Date)}</TD>
                 <TD bold>{item.Name}</TD>
                 <TD>{item.ObjectName || '—'}</TD>
@@ -117,7 +119,7 @@ function ReceiptReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }
@@ -126,9 +128,10 @@ function ReceiptReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 
 function PaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-payment',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -158,7 +161,7 @@ function PaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={8} /> : items.length === 0 ? <TableNoData cols={8} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD center>{fmtDateOnly(item.Date)}</TD>
                 <TD bold>{item.Name}</TD>
                 <TD>{item.ObjectName || '—'}</TD>
@@ -172,7 +175,7 @@ function PaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }
@@ -181,9 +184,10 @@ function PaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 
 function CashBalanceReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-cash-balance',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -219,7 +223,7 @@ function CashBalanceReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
               <>
                 {items.map((item, idx) => (
                   <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                    <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                    <TD center>{page * pageSize + idx + 1}</TD>
                     <TD center>{fmtDateOnly(item.Date)}</TD>
                     <TD bold>{item.Name}</TD>
                     <TD className="max-w-[240px] truncate" title={item.Detail}>{item.Detail || '—'}</TD>
@@ -240,7 +244,7 @@ function CashBalanceReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }

@@ -13,9 +13,10 @@ const TABS = ['Nhập kho', 'Xuất kho', 'Kiểm kho', 'Chuyển kho', 'Tồn k
 
 function StockInReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-stock-in',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -47,7 +48,7 @@ function StockInReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={7} /> : items.length === 0 ? <TableNoData cols={7} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD center>{fmtDateOnly(item.Date)}</TD>
                 <TD bold>{item.Name}</TD>
                 <TD>{item.Supplier?.Name || '—'}</TD>
@@ -60,7 +61,7 @@ function StockInReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }
@@ -69,9 +70,10 @@ function StockInReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 
 function StockOutReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-stock-out',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -103,7 +105,7 @@ function StockOutReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={7} /> : items.length === 0 ? <TableNoData cols={7} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD center>{fmtDateOnly(item.Date)}</TD>
                 <TD bold>{item.Name}</TD>
                 <TD>{item.User?.Name || '—'}</TD>
@@ -116,7 +118,7 @@ function StockOutReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }
@@ -125,9 +127,10 @@ function StockOutReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string
 
 function StockCheckReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-stock-check',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -162,7 +165,7 @@ function StockCheckReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={9} /> : items.length === 0 ? <TableNoData cols={9} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD center>{fmtDateOnly(item.Date)}</TD>
                 <TD bold>{item.Name}</TD>
                 <TD>{item.User?.Name || '—'}</TD>
@@ -177,7 +180,7 @@ function StockCheckReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }
@@ -186,9 +189,10 @@ function StockCheckReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
 
 function StockTransferReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-stock-transfer',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -219,7 +223,7 @@ function StockTransferReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: s
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={7} /> : items.length === 0 ? <TableNoData cols={7} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD center>{fmtDateOnly(item.Date)}</TD>
                 <TD bold>{item.Name}</TD>
                 <TD>{item.User?.Name || '—'}</TD>
@@ -232,7 +236,7 @@ function StockTransferReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: s
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }
@@ -241,9 +245,10 @@ function StockTransferReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: s
 
 function InventoryReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'inventory/filter',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -283,7 +288,7 @@ function InventoryReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: strin
               const isNegative = qEnd < 0
               return (
                 <tr key={idx} className={`transition-colors ${isNegative ? 'bg-rose-50/50 hover:bg-rose-100/50 text-rose-900' : 'hover:bg-sky-50/50'}`}>
-                  <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                  <TD center>{page * pageSize + idx + 1}</TD>
                   <TD className="font-medium whitespace-nowrap">{item.Product?.ProductCode || '—'}</TD>
                   <TD bold>{item.Product?.Name || '—'}</TD>
                   <TD>{item.Product?.Unit?.Name || item.Unit?.Name || '—'}</TD>
@@ -300,7 +305,7 @@ function InventoryReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: strin
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }

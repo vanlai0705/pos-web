@@ -23,6 +23,9 @@ export default defineConfig({
       { find: "devextreme", replacement: `${angularNodeModules}/devextreme` },
       { find: "knockout", replacement: `${angularNodeModules}/knockout/build/output/knockout-latest.js` },
       { find: "jquery", replacement: `${angularNodeModules}/jquery/dist/jquery.js` },
+      // ace-builds is pulled in by the report designer; keep it on the same copy
+      // as devexpress so both sides agree on the module instance.
+      { find: "ace-builds", replacement: `${angularNodeModules}/ace-builds` },
     ],
   },
   define: {
@@ -38,6 +41,10 @@ export default defineConfig({
       "@devexpress/analytics-core",
       "devextreme",
     ],
+    // ace.js is a UMD bundle. Served raw it exposes no `default`, which is what
+    // the designer imports, so pre-bundle it and force the CJS interop wrapper.
+    include: ["ace-builds/src-noconflict/ace"],
+    needsInterop: ["ace-builds/src-noconflict/ace"],
   },
   build: {
     target: "esnext",
@@ -56,6 +63,16 @@ export default defineConfig({
       },
       // Proxy DevExpress report viewer requests to avoid CORS from localhost
       "/DXXRDV": {
+        target: "https://api.posmobile.vn",
+        changeOrigin: true,
+        secure: true,
+        headers: {
+          Origin: "https://posmobile.vn",
+          Referer: "https://posmobile.vn/",
+        },
+      },
+      // Proxy DevExpress report designer requests to avoid CORS from localhost
+      "/DXXRD": {
         target: "https://api.posmobile.vn",
         changeOrigin: true,
         secure: true,

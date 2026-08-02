@@ -1,10 +1,10 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   Search, Plus, Minus, Trash2, X,
   Printer, Banknote, Smartphone, CreditCard,
   ShoppingCart, Package, ChevronRight, Save,
-  FileText, Info, Wallet, RefreshCw, BookOpen,
+  FileText, Info, Wallet, RefreshCw, BookOpen, Eye, EyeOff,
 } from 'lucide-react'
 import { CustomerSelect } from '@/components/pos/customer-select'
 import { StaffSelect } from '@/components/pos/staff-select'
@@ -26,12 +26,19 @@ import {
   useSaveBookingMutation,
   useSaveQuotationMutation,
   useGetSettingOrderQuery,
-  useGetUserShopSettingQuery,
+  useGetPaymentTypesQuery,
+  useLazyGetTableOrderDetailQuery,
+  useSaveTableOrderMutation,
+  useDeleteTableOrderMutation,
+  useGenericDownloadMutation,
 } from '@/store/slice/users/api/api'
 import type {
-  TPosActiveProduct, TPosOrder, TPosOrderItem, TPosCustomerInvoice,
+  TPosActiveProduct, TPosOrder, TPosOrderItem, TPosCustomerInvoice, TPosSettingOrder,
+  TPosFundType, TPosFundAccount,
 } from '@/store/slice/users/types/pos-types'
 import { getImageUrl } from '@/utils/common'
+import { cn } from '@/utils'
+import { useAuth } from '@/hooks/useAuth'
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -80,13 +87,29 @@ function ci(id?: number, i?: number) { return ((id ?? i ?? 0) % 8) }
 
 // ─── Payment methods ──────────────────────────────────────────────────────────
 
-const FUND_TYPES = [
-  { id: 1, label: 'Tiền mặt',    icon: Banknote,    activeClass: 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900 shadow-sm' },
-  { id: 2, label: 'Chuyển khoản', icon: Smartphone, activeClass: 'bg-blue-500 text-white shadow-blue-200 dark:shadow-blue-900 shadow-sm' },
-  { id: 3, label: 'Cà thẻ',      icon: CreditCard,  activeClass: 'bg-violet-500 text-white shadow-violet-200 dark:shadow-violet-900 shadow-sm' },
-  { id: 4, label: 'Quỹ',         icon: Wallet,      activeClass: 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-900 shadow-sm' },
-  { id: 5, label: 'Ví Momo',     icon: Wallet,      activeClass: 'bg-rose-500 text-white shadow-rose-200 dark:shadow-rose-900 shadow-sm' },
+/** Fund types come from the API; match on name to pick an icon and accent. */
+const FUND_STYLES: { match: RegExp; icon: React.ElementType; activeClass: string }[] = [
+  { match: /tien mat|cash/,  icon: Banknote,   activeClass: 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900 shadow-sm' },
+  { match: /chuyen khoan/,   icon: Smartphone, activeClass: 'bg-blue-500 text-white shadow-blue-200 dark:shadow-blue-900 shadow-sm' },
+  { match: /ca the|card/,    icon: CreditCard, activeClass: 'bg-violet-500 text-white shadow-violet-200 dark:shadow-violet-900 shadow-sm' },
+  { match: /quy/,            icon: Wallet,     activeClass: 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-900 shadow-sm' },
 ]
+const FUND_FALLBACK = { icon: Wallet, activeClass: 'bg-rose-500 text-white shadow-rose-200 dark:shadow-rose-900 shadow-sm' }
+
+/** Strip Vietnamese diacritics so names can be matched the way Angular does. */
+function normalizeName(name?: string) {
+  return (name ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase().trim()
+}
+
+function fundStyle(name?: string) {
+  const n = normalizeName(name)
+  return FUND_STYLES.find(s => s.match.test(n)) ?? FUND_FALLBACK
+}
+
+/** An account is worth showing when it has a QR or an account number. */
+function hasAccountInfo(a?: TPosFundAccount) {
+  return !!(a && (a.QrCodeUrl || a.AccountNumber))
+}
 
 // ─── Cart item type ───────────────────────────────────────────────────────────
 
@@ -123,6 +146,19 @@ function itemAmount(item: CartItem, perItemTax: boolean) {
 
 function newGuid() {
   return crypto.randomUUID()
+}
+
+const DEVICE_GUID_KEY = 'storedGuid'
+const LEGACY_DEVICE_GUID_KEY = 'guid-app'
+
+/** Stable per-browser id the order endpoints use to tell devices apart. */
+function getDeviceGuid() {
+  const stored = localStorage.getItem(DEVICE_GUID_KEY)
+  if (stored) return stored
+  const legacy = localStorage.getItem(LEGACY_DEVICE_GUID_KEY)
+  const guid = legacy ?? newGuid()
+  localStorage.setItem(DEVICE_GUID_KEY, guid)
+  return guid
 }
 
 const DEFAULT_RETAIL_CUSTOMER_NAME = 'BÁN CHO NGƯỜI TIÊU DÙNG'
@@ -169,27 +205,42 @@ interface TotalsOpts {
   orderTaxPct: number
   perItemTax: boolean
   discountPct: number
+  /** Absolute discount on top of the percentage one */
+  discountAmt?: number
+  /** Voucher value in đồng — not a code */
+  voucher?: number
+  transferCost?: number
 }
 
 /** Order totals — mirrors Angular `OrderService.getTotal` / `OrderModel.getTotalTax`. */
-function calcTotals(cart: CartItem[], { orderTaxPct, perItemTax, discountPct }: TotalsOpts) {
+function calcTotals(
+  cart: CartItem[],
+  { orderTaxPct, perItemTax, discountPct, discountAmt = 0, voucher = 0, transferCost = 0 }: TotalsOpts,
+) {
   const subTotal = cart.reduce((s, c) => s + itemSubtotal(c), 0)
-  const orderDiscount = subTotal * discountPct / 100
-  const totalBeforeTax = Math.max(0, subTotal - orderDiscount)
+  const orderDiscount = subTotal * discountPct / 100 + discountAmt
+  const totalBeforeTax = Math.max(0, subTotal - orderDiscount - voucher)
   const itemTax = cart.reduce((s, c) => s + itemTaxAmount(c, perItemTax), 0)
   // Per-item tax wins when present; otherwise fall back to the order-level rate.
   const totalTax = itemTax > 0 ? itemTax : totalBeforeTax * orderTaxPct / 100
   const subTotalItems = cart.reduce((s, c) => s + itemAmount(c, perItemTax), 0)
-  return { subTotal, subTotalItems, orderDiscount, totalBeforeTax, totalTax, total: totalBeforeTax + totalTax }
+  return {
+    subTotal, subTotalItems, orderDiscount, totalBeforeTax, totalTax,
+    total: totalBeforeTax + totalTax + transferCost,
+  }
 }
 
 // ─── Product panel ────────────────────────────────────────────────────────────
+
+/** Packed grid — 4 across once there is room; 3 keeps cards legible when narrow. */
+const PRODUCT_GRID = 'grid grid-cols-3 lg:grid-cols-4 gap-1.5'
 
 interface ProductPanelProps { onAdd: (p: TPosActiveProduct) => void }
 
 function ProductPanel({ onAdd }: ProductPanelProps) {
   const [keyword, setKeyword] = useState('')
   const [groupId, setGroupId] = useState<number | null>(null)
+  const [showCost, setShowCost] = useState(false)
 
   const { data: groups = [] } = useGetProductGroupsSimpleQuery()
   const { data, isLoading } = useFilterActiveProductsQuery({
@@ -204,7 +255,22 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
       <div className="px-3 pt-3 pb-2 shrink-0 space-y-2 border-b bg-gradient-to-b from-primary/5 to-transparent">
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-sm font-semibold text-foreground">Chọn sản phẩm</span>
+          <span className="flex-1 text-sm font-semibold text-foreground">Chọn sản phẩm</span>
+          <button
+            type="button"
+            onClick={() => setShowCost(v => !v)}
+            title="Ẩn/Hiện giá vốn"
+            aria-label="Ẩn/Hiện giá vốn"
+            aria-pressed={showCost}
+            className={cn(
+              'flex items-center justify-center h-7 w-7 rounded-lg border transition-colors',
+              showCost
+                ? 'border-primary/40 bg-primary/10 text-primary'
+                : 'border-input text-muted-foreground hover:bg-muted',
+            )}
+          >
+            {showCost ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+          </button>
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -234,8 +300,8 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
 
       <div className="flex-1 overflow-y-auto p-2">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-2">
-            {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+          <div className={PRODUCT_GRID}>
+            {Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} className="aspect-[5/4] rounded-lg" />)}
           </div>
         ) : products.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground">
@@ -243,25 +309,55 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
             <p className="text-sm">Không tìm thấy sản phẩm</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div className={PRODUCT_GRID}>
             {products.map((p, i) => {
               const c = ci(p.Id, i)
               const url = imgUrl(p.Image?.Url ?? p.Images?.[0]?.Url)
+              const cost = p.PriceInput ?? p.ImportPrice
               return (
                 <button key={p.Id ?? i} onClick={() => onAdd(p)}
-                  className={`flex flex-col rounded-xl border bg-gradient-to-br text-left transition-all active:scale-95 hover:shadow-md hover:border-primary/40 duration-150 overflow-hidden ${CARD_COLORS[c]}`}
+                  className={`group relative aspect-[5/4] rounded-lg border overflow-hidden text-left transition-all active:scale-95 hover:shadow-lg hover:border-primary/50 duration-150 ${CARD_COLORS[c]}`}
                 >
                   {url
-                    ? <img src={url} alt={p.Name} className="w-full h-20 object-cover" />
-                    : <div className={`w-full h-14 flex items-center justify-center ${ICON_COLORS[c]}`}><Package className="h-7 w-7 opacity-60" /></div>
+                    ? <img src={url} alt={p.Name} className="absolute inset-0 w-full h-full object-cover" />
+                    : <div className={`absolute inset-0 flex items-center justify-center ${ICON_COLORS[c]}`}><Package className="h-6 w-6 opacity-50" /></div>
                   }
-                  <div className="px-2 pt-1.5 pb-2">
-                    <p className="text-[11px] font-semibold text-foreground line-clamp-2 leading-tight">{p.Name}</p>
-                    <div className="flex items-center justify-between mt-1 gap-1 flex-wrap">
-                      <span className="text-[11px] font-bold text-primary tabular-nums">{fmtCurrency(p.Price)}</span>
-                      {p.Unit?.Name && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-background/60 text-muted-foreground border">{p.Unit.Name}</span>}
+
+                  {/* Scrim keeps the overlaid text readable over any image */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/55 to-black/15" />
+
+                  {/* Đơn vị + tồn kho */}
+                  <div className="absolute top-0.5 left-0.5 right-0.5 flex items-start justify-between gap-0.5">
+                    {p.Unit?.Name && (
+                      <span className="px-1 rounded bg-black/60 backdrop-blur-sm text-[8px] font-semibold text-white/90 truncate max-w-[55%]">
+                        {p.Unit.Name}
+                      </span>
+                    )}
+                    {p.Quantity != null && (
+                      <span className={cn(
+                        'px-1 rounded backdrop-blur-sm text-[8px] font-bold tabular-nums ml-auto',
+                        p.Quantity > 0 ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white',
+                      )}>
+                        {p.Quantity.toLocaleString('vi-VN')}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Tên + giá */}
+                  <div className="absolute bottom-0 left-0 right-0 px-1 pb-1">
+                    <p className="text-[9px] font-bold text-white leading-[1.15] line-clamp-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
+                      {p.Name}
+                    </p>
+                    <div className="mt-0.5 flex items-center gap-0.5 flex-wrap">
+                      <span className="px-1 rounded bg-primary text-primary-foreground text-[9px] font-extrabold tabular-nums shadow-sm">
+                        {fmt(p.Price)}
+                      </span>
+                      {showCost && cost != null && (
+                        <span className="px-1 rounded bg-amber-400/95 text-amber-950 text-[8px] font-bold tabular-nums">
+                          V:{fmt(cost)}
+                        </span>
+                      )}
                     </div>
-                    {p.Quantity != null && <p className="text-[9px] text-muted-foreground mt-0.5">Tồn: {p.Quantity.toLocaleString('vi-VN')}</p>}
                   </div>
                 </button>
               )
@@ -275,31 +371,92 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
 
 // ─── Sales tab (POS) ──────────────────────────────────────────────────────────
 
-interface SalesTabProps { tableLabel?: string; bookingId?: number; onBack?: () => void }
+/**
+ * Retail actions plus the restaurant-only ones the table view exposes.
+ * `save-exit` / `print-*` persist through `tables/*-order`; the rest reuse `orders/*`.
+ */
+export type OrderAction =
+  | 'pay' | 'print' | 'temp' | 'booking' | 'quotation'
+  | 'save-exit' | 'print-temp' | 'print-kitchen' | 'print-label' | 'cancel-order'
 
-function SalesTab({ tableLabel, bookingId, onBack }: SalesTabProps) {
+interface SalesTabProps {
+  tableLabel?: string
+  bookingId?: number
+  /** Set in the restaurant flow — switches to the table button set and `tables/*` saves. */
+  tableId?: number
+  onBack?: () => void
+}
+
+function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
   const navigate = useNavigate()
   const [cart, setCart] = useState<CartItem[]>([])
   const [saveOrder, { isLoading: savingOrder }] = useSaveOrderMutation()
   const [completeOrder, { isLoading: completing }] = useCompleteOrderMutation()
   const [saveBooking, { isLoading: savingBooking }] = useSaveBookingMutation()
   const [saveQuotation, { isLoading: savingQuotation }] = useSaveQuotationMutation()
+  const [loadTableOrder] = useLazyGetTableOrderDetailQuery()
+  const [saveTableOrder, { isLoading: savingTable }] = useSaveTableOrderMutation()
+  // The order the server already has on this table. Its identity fields must
+  // ride back out on save/pay or the table is never released.
+  const [baseOrder, setBaseOrder] = useState<TPosOrder | null>(null)
+  const [deleteTableOrder, { isLoading: deletingTable }] = useDeleteTableOrderMutation()
+  const [downloadFile] = useGenericDownloadMutation()
   const { data: settings } = useGetSettingOrderQuery()
-  const { data: shopSetting } = useGetUserShopSettingQuery()
-  const shopId = shopSetting?.SelectedShopId
-  const taxPct = settings?.IsTax ? (settings.TaxPercent ?? 0) : 0
+  const { user: auth } = useAuth()
+  // `Member` mirrors Angular's currentMember: the logged-in user plus their shops.
+  const member = useMemo(() => {
+    const u = auth?.data?.User
+    if (!u) return null
+    return { ...u, Shops: (u as { Shops?: unknown[] }).Shops ?? auth?.data?.Shops ?? [] }
+  }, [auth])
   const perItemTax = !!settings?.IsTaxPerItemAllowed
-  const saving = savingOrder || completing || savingBooking || savingQuotation
+  const isTableMode = !!tableLabel
+  const saving = savingOrder || completing || savingBooking || savingQuotation || savingTable || deletingTable
 
   // Panel state refs (hoisted so we can read on submit)
-  const [fundTypeId, setFundTypeId] = useState(1)
+  const [fund, setFund] = useState<{ type: TPosFundType | null; accountId?: number }>({ type: null })
+  const onFundTypeChange = useCallback(
+    (type: TPosFundType | null, accountId?: number) => setFund({ type, accountId }),
+    [],
+  )
   const [selectedCustomer, setSelectedCustomer] = useState<TPosCustomerSimple | null>(null)
   const [selectedStaff, setSelectedStaff] = useState<TPosUser | null>(null)
   const [note, setNote] = useState('')
   const [detail, setDetail] = useState('')
-  const [discountPct, setDiscountPct] = useState(0)
-  const [customerGive, setCustomerGive] = useState<number | ''>('')
   const [invoiceForm, setInvoiceForm] = useState<InvoiceFormData>(EMPTY_INVOICE_FORM)
+
+  // Money block — same fields sell-payment exposes, each gated by settings.
+  const [discountPct, setDiscountPct] = useState(0)
+  const [discountAmt, setDiscountAmt] = useState(0)
+  const [voucher, setVoucher] = useState(0)
+  const [transferCost, setTransferCost] = useState(0)
+  const [taxOverride, setTaxOverride] = useState<number | null>(null)
+  const [payment, setPayment] = useState<number | ''>('')
+  const taxPct = taxOverride ?? (settings?.IsTax ? (settings.TaxPercent ?? 0) : 0)
+
+  // Opening an occupied table pulls its order in so the cart shows what the
+  // guests already ordered instead of starting empty (which used to wipe it).
+  useEffect(() => {
+    if (!tableId || !bookingId) return
+    let cancelled = false
+    loadTableOrder(tableId)
+      .unwrap()
+      .then(order => {
+        if (cancelled || !order) return
+        setBaseOrder(order)
+        setCart((order.Items ?? []).map(it => ({
+          product: (it.Product ?? {}) as TPosActiveProduct,
+          qty: it.Quantity ?? 1,
+          price: it.Price ?? it.Product?.Price ?? 0,
+          discountPct: it.DiscountPercent ?? 0,
+          note: it.Note ?? '',
+        })))
+        if (order.Note) setNote(order.Note)
+        if (order.Detail) setDetail(order.Detail)
+      })
+      .catch(() => toast.error('Không tải được đơn hàng của bàn'))
+    return () => { cancelled = true }
+  }, [tableId, bookingId, loadTableOrder])
 
   const addToCart = useCallback((product: TPosActiveProduct) => {
     setCart(prev => {
@@ -336,43 +493,93 @@ function SalesTab({ tableLabel, bookingId, onBack }: SalesTabProps) {
   }, [])
 
   const totals = useMemo(
-    () => calcTotals(cart, { orderTaxPct: taxPct, perItemTax, discountPct }),
-    [cart, taxPct, perItemTax, discountPct],
+    () => calcTotals(cart, { orderTaxPct: taxPct, perItemTax, discountPct, discountAmt, voucher, transferCost }),
+    [cart, taxPct, perItemTax, discountPct, discountAmt, voucher, transferCost],
   )
-  const { subTotal, subTotalItems, totalTax, total } = totals
+  const { subTotal, subTotalItems, total } = totals
 
   /**
-   * Order lines in the shape `orders/*` expects: `Total` is pre-tax,
-   * `Amount` is tax-inclusive, and the full product snapshot rides along.
+   * Order lines shaped like Angular's `buildOrderPayload`: `Total` is pre-tax,
+   * `Amount` is tax-inclusive, and both are echoed onto the product snapshot.
    */
   const buildItems = (): TPosOrderItem[] => cart.map(c => {
+    // A product with no Tax stays null so the server keeps it tax-exempt.
     const tax = c.product.Tax == null ? null : itemTaxPct(c, perItemTax)
+    const lineTotal = itemSubtotal(c)
+    const lineAmount = itemAmount(c, perItemTax)
     return {
       Guid: newGuid(),
-      Product: { ...c.product, Tax: tax ?? undefined },
-      Unit: c.product.Unit,
-      UnitName: c.product.Unit?.Name ?? '',
+      Product: { ...c.product, Tax: tax, Total: lineTotal, Amount: lineAmount },
       Quantity: c.qty,
-      QuantityGroup: 0,
+      Discount: itemDiscount(c),
+      DiscountPercent: c.discountPct,
+      Tax: tax,
+      IsPromotion: false,
+      Price: c.price,
+      Unit: c.product.Unit,
       QuantitySystem: 0,
       QuantityReal: 0,
-      Exchange: 0,
-      Price: c.price,
-      DiscountPercent: c.discountPct,
-      Discount: itemDiscount(c),
-      Total: itemSubtotal(c),
-      Amount: itemAmount(c, perItemTax),
-      Tax: tax ?? undefined,
-      Type: 1,
       Note: c.note || '',
-      IsPromotion: false,
-      IsPrinted: false,
-      IsAnonymous: false,
-      Status: { Id: 0 },
+      ParentId: null,
+      Total: lineTotal,
+      Amount: lineAmount,
     }
   })
 
-  const handleSave = async (action: 'pay' | 'print' | 'temp' | 'booking' | 'quotation') => {
+  /**
+   * Fetch the order PDF and hand it to the browser's print dialog. This is the
+   * API-only print path; the kitchen/label printers go through a local bridge
+   * (settings.PrinterUrl) that the React app does not talk to yet.
+   */
+  const printOrderPdf = async (orderId: number) => {
+    try {
+      const blob = await downloadFile({
+        url: 'orders/print-order-pdf',
+        method: 'POST',
+        body: { OrderId: orderId },
+      }).unwrap()
+      const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
+      window.open(url, '_blank')
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch {
+      toast.error('Không thể tải hoá đơn để in')
+    }
+  }
+
+  /**
+   * Restaurant payload = the order the server already holds, with our edits on
+   * top. Keeping Id/Guid/Name/Type/Table/Shop/Status is what lets the server
+   * match the order back to its table and release it on payment.
+   */
+  const withTable = (order: TPosOrder): TPosOrder => ({
+    ...(baseOrder ?? {}),
+    ...order,
+    Id: baseOrder?.Id ?? order.Id,
+    Guid: baseOrder?.Guid,
+    Name: baseOrder?.Name ?? '',
+    // 6 = table order; a fresh one still has to declare itself as such.
+    Type: baseOrder?.Type ?? 6,
+    Status: baseOrder?.Status,
+    Shop: baseOrder?.Shop,
+    Table: baseOrder?.Table ?? (tableId ? { Id: tableId, Name: tableLabel } : null),
+    deviceGuid: getDeviceGuid(),
+    table: { id: tableId, name: tableLabel },
+  })
+
+  const handleSave = async (action: OrderAction) => {
+    // Cancelling an existing table order is the one action that needs no cart.
+    if (action === 'cancel-order') {
+      if (!tableId) return
+      if (!window.confirm('Bạn có chắc là muốn xoá đơn hàng này không?')) return
+      try {
+        await deleteTableOrder(tableId).unwrap()
+        toast.success('Đã xoá đơn hàng')
+        setCart([])
+        onBack?.()
+      } catch { toast.error('Không thể xoá đơn hàng') }
+      return
+    }
+
     if (cart.length === 0) { toast.error('Giỏ hàng trống'); return }
     if (invoiceForm.isInvoice && !invoiceForm.taxCode) {
       toast.error('Vui lòng nhập thông tin để xuất hoá đơn')
@@ -419,49 +626,49 @@ function SalesTab({ tableLabel, bookingId, onBack }: SalesTabProps) {
     }
 
     // "Cà thẻ" settles on the card; every other fund type settles as cash.
-    const isCard = fundTypeId === 3
+    const isCard = /ca the|card/.test(normalizeName(fund.type?.Name))
+    // Retail opens a payment dialog that pre-fills "Khách đưa" with the total;
+    // the table view has no such dialog, so it stays at whatever was typed.
+    const paid = payment === '' ? (isTableMode ? 0 : total) : Number(payment)
     const now = new Date().toISOString()
+    // A picked account wins over the fund type itself — same as sell-payment.
+    const fundTypeRef = fund.accountId ?? fund.type?.Id
 
     const order: TPosOrder = {
       Id: bookingId,
-      Guid: newGuid(),
+      Name: '',
       Date: now,
-      CreationTime: now,
       Detail: detail || 'Xuất bán hàng',
       Note: note || '',
-      Customer: selectedCustomer ?? undefined,
+      Customer: selectedCustomer ?? null,
       User: user,
-      Shop: shopId ? { Id: shopId } : undefined,
-      StockOut: settings?.StockDefault ?? undefined,
+      // Who is ringing the order up — the logged-in user plus their shops.
+      Member: member,
+      CreatorUser: null,
+      StockOut: settings?.StockDefault ?? null,
+      FundType: fundTypeRef ? { Id: fundTypeRef } : null,
       Items: items,
       PromotionItems: [],
-      Printers: [],
+      Table: null,
       SubTotal: subTotal,
       SubTotalItems: subTotalItems,
       Total: total,
-      Discount: 0,
+      Discount: discountAmt,
       DiscountPercent: discountPct,
       Tax: taxPct,
-      TotalTax: totalTax,
-      TransferCost: 0,
+      TransferCost: transferCost,
       OldDebit: 0,
       Cash: isCard ? 0 : total,
       Card: isCard ? total : 0,
-      Transfer: 0,
-      Shortage: 0,
       Round: 0,
-      Change: customerGive !== '' ? Math.max(0, Number(customerGive) - total) : 0,
+      Payment: paid,
+      Change: Math.max(0, paid - total),
       Reserved: 0,
-      Payment: 0,
-      Return: 0,
-      Point: 0,
-      Voucher: 0,
-      PrintNo: 0,
-      PriceType: 0,
+      Voucher: voucher,
       Type: 0,
       PaymentType: 0,
       IsCustomersDebt: false,
-      IsPrint: action === 'print',
+      IsPrint: action === 'print' || action === 'print-temp',
       IsExportInvoice: invoiceForm.isInvoice,
       CustomerInvoice: buildCustomerInvoice(invoiceForm),
     }
@@ -475,17 +682,43 @@ function SalesTab({ tableLabel, bookingId, onBack }: SalesTabProps) {
       return
     }
 
+    // ── Restaurant: park the order on the table, no payment yet ──
+    if (action === 'save-exit' || action === 'print-temp' || action === 'print-kitchen' || action === 'print-label') {
+      try {
+        const res = await saveTableOrder({ order: withTable(order), isUpdate: !!bookingId }).unwrap()
+        const savedId = res?.OrderId ?? bookingId
+        toast.success('Đã lưu đơn hàng')
+
+        if (action === 'print-temp' && savedId) await printOrderPdf(savedId)
+        if (action === 'print-kitchen' || action === 'print-label') {
+          toast.info('Đã lưu. In bếp/tem cần máy in cục bộ (chưa nối ở bản web).')
+        }
+
+        // "In bếp" keeps the order open so more items can be sent; the rest close.
+        if (action !== 'print-kitchen') {
+          setCart([])
+          onBack?.()
+        }
+      } catch { toast.error('Không thể lưu đơn hàng') }
+      return
+    }
+
     try {
-      await completeOrder(order).unwrap()
+      const res = await completeOrder(isTableMode ? withTable(order) : order).unwrap()
       if (action === 'print') {
-        toast.success('Đã thanh toán — đang in hoá đơn...')
-        window.print()
+        toast.success('Đã thanh toán — đang mở hoá đơn...')
+        if (res?.Id) await printOrderPdf(res.Id)
       } else {
         toast.success('Thanh toán thành công!')
       }
       setCart([])
-      navigate('/actives/order-manager')
-      if (onBack) onBack()
+      // In the restaurant flow the caller sends us back to the floor plan and
+      // refetches the tables; only the standalone POS jumps to the order list.
+      if (isTableMode) onBack?.()
+      else {
+        navigate('/actives/order-manager')
+        onBack?.()
+      }
     } catch { toast.error('Không thể thanh toán đơn hàng') }
   }
 
@@ -500,21 +733,28 @@ function SalesTab({ tableLabel, bookingId, onBack }: SalesTabProps) {
           onUpdateItem={updateItem}
           onSave={handleSave}
           saving={saving}
-          taxPct={taxPct}
+          settings={settings}
+          totals={totals}
           perItemTax={perItemTax}
           tableLabel={tableLabel}
+          hasTableOrder={!!bookingId && !!tableId}
           onBack={onBack}
-          onFundTypeChange={setFundTypeId}
+          onFundTypeChange={onFundTypeChange}
           onCustomerChange={setSelectedCustomer}
           onStaffChange={setSelectedStaff}
           onNoteChange={setNote}
-          onDiscountChange={setDiscountPct}
           detail={detail}
           setDetail={setDetail}
-          customerGive={customerGive}
-          setCustomerGive={setCustomerGive}
           invoiceForm={invoiceForm}
           setInvoiceForm={setInvoiceForm}
+          money={{
+            discountPct, setDiscountPct,
+            discountAmt, setDiscountAmt,
+            voucher, setVoucher,
+            transferCost, setTransferCost,
+            taxPct, setTaxOverride,
+            payment, setPayment,
+          }}
         />
       </div>
       <div className="flex-[2] min-w-0 h-full">
@@ -533,6 +773,66 @@ const PANEL_TABS: { key: PanelTab; label: string; icon: React.ElementType }[] = 
   { key: 'info',    label: 'Thông tin',         icon: Info },
 ]
 
+// ─── Footer action button ─────────────────────────────────────────────────────
+
+const ACTION_TONES = {
+  neutral: 'border-input text-muted-foreground hover:bg-muted',
+  sky: 'border-sky-400 text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20',
+  emerald: 'border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20',
+  'emerald-strong': 'border-2 border-emerald-600 text-emerald-700 dark:text-emerald-400 font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/20',
+  indigo: 'border-indigo-400 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20',
+  rose: 'border-rose-400 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20',
+} as const
+
+function ActionBtn({ tone, icon: Icon, label, onClick, disabled }: {
+  tone: keyof typeof ACTION_TONES
+  icon: React.ElementType
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-semibold transition-all disabled:opacity-40',
+        ACTION_TONES[tone],
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{label}</span>
+    </button>
+  )
+}
+
+// ─── Money block bits ─────────────────────────────────────────────────────────
+
+function MoneyRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground whitespace-nowrap w-16 shrink-0">{label}</span>
+      {children}
+    </div>
+  )
+}
+
+function NumInput({ value, onChange, suffix, className }: {
+  value: number
+  onChange: (v: number) => void
+  suffix?: string
+  className?: string
+}) {
+  return (
+    <div className={cn('flex items-center border border-input rounded px-1.5 py-0.5 bg-background', className)}>
+      <input type="number" min={0} value={value}
+        onChange={e => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+        className="w-0 flex-1 text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-right" />
+      {suffix && <span className="text-xs text-muted-foreground ml-0.5">{suffix}</span>}
+    </div>
+  )
+}
+
 // ─── Internal order panel (with callbacks for parent state) ───────────────────
 
 interface InternalOrderPanelProps {
@@ -541,46 +841,80 @@ interface InternalOrderPanelProps {
   onRemove: (idx: number) => void
   onClear: () => void
   onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price', value: number | string) => void
-  onSave: (action: 'pay' | 'print' | 'temp' | 'booking' | 'quotation') => void
+  onSave: (action: OrderAction) => void
   saving: boolean
-  taxPct: number
+  settings?: TPosSettingOrder
+  totals: ReturnType<typeof calcTotals>
   perItemTax: boolean
   tableLabel?: string
+  /** True when an existing table order can be cancelled */
+  hasTableOrder?: boolean
   onBack?: () => void
-  onFundTypeChange: (id: number) => void
+  onFundTypeChange: (fund: TPosFundType | null, accountId?: number) => void
   onCustomerChange: (customer: TPosCustomerSimple | null) => void
   onStaffChange: (user: TPosUser | null) => void
   onNoteChange: (v: string) => void
-  onDiscountChange: (v: number) => void
   detail: string
   setDetail: (v: string) => void
-  customerGive: number | ''
-  setCustomerGive: (v: number | '') => void
   invoiceForm: InvoiceFormData
   setInvoiceForm: React.Dispatch<React.SetStateAction<InvoiceFormData>>
+  money: MoneyControls
+}
+
+/** The editable money fields, owned by SalesTab so submit and display never drift. */
+interface MoneyControls {
+  discountPct: number; setDiscountPct: (v: number) => void
+  discountAmt: number; setDiscountAmt: (v: number) => void
+  voucher: number; setVoucher: (v: number) => void
+  transferCost: number; setTransferCost: (v: number) => void
+  taxPct: number; setTaxOverride: (v: number) => void
+  payment: number | ''; setPayment: (v: number | '') => void
 }
 
 function InternalOrderPanel({
-  cart, onQty, onRemove, onClear, onUpdateItem, onSave, saving, taxPct, perItemTax,
-  tableLabel, onBack,
-  onFundTypeChange, onCustomerChange, onStaffChange, onNoteChange, onDiscountChange,
-  detail, setDetail, customerGive, setCustomerGive, invoiceForm, setInvoiceForm,
+  cart, onQty, onRemove, onClear, onUpdateItem, onSave, saving, settings, totals, perItemTax,
+  tableLabel, hasTableOrder, onBack,
+  onFundTypeChange, onCustomerChange, onStaffChange, onNoteChange,
+  detail, setDetail, invoiceForm, setInvoiceForm, money,
 }: InternalOrderPanelProps) {
   const [panelTab, setPanelTab] = useState<PanelTab>('sales')
-  const [fundTypeId, setFundTypeId] = useState(1)
+  const { data: fundTypes = [] } = useGetPaymentTypesQuery()
+  const [fundTypeId, setFundTypeId] = useState<number | null>(null)
+  const [accountId, setAccountId] = useState<number | null>(null)
   const [selectedCustomer, setSelectedCustomer] = useState<TPosCustomerSimple | null>(null)
   const [selectedStaff, setSelectedStaff] = useState<TPosUser | null>(null)
   const [note, setNote] = useState('')
-  const [discountPct, setDiscountPct] = useState(0)
-  const [voucher, setVoucher] = useState('')
 
-  const { subTotal, orderDiscount, totalTax, total } = useMemo(
-    () => calcTotals(cart, { orderTaxPct: taxPct, perItemTax, discountPct }),
-    [cart, taxPct, perItemTax, discountPct],
-  )
-  const change = customerGive !== '' ? Math.max(0, Number(customerGive) - total) : null
+  const { subTotal, orderDiscount, totalTax, total } = totals
+  const { payment } = money
+  const change = payment !== '' ? Math.max(0, Number(payment) - total) : null
 
-  const setFund = (id: number) => { setFundTypeId(id); onFundTypeChange(id) }
+  // Default to the first fund type once the list arrives.
+  useEffect(() => {
+    if (fundTypeId != null || !fundTypes.length) return
+    const first = fundTypes.find(f => /tien mat|cash/.test(normalizeName(f.Name))) ?? fundTypes[0]
+    setFundTypeId(first.Id ?? null)
+    onFundTypeChange(first, first.Items?.length === 1 ? first.Items[0].Id : undefined)
+  }, [fundTypes, fundTypeId, onFundTypeChange])
+
+  const selectedFund = fundTypes.find(f => f.Id === fundTypeId)
+  // Show the fund type's own account when it has no linked ones (matches how
+  // "Ví Momo"/"Cà thẻ" carry their details at the top level).
+  const accounts = selectedFund?.Items?.length
+    ? selectedFund.Items
+    : hasAccountInfo(selectedFund) ? [selectedFund as TPosFundAccount] : []
+
+  const setFund = (f: TPosFundType) => {
+    setFundTypeId(f.Id ?? null)
+    // One linked account auto-selects; several require an explicit pick.
+    const auto = f.Items?.length === 1 ? f.Items[0].Id : undefined
+    setAccountId(auto ?? null)
+    onFundTypeChange(f, auto)
+  }
+  const setAccount = (a: TPosFundAccount) => {
+    setAccountId(a.Id ?? null)
+    if (selectedFund) onFundTypeChange(selectedFund, a.Id)
+  }
   const setCust = (c: TPosCustomerSimple | null) => {
     setSelectedCustomer(c)
     onCustomerChange(c)
@@ -598,7 +932,6 @@ function InternalOrderPanel({
   }
   const setStaff = (u: TPosUser | null) => { setSelectedStaff(u); onStaffChange(u) }
   const setNoteVal = (v: string) => { setNote(v); onNoteChange(v) }
-  const setDisc = (v: number) => { setDiscountPct(v); onDiscountChange(v) }
 
   return (
     <div className="h-full flex flex-col min-h-0 rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -748,97 +1081,176 @@ function InternalOrderPanel({
 
       {/* Footer */}
       <div className="border-t px-2.5 pt-2 pb-2 space-y-1.5 shrink-0 bg-muted/20">
-        <input type="text" placeholder="Ghi chú đơn hàng..." value={note} onChange={e => setNoteVal(e.target.value)}
-          className="w-full rounded-lg border border-input px-2.5 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground text-foreground" />
-
-        {/* Payment methods */}
-        <div className="flex gap-1">
-          {FUND_TYPES.map(({ id, label, icon: Icon, activeClass }) => (
-            <button key={id} onClick={() => setFund(id)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[9px] font-semibold transition-all ${fundTypeId === id ? activeClass : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}
-            >
-              <Icon className="h-3 w-3" />
-              {label}
-            </button>
-          ))}
+        {/* Ghi chú + Diễn giải */}
+        <div className="grid grid-cols-2 gap-1.5">
+          <input type="text" placeholder="Ghi chú đơn hàng..." value={note} onChange={e => setNoteVal(e.target.value)}
+            className="w-full rounded-lg border border-input px-2.5 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground text-foreground" />
+          <input type="text" placeholder="Diễn giải..." value={detail} onChange={e => setDetail(e.target.value)}
+            className="w-full rounded-lg border border-input px-2.5 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground text-foreground" />
         </div>
 
-        {/* Summary */}
-        <div className="rounded-xl border bg-card px-3 py-2 space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Tiền hàng</span><span className="tabular-nums">{fmt(subTotal)}</span>
+        {/* Phương thức thanh toán | Tiền */}
+        <div className="grid grid-cols-2 gap-1.5 items-start">
+          <div className="flex flex-col gap-1">
+            {fundTypes.map(f => {
+              const { icon: Icon, activeClass } = fundStyle(f.Name)
+              return (
+                <button key={f.Id} onClick={() => setFund(f)}
+                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${fundTypeId === f.Id ? activeClass : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}
+                >
+                  <Icon className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{f.Name}</span>
+                </button>
+              )
+            })}
+
+            {/* Thông tin chuyển khoản của phương thức đang chọn */}
+            {accounts.map(a => {
+              const picked = accounts.length === 1 || accountId === a.Id
+              return (
+                <button key={a.Id} type="button" onClick={() => setAccount(a)}
+                  className={`mt-0.5 rounded-lg border p-1.5 text-left transition-all ${picked ? 'border-primary bg-primary/5' : 'border-input hover:bg-muted/40'}`}
+                >
+                  {a.QrCodeUrl && <img src={a.QrCodeUrl} alt="QR" className="w-full h-24 object-contain" />}
+                  <div className="text-[9px] leading-tight mt-1 space-y-0.5">
+                    <p className="font-semibold text-foreground truncate">{a.ShortName || a.Name}</p>
+                    {a.AccountNumber && <p className="tabular-nums text-primary font-bold">{a.AccountNumber}</p>}
+                    {a.AccountName && <p className="text-muted-foreground truncate">{a.AccountName}</p>}
+                  </div>
+                </button>
+              )
+            })}
           </div>
-          {totalTax > 0 && (
-            <div className="flex justify-between text-xs text-blue-500 dark:text-blue-400">
-              <span>Thuế{perItemTax ? '' : ` ${taxPct}%`}</span>
-              <span className="tabular-nums">+{fmt(totalTax)}</span>
+
+          <div className="rounded-xl border bg-card px-2.5 py-2 space-y-1">
+            <MoneyRow label="Tiền hàng">
+              <span className="flex-1 text-xs font-semibold tabular-nums text-foreground text-right">{fmt(subTotal)}</span>
+            </MoneyRow>
+
+            {settings?.IsDiscount !== false && (
+              <MoneyRow label="Giảm giá">
+                <div className="flex items-center gap-1 flex-1">
+                  <NumInput value={money.discountPct} onChange={v => money.setDiscountPct(Math.min(100, Math.max(0, v)))} suffix="%" className="w-12" />
+                  <NumInput value={money.discountAmt} onChange={money.setDiscountAmt} className="flex-1" />
+                </div>
+              </MoneyRow>
+            )}
+
+            {settings?.IsVoucher && (
+              <MoneyRow label="Voucher">
+                <NumInput value={money.voucher} onChange={money.setVoucher} className="flex-1" />
+              </MoneyRow>
+            )}
+
+            {settings?.IsTax && !perItemTax && (
+              <MoneyRow label="% Thuế">
+                <NumInput value={money.taxPct} onChange={money.setTaxOverride} suffix="%" className="flex-1" />
+              </MoneyRow>
+            )}
+
+            {settings?.IsTranferCost && (
+              <MoneyRow label="Phí ship">
+                <NumInput value={money.transferCost} onChange={money.setTransferCost} className="flex-1" />
+              </MoneyRow>
+            )}
+
+            {totalTax > 0 && (
+              <div className="flex justify-between text-xs text-blue-500 dark:text-blue-400">
+                <span>Thuế{perItemTax ? '' : ` ${money.taxPct}%`}</span>
+                <span className="tabular-nums">+{fmt(totalTax)}</span>
+              </div>
+            )}
+            {orderDiscount > 0 && (
+              <div className="flex justify-between text-xs text-orange-500">
+                <span>Đã giảm</span><span className="tabular-nums">-{fmt(orderDiscount)}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center border-t pt-1.5">
+              <span className="text-xs font-bold text-foreground">Tổng cộng</span>
+              <span className="text-base font-extrabold tabular-nums text-primary">{fmtCurrency(total)}</span>
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Giảm giá</span>
-            <div className="flex items-center border border-input rounded px-1.5 py-0.5 bg-background w-20">
-              <input type="number" min={0} max={100} value={discountPct}
-                onChange={e => setDisc(Math.min(100, Math.max(0, Number(e.target.value))))}
-                className="w-full text-xs bg-transparent focus:outline-none tabular-nums text-foreground" />
-              <span className="text-xs text-muted-foreground">%</span>
-            </div>
-            {orderDiscount > 0 && <span className="text-xs text-orange-500 tabular-nums ml-auto">-{fmt(orderDiscount)}</span>}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Voucher</span>
-            <input type="text" placeholder="Mã voucher..." value={voucher} onChange={e => setVoucher(e.target.value)}
-              className="flex-1 border border-input rounded px-1.5 py-0.5 text-xs bg-background focus:outline-none placeholder:text-muted-foreground/50 text-foreground" />
-          </div>
-          <div className="flex justify-between items-center border-t pt-1.5">
-            <span className="text-sm font-bold text-foreground">Tổng cộng</span>
-            <span className="text-lg font-extrabold tabular-nums text-primary">{fmtCurrency(total)}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Khách đưa</span>
-            <input type="number" min={0} value={customerGive}
-              onChange={e => setCustomerGive(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder="0"
-              className="flex-1 border border-input rounded px-1.5 py-0.5 text-xs bg-background focus:outline-none placeholder:text-muted-foreground/50 text-foreground tabular-nums" />
+
+            <MoneyRow label="Khách đưa">
+              <input type="number" min={0} value={payment}
+                onChange={e => money.setPayment(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder={String(Math.round(total))}
+                className="flex-1 w-0 border border-input rounded px-1.5 py-0.5 text-xs bg-background focus:outline-none placeholder:text-muted-foreground/50 text-foreground tabular-nums text-right" />
+            </MoneyRow>
             {change != null && change > 0 && (
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums whitespace-nowrap">Tiền thừa: {fmtCurrency(change)}</span>
+              <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span>Tiền thừa</span><span className="tabular-nums">{fmtCurrency(change)}</span>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Action buttons - row 1 */}
-        <div className="grid grid-cols-4 gap-1">
-          <button onClick={() => onBack?.()}
-            className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-1.5 text-[10px] font-semibold text-muted-foreground hover:bg-muted transition-all">
-            <X className="h-3 w-3" /> Thoát
-          </button>
-          <button onClick={() => onSave('temp')} disabled={saving || cart.length === 0}
-            className="flex items-center justify-center gap-1 rounded-lg border border-sky-400 px-2 py-1.5 text-[10px] font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-all disabled:opacity-40">
-            <Save className="h-3 w-3" /> Lưu tạm
-          </button>
-          <button onClick={() => onSave('print')} disabled={saving || cart.length === 0}
-            className="flex items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-2 py-1.5 text-[10px] font-bold text-white shadow-sm hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-40 col-span-1">
-            <Printer className="h-3 w-3" /> TT & In
-          </button>
-          <button onClick={() => onSave('pay')} disabled={saving || cart.length === 0}
-            className="flex items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-2 py-1.5 text-[10px] font-bold text-primary-foreground shadow-sm hover:opacity-90 transition-all disabled:opacity-40">
-            <Banknote className="h-3 w-3" /> TT không in
-          </button>
-        </div>
-        {/* Action buttons - row 2 */}
-        <div className="grid grid-cols-3 gap-1">
-          <button onClick={() => onSave('booking')} disabled={saving || cart.length === 0}
-            className="flex items-center justify-center gap-1 rounded-lg border border-orange-400 px-2 py-1.5 text-[10px] font-semibold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all disabled:opacity-40">
-            <BookOpen className="h-3 w-3" /> Đặt hàng
-          </button>
-          <button onClick={() => onSave('quotation')} disabled={saving || cart.length === 0}
-            className="flex items-center justify-center gap-1 rounded-lg border border-violet-400 px-2 py-1.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all disabled:opacity-40">
-            <FileText className="h-3 w-3" /> Báo giá
-          </button>
-          <button disabled={cart.length === 0}
-            className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-1.5 text-[10px] font-semibold text-muted-foreground hover:bg-muted transition-all disabled:opacity-40">
-            <RefreshCw className="h-3 w-3" /> Mở lại
-          </button>
-        </div>
+        {/* Restaurant actions — mirrors the Angular table view */}
+        {tableLabel ? (
+          <>
+            {/* Row 1: thoát / lưu / thanh toán */}
+            <div className="grid grid-cols-4 gap-1.5">
+              <ActionBtn tone="neutral" icon={X} label="Thoát" onClick={() => onBack?.()} />
+              <ActionBtn tone="sky" icon={Save} label="Lưu & Thoát"
+                disabled={saving || cart.length === 0} onClick={() => onSave('save-exit')} />
+              <ActionBtn tone="emerald-strong" icon={Printer} label="TT & In"
+                disabled={saving || cart.length === 0} onClick={() => onSave('print')} />
+              <ActionBtn tone="emerald" icon={Banknote} label="TT không in"
+                disabled={saving || cart.length === 0} onClick={() => onSave('pay')} />
+            </div>
+            {/* Row 2: các lệnh in + xoá đơn */}
+            <div className={cn('grid gap-1.5', hasTableOrder ? 'grid-cols-4' : 'grid-cols-3')}>
+              <ActionBtn tone="neutral" icon={Printer} label="In tạm"
+                disabled={saving || cart.length === 0} onClick={() => onSave('print-temp')} />
+              <ActionBtn tone="indigo" icon={Printer} label="In bếp"
+                disabled={saving || cart.length === 0} onClick={() => onSave('print-kitchen')} />
+              <ActionBtn tone="indigo" icon={Printer} label="In tem"
+                disabled={saving || cart.length === 0} onClick={() => onSave('print-label')} />
+              {hasTableOrder && (
+                <ActionBtn tone="rose" icon={Trash2} label="Xoá đơn"
+                  disabled={saving} onClick={() => onSave('cancel-order')} />
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+          {/* Action buttons - row 1 */}
+          <div className="grid grid-cols-4 gap-1.5">
+            <button onClick={() => onBack?.()}
+              className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-all">
+              <X className="h-3.5 w-3.5" /> Thoát
+            </button>
+            <button onClick={() => onSave('temp')} disabled={saving || cart.length === 0}
+              className="flex items-center justify-center gap-1 rounded-lg border border-sky-400 px-2 py-2.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-all disabled:opacity-40">
+              <Save className="h-3.5 w-3.5" /> Lưu tạm
+            </button>
+            <button onClick={() => onSave('print')} disabled={saving || cart.length === 0}
+              className="flex items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-2 py-2.5 text-xs font-bold text-white shadow-sm hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-40 col-span-1">
+              <Printer className="h-3.5 w-3.5" /> TT & In
+            </button>
+            <button onClick={() => onSave('pay')} disabled={saving || cart.length === 0}
+              className="flex items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-2 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 transition-all disabled:opacity-40">
+              <Banknote className="h-3.5 w-3.5" /> TT không in
+            </button>
+          </div>
+          {/* Action buttons - row 2 */}
+          <div className="grid grid-cols-3 gap-1.5">
+            <button onClick={() => onSave('booking')} disabled={saving || cart.length === 0}
+              className="flex items-center justify-center gap-1 rounded-lg border border-orange-400 px-2 py-2.5 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all disabled:opacity-40">
+              <BookOpen className="h-3.5 w-3.5" /> Đặt hàng
+            </button>
+            <button onClick={() => onSave('quotation')} disabled={saving || cart.length === 0}
+              className="flex items-center justify-center gap-1 rounded-lg border border-violet-400 px-2 py-2.5 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all disabled:opacity-40">
+              <FileText className="h-3.5 w-3.5" /> Báo giá
+            </button>
+            <button disabled={cart.length === 0}
+              className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-all disabled:opacity-40">
+              <RefreshCw className="h-3.5 w-3.5" /> Mở lại
+            </button>
+          </div>
+          </>
+        )}
+
         {cart.length > 0 && (
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <ChevronRight className="h-3 w-3" />
@@ -977,9 +1389,9 @@ function SellInvoiceTab({
 
 // ─── Main POS page ────────────────────────────────────────────────────────────
 
-interface PosOrderPageProps { tableLabel?: string; bookingId?: number; onBack?: () => void }
+interface PosOrderPageProps { tableLabel?: string; bookingId?: number; tableId?: number; onBack?: () => void }
 
-export default function PosOrderPage({ tableLabel, bookingId, onBack }: PosOrderPageProps = {}) {
+export default function PosOrderPage({ tableLabel, bookingId, tableId, onBack }: PosOrderPageProps = {}) {
   const [searchParams] = useSearchParams()
   const orderId = searchParams.get('orderId')
 
@@ -988,6 +1400,7 @@ export default function PosOrderPage({ tableLabel, bookingId, onBack }: PosOrder
       <SalesTab
         tableLabel={tableLabel}
         bookingId={bookingId ?? (orderId ? Number(orderId) : undefined)}
+        tableId={tableId}
         onBack={onBack}
       />
     </div>

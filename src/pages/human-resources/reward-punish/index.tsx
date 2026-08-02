@@ -19,12 +19,13 @@ interface TRewardPunish {
 export default function RewardPunishPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
 
   const { data, isLoading } = useFilterReportQuery({
     path: 'rewardpunishs/filter',
-    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: PAGE_SIZE },
+    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: pageSize },
   })
 
   const items = (data?.Items ?? []) as TRewardPunish[]
@@ -33,7 +34,7 @@ export default function RewardPunishPage() {
   const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('vi-VN') : '—'
 
   const columns: ColumnDef<TRewardPunish>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'name', header: 'Mã phiếu', cell: ({ row }) => <span className="font-mono text-xs">{row.original.Name ?? '—'}</span> },
     { id: 'member', header: 'Nhân viên', cell: ({ row }) => <span className="font-medium">{row.original.Member?.Name ?? '—'}</span> },
     { id: 'date', header: 'Ngày', cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.Date)}</span> },
@@ -63,7 +64,7 @@ export default function RewardPunishPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có phiếu khen thưởng / kỷ luật nào"
       />

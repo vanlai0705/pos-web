@@ -13,7 +13,7 @@ import {
 } from '@/store/slice/users/api/api'
 import type { TPosBooking } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, StatusBadge, fmtCurrency, fmtDate, useListFilter, PAGE_SIZE } from '../shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, StatusBadge, fmtCurrency, fmtDate, useListFilter } from '../shared'
 
 const EMPTY: TPosBooking = {}
 
@@ -77,14 +77,14 @@ function BookingDetail({ form, onChange }: { form: TPosBooking; onChange: (f: TP
 }
 
 export default function BookingPage() {
-  const { keyword, setKeyword, page, goPage, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
+  const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<TPosBooking>(EMPTY)
 
   const { data, isLoading, refetch } = useFilterBookingsQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     Keyword: keyword || undefined,
     DateFrom: dateFrom,
     DateTo: dateTo,
@@ -127,7 +127,7 @@ export default function BookingPage() {
     {
       id: 'stt',
       header: 'STT',
-      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'code',
@@ -224,7 +224,7 @@ export default function BookingPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={goPage}
         emptyText="Không có đơn đặt hàng nào"
       />

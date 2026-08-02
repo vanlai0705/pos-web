@@ -10,7 +10,7 @@ import {
   useCancelOrderMutation,
 } from '@/store/slice/users/api/api'
 import type { TPosOrder } from '@/store/slice/users/types/pos-types'
-import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, StatusBadge, fmtCurrency, fmtDateTime, useListFilter, PAGE_SIZE } from '../shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, StatusBadge, fmtCurrency, fmtDateTime, useListFilter } from '../shared'
 
 function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () => void }) {
   const items = order.OrderItems ?? []
@@ -118,13 +118,13 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
 }
 
 export default function OrderManagerPage() {
-  const { keyword, setKeyword, page, goPage, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
+  const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [selected, setSelected] = useState<TPosOrder | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const { data, isLoading, refetch } = useFilterOrdersQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     Keyword: keyword || undefined,
     DateFrom: dateFrom,
     DateTo: dateTo,
@@ -194,7 +194,7 @@ export default function OrderManagerPage() {
                         onClick={() => handleSelect(item)}
                         className={`cursor-pointer transition-colors hover:bg-accent/50 ${selected?.Id === item.Id ? 'bg-primary/8 border-l-2 border-l-primary' : ''}`}
                       >
-                        <td className="px-3 py-2.5 text-muted-foreground">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{(page - 1) * pageSize + idx + 1}</td>
                         <td className="px-3 py-2.5 font-medium">{item.Name ?? item.Code ?? '—'}</td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-xs">{fmtDateTime(item.Date)}</td>
                         <td className="px-3 py-2.5">{item.Customer?.Name ?? '—'}</td>
@@ -208,7 +208,7 @@ export default function OrderManagerPage() {
             </table>
           </div>
           <div className="px-4 py-3 border-t">
-            <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={goPage} />
+            <Pagination page={page} total={total} pageSize={pageSize} onPageSizeChange={setPageSize} onChange={goPage} />
           </div>
         </div>
 

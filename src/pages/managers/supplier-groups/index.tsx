@@ -31,7 +31,7 @@ export default function SupplierGroupsPage() {
       keyword={mp.keyword} onKeyword={mp.setKeyword}
       statusId={mp.statusId} onStatus={mp.setStatusId}
       searchPlaceholder="Tìm nhóm nhà cung cấp..."
-      page={mp.page} pageSize={mp.PAGE_SIZE} onPage={mp.goPage}
+      page={mp.page} pageSize={mp.pageSize} onPage={mp.goPage} onPageSize={mp.setPageSize}
       onAdd={mp.openAdd} onEdit={mp.openEdit} onChangeStatus={onChangeStatus}
       modal={mp.modal} onCloseModal={mp.closeModal}
       modalTitle={mp.form.Id ? "Chỉnh sửa nhóm nhà cung cấp" : "Thêm nhóm nhà cung cấp"}

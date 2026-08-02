@@ -1,4 +1,4 @@
-import { Search, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Check, Lock, Trash2, Pencil } from "lucide-react"
+import { Search, Plus, MoreHorizontal, Check, Lock, Trash2, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Loader2 } from "lucide-react"
+import { DataPagination } from '@/components/ui/data-pagination'
 
 // ─── Status ────────────────────────────────────────────────────────────────────
 
@@ -68,38 +69,24 @@ export function SearchBar({
 // ─── Pagination ────────────────────────────────────────────────────────────────
 
 interface PaginationBarProps {
+  /** 0-based page index */
   page: number
   total: number
   pageSize: number
   onChange: (page: number) => void
+  onPageSizeChange?: (size: number) => void
 }
 
-export function PaginationBar({ page, total, pageSize, onChange }: PaginationBarProps) {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const from = total === 0 ? 0 : page * pageSize + 1
-  const to = Math.min((page + 1) * pageSize, total)
-
+/** 0-based wrapper around the shared bar. */
+export function PaginationBar({ page, total, pageSize, onChange, onPageSizeChange }: PaginationBarProps) {
   return (
-    <div className="flex items-center justify-between pt-3 border-t text-sm text-muted-foreground">
-      <span>{total === 0 ? "Không có dữ liệu" : `${from}–${to} / ${total}`}</span>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="outline" size="icon" className="h-7 w-7"
-          disabled={page === 0}
-          onClick={() => onChange(page - 1)}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="w-16 text-center text-xs">{page + 1} / {totalPages}</span>
-        <Button
-          variant="outline" size="icon" className="h-7 w-7"
-          disabled={page >= totalPages - 1}
-          onClick={() => onChange(page + 1)}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
+    <DataPagination
+      page={page + 1}
+      total={total}
+      pageSize={pageSize}
+      onPageChange={p => onChange(p - 1)}
+      onPageSizeChange={onPageSizeChange}
+    />
   )
 }
 

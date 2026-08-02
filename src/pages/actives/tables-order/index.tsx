@@ -173,6 +173,8 @@ export default function TablesOrderPage() {
       <PosOrderPage
         tableLabel={activeTable.Name}
         bookingId={activeTable.OrderId}
+        tableId={activeTable.Id}
+        // Back to the floor plan with fresh table state (a paid table frees up).
         onBack={() => { setActiveTable(null); refetch() }}
       />
     )

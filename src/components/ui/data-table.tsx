@@ -6,8 +6,7 @@ import {
 } from '@tanstack/react-table'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Skeleton } from './skeleton'
-import { Button } from './button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { DataPagination } from './data-pagination'
 import { cn } from '@/utils'
 
 export type { ColumnDef } from '@tanstack/react-table'
@@ -26,7 +25,10 @@ interface DataTableProps<TData> {
   page: number
   pageSize?: number
   onPageChange: (page: number) => void
+  /** Pass to let the user pick how many rows a page holds */
+  onPageSizeChange?: (size: number) => void
   onRowClick?: (row: TData) => void
+  onRowDoubleClick?: (row: TData) => void
   rowClassName?: (row: TData) => string
   emptyText?: string
 }
@@ -39,12 +41,12 @@ export function DataTable<TData>({
   page,
   pageSize = 15,
   onPageChange,
+  onPageSizeChange,
   onRowClick,
+  onRowDoubleClick,
   rowClassName,
   emptyText = 'Không có dữ liệu',
 }: DataTableProps<TData>) {
-  const totalPages = Math.ceil(total / pageSize)
-
   const tableData = useMemo(
     () => loading ? (Array(pageSize).fill({}) as TData[]) : data,
     [loading, data, pageSize],
@@ -94,9 +96,10 @@ export function DataTable<TData>({
                 <tr
                   key={row.id}
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                  onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(row.original) : undefined}
                   className={cn(
                     'hover:bg-muted/30 transition-colors',
-                    onRowClick && 'cursor-pointer',
+                    (onRowClick || onRowDoubleClick) && 'cursor-pointer',
                     rowClassName?.(row.original),
                   )}
                 >
@@ -122,28 +125,14 @@ export function DataTable<TData>({
         </table>
       </div>
       {total > 0 && (
-        <div className="px-4 py-3 border-t flex items-center justify-between text-xs text-muted-foreground">
-          <span>{total.toLocaleString('vi-VN')} kết quả</span>
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost" size="icon" className="h-7 w-7"
-                disabled={page <= 1}
-                onClick={() => onPageChange(page - 1)}
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </Button>
-              <span className="px-2">{page} / {totalPages}</span>
-              <Button
-                variant="ghost" size="icon" className="h-7 w-7"
-                disabled={page >= totalPages}
-                onClick={() => onPageChange(page + 1)}
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
+        <DataPagination
+          page={page}
+          total={total}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          className="px-4 py-3 pt-3"
+        />
       )}
     </div>
   )

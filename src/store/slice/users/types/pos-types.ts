@@ -445,8 +445,9 @@ export interface TPosUnit {
 // ─── Actives: Orders ─────────────────────────────────────────────────────────
 
 /** Product snapshot embedded in an order line — the full product, echoed back. */
-export interface TPosOrderItemProduct extends Omit<TPosActiveProduct, 'Name'> {
+export interface TPosOrderItemProduct extends Omit<TPosActiveProduct, 'Name' | 'Tax'> {
   Name?: string
+  Tax?: number | null
   Total?: number
   Amount?: number
 }
@@ -473,13 +474,30 @@ export interface TPosOrderItem {
   Total?: number
   /** Line total including tax */
   Amount?: number
-  Tax?: number
+  /** null marks a tax-exempt product, which the server treats differently from 0 */
+  Tax?: number | null
+  ParentId?: number | null
   Type?: number
   Note?: string
   IsPromotion?: boolean
   IsPrinted?: boolean
   IsAnonymous?: boolean
   Status?: { Id?: number; Name?: string }
+}
+
+/** A bank/wallet account a fund type can be settled into. */
+export interface TPosFundAccount {
+  Id?: number
+  Name?: string
+  ShortName?: string
+  AccountNumber?: string
+  AccountName?: string
+  QrCodeUrl?: string
+}
+
+/** Payment method from `fundType/get-payment-type`; `Items` are its linked accounts. */
+export interface TPosFundType extends TPosFundAccount {
+  Items?: TPosFundAccount[]
 }
 
 /** E-invoice ("Hoá đơn điện tử") buyer details attached to an order. */
@@ -506,11 +524,17 @@ export interface TPosOrder {
   CreationTime?: string
   Detail?: string
   Note?: string
-  Customer?: TPosCustomerSimple
+  Customer?: TPosCustomerSimple | null
   User?: { Id?: number; Name?: string }
-  CreatorUser?: { Id?: number; Name?: string; Surname?: string; FullName?: string }
+  /** Logged-in user placing the order (Angular's `currentMember`) */
+  Member?: (TPosUser & { Shops?: unknown[] }) | null
+  CreatorUser?: { Id?: number; Name?: string; Surname?: string; FullName?: string } | null
   Shop?: { Id?: number }
-  StockOut?: { Id?: number; Name?: string }
+  StockOut?: { Id?: number; Name?: string } | null
+  /** Restaurant only — which table and browser the order came from */
+  Table?: { Id?: number; Name?: string } | null
+  table?: { id?: number; name?: string }
+  deviceGuid?: string
   Status?: TPosItemStatus
   Items?: TPosOrderItem[]
   PromotionItems?: TPosOrderItem[]
@@ -547,7 +571,7 @@ export interface TPosOrder {
   /** Fields returned by the order list/detail endpoints. */
   Code?: string
   Stock?: { Id?: number; Name?: string }
-  FundType?: { Id?: number; Name?: string }
+  FundType?: { Id?: number; Name?: string } | null
   OrderItems?: TPosOrderItem[]
   IsInvoice?: boolean
   CustomerDebt?: boolean
@@ -663,13 +687,16 @@ export type TPosRevenueSummaryResponse = TPosRevenueSummaryItem[]
 export interface TPosCustomer {
   Id?: number
   Code?: string
+  CustomerCode?: string
   Name: string
   IsCompany?: boolean
   CustomerGroup?: { Id?: number; Name?: string }
   TaxCode?: string
+  TaxNumber?: string
   CompanyName?: string
   Phone?: string
   IdCard?: string
+  CitizenId?: string
   Email?: string
   Birthday?: string
   Address?: string

@@ -16,12 +16,13 @@ interface TInventoryItem {
 export default function StockInventoryPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
 
   const { data, isLoading } = useFilterReportQuery({
     path: 'inventory/filter',
-    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: PAGE_SIZE },
+    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: pageSize },
   })
 
   const items = (data?.Items ?? []) as TInventoryItem[]
@@ -29,7 +30,7 @@ export default function StockInventoryPage() {
   const s = data?.Sumary ?? {}
 
   const columns: ColumnDef<TInventoryItem>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'code', header: 'Mã hàng', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.Product?.ProductCode ?? '—'}</span> },
     { id: 'name', header: 'Tên mặt hàng', cell: ({ row }) => <span className="font-medium">{row.original.Product?.Name ?? '—'}</span> },
     { id: 'unit', header: 'ĐVT', cell: ({ row }) => <span className="text-xs">{row.original.Product?.Unit?.Name ?? row.original.Unit?.Name ?? '—'}</span> },
@@ -67,7 +68,7 @@ export default function StockInventoryPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có dữ liệu tồn kho"
       />

@@ -16,13 +16,14 @@ const EMPTY = (): TPosShift => ({ Name: '' })
 export default function ShiftsPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<TPosShift>(EMPTY())
 
   const { data, isLoading, refetch } = useFilterShiftsQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     Keyword: keyword || undefined,
     StatusId: statusId,
   })
@@ -53,7 +54,7 @@ export default function ShiftsPage() {
   }
 
   const columns: ColumnDef<TPosShift>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'name', header: 'Tên ca', cell: ({ row }) => <span className="font-medium">{row.original.Name}</span> },
     { id: 'start', header: 'Giờ bắt đầu', cell: ({ row }) => <span>{row.original.StartTime ?? '—'}</span> },
     { id: 'end', header: 'Giờ kết thúc', cell: ({ row }) => <span>{row.original.EndTime ?? '—'}</span> },
@@ -99,7 +100,7 @@ export default function ShiftsPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có ca làm việc nào"
       />

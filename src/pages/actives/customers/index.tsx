@@ -1,290 +1,663 @@
-import { useState } from 'react'
-import { Users, Plus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FileDown, Image as ImageIcon, MoreHorizontal, Plus, Search, Upload } from 'lucide-react'
+import { toast } from 'sonner'
+import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
+import { TreeSidebar, type TreeSidebarNode } from '@/components/layout/tree-sidebar'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { toast } from 'sonner'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {
   useFilterCustomersQuery,
-  useSaveCustomerMutation,
-  useUpdateCustomerStatusMutation,
+  useGenericDownloadMutation,
+  useGenericPostMutation,
   useGetCustomerGroupsSimpleQuery,
   useLazyGetCustomerDetailQuery,
+  useSaveCustomerGroupMutation,
+  useSaveCustomerMutation,
+  useUpdateCustomerGroupStatusMutation,
+  useUpdateCustomerStatusMutation,
 } from '@/store/slice/users/api/api'
-import type { TPosCustomer } from '@/store/slice/users/types/pos-types'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, StatusBadge, fmtDate, PAGE_SIZE } from '../shared'
+import type { TPosCustomer, TPosCustomerGroup } from '@/store/slice/users/types/pos-types'
+import { cn, query } from '@/utils'
+import { getImageUrl } from '@/utils/common'
 
-const EMPTY: TPosCustomer = { Name: '' }
+const PAGE_SIZE = 15
+const STATUS_ACTIVE = 0
+const STATUS_LOCKED = 1
+const STATUS_DELETED = 2
 
-function CustomerForm({
-  form, onChange, groups,
-}: {
-  form: TPosCustomer
-  onChange: (f: TPosCustomer) => void
-  groups: { Id?: number; Name?: string }[]
-}) {
-  const set = (patch: Partial<TPosCustomer>) => onChange({ ...form, ...patch })
-  return (
-    <div className="grid gap-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Mã khách hàng</Label>
-          <Input value={form.Code ?? ''} onChange={e => set({ Code: e.target.value })} placeholder="Tự động nếu bỏ trống" />
-        </div>
-        <div className="space-y-1">
-          <Label>Tên khách hàng <span className="text-destructive">*</span></Label>
-          <Input value={form.Name} onChange={e => set({ Name: e.target.value })} placeholder="Tên khách hàng" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Nhóm khách hàng</Label>
-          <select
-            value={form.CustomerGroup?.Id ?? ''}
-            onChange={e => {
-              const id = Number(e.target.value)
-              const g = groups.find(x => x.Id === id)
-              set({ CustomerGroup: g ? { Id: g.Id, Name: g.Name } : undefined })
-            }}
-            className="w-full h-9 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">— Không có —</option>
-            {groups.map(g => <option key={g.Id} value={g.Id}>{g.Name}</option>)}
-          </select>
-        </div>
-        <div className="space-y-1">
-          <Label>Điện thoại</Label>
-          <Input value={form.Phone ?? ''} onChange={e => set({ Phone: e.target.value })} placeholder="Số điện thoại" />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Email</Label>
-          <Input type="email" value={form.Email ?? ''} onChange={e => set({ Email: e.target.value })} placeholder="Email" />
-        </div>
-        <div className="space-y-1">
-          <Label>Ngày sinh</Label>
-          <Input type="date" value={form.Birthday?.slice(0, 10) ?? ''} onChange={e => set({ Birthday: e.target.value })} />
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="isCompany"
-          checked={!!form.IsCompany}
-          onChange={e => set({ IsCompany: e.target.checked })}
-          className="rounded"
-        />
-        <Label htmlFor="isCompany" className="cursor-pointer">Là doanh nghiệp / công ty</Label>
-      </div>
-      {form.IsCompany && (
-        <div className="grid grid-cols-2 gap-3 p-3 rounded-lg border bg-muted/20">
-          <div className="space-y-1">
-            <Label>Mã số thuế</Label>
-            <Input value={form.TaxCode ?? ''} onChange={e => set({ TaxCode: e.target.value })} placeholder="MST" />
-          </div>
-          <div className="space-y-1">
-            <Label>Tên công ty / đơn vị</Label>
-            <Input value={form.CompanyName ?? ''} onChange={e => set({ CompanyName: e.target.value })} placeholder="Tên công ty" />
-          </div>
-        </div>
-      )}
-      <div className="space-y-1">
-        <Label>Địa chỉ</Label>
-        <Input value={form.Address ?? ''} onChange={e => set({ Address: e.target.value })} placeholder="Địa chỉ" />
-      </div>
-      <div className="space-y-1">
-        <Label>Ghi chú</Label>
-        <Input value={form.Note ?? ''} onChange={e => set({ Note: e.target.value })} placeholder="Ghi chú" />
-      </div>
-    </div>
-  )
+interface CustomerGroupNode extends TreeSidebarNode {
+  CustomerCode?: string
+  Image?: { Url?: string }
+}
+
+function imgUrl(url?: string | null) {
+  return getImageUrl(url ?? undefined) ?? null
+}
+
+function emptyCustomer(groupId?: number): TPosCustomer {
+  return {
+    Name: '',
+    IsCompany: false,
+    CustomerGroup: groupId ? { Id: groupId } : undefined,
+  }
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  URL.revokeObjectURL(url)
+  link.remove()
+}
+
+function formatDate(value?: string) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('vi-VN')
 }
 
 export default function CustomersPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [statusId, setStatusId] = useState<number | ''>('')
-  const [groupId, setGroupId] = useState<number | ''>('')
-  const [modal, setModal] = useState(false)
-  const [form, setForm] = useState<TPosCustomer>(EMPTY)
+  const [groupId, setGroupId] = useState<number>(0)
+  const [groupSearch, setGroupSearch] = useState('')
+
+  const [customerModal, setCustomerModal] = useState(false)
+  const [customerForm, setCustomerForm] = useState<TPosCustomer>(emptyCustomer())
+
+  const [groupModal, setGroupModal] = useState(false)
+  const [groupForm, setGroupForm] = useState<TPosCustomerGroup>({ Name: '' })
+
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const { data, isLoading, refetch } = useFilterCustomersQuery({
     PageIndex: page - 1,
     PageSize: PAGE_SIZE,
     Keyword: keyword || undefined,
-    StatusId: statusId,
-    GroupId: groupId || undefined,
-  })
-  const { data: groups = [] } = useGetCustomerGroupsSimpleQuery()
-  const [getDetail] = useLazyGetCustomerDetailQuery()
-  const [save, { isLoading: saving }] = useSaveCustomerMutation()
-  const [updateStatus] = useUpdateCustomerStatusMutation()
+    StatusId: statusId === '' ? undefined : statusId,
+    CustomerGroupId: groupId || undefined,
+  } as any)
+  const { data: groups = [], refetch: refetchGroups } = useGetCustomerGroupsSimpleQuery()
+  const [getCustomerDetail] = useLazyGetCustomerDetailQuery()
+  const [saveCustomer, { isLoading: savingCustomer }] = useSaveCustomerMutation()
+  const [updateCustomerStatus] = useUpdateCustomerStatusMutation()
+  const [saveGroup, { isLoading: savingGroup }] = useSaveCustomerGroupMutation()
+  const [updateGroupStatus] = useUpdateCustomerGroupStatusMutation()
+  const [request] = useGenericPostMutation()
+  const [downloadFile] = useGenericDownloadMutation()
 
   const items = data?.Items ?? []
   const total = data?.TotalItemCount ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  const openAdd = () => { setForm(EMPTY); setModal(true) }
-  const openEdit = async (id: number) => {
-    try {
-      const detail = await getDetail(id).unwrap()
-      setForm(detail)
-      setModal(true)
-    } catch { toast.error('Không thể tải thông tin khách hàng') }
+  const sidebarGroups = useMemo<CustomerGroupNode[]>(
+    () => [{ Id: 0, Name: 'Tất cả nhóm' }, ...(groups as CustomerGroupNode[])],
+    [groups],
+  )
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
+
+  const openAddCustomer = () => {
+    setCustomerForm(emptyCustomer(groupId || undefined))
+    setCustomerModal(true)
   }
 
-  const handleSave = async () => {
-    if (!form.Name.trim()) { toast.error('Vui lòng nhập tên khách hàng'); return }
+  const openEditCustomer = useCallback(async (id?: number) => {
+    if (!id) return
     try {
-      await save(form).unwrap()
-      toast.success(form.Id ? 'Đã cập nhật khách hàng' : 'Đã thêm khách hàng')
-      setModal(false)
+      const detail = await getCustomerDetail(id).unwrap()
+      setCustomerForm({ ...emptyCustomer(), ...detail })
+      setCustomerModal(true)
+    } catch {
+      toast.error('Không thể tải thông tin khách hàng')
+    }
+  }, [getCustomerDetail])
+
+  const saveCustomerForm = async () => {
+    if (!customerForm.Name?.trim()) {
+      toast.error('Vui lòng nhập tên khách hàng')
+      return
+    }
+
+    const payload = {
+      ...customerForm,
+      CustomerCode: customerForm.CustomerCode || customerForm.Code || '',
+      Code: customerForm.Code || customerForm.CustomerCode || '',
+      TaxNumber: customerForm.TaxNumber || customerForm.TaxCode || '',
+      TaxCode: customerForm.TaxCode || customerForm.TaxNumber || '',
+      CitizenId: customerForm.CitizenId || customerForm.IdCard || '',
+      IdCard: customerForm.IdCard || customerForm.CitizenId || '',
+      CustomerGroup: customerForm.CustomerGroup?.Id ? customerForm.CustomerGroup : undefined,
+    }
+
+    try {
+      await saveCustomer(payload).unwrap()
+      toast.success(customerForm.Id ? 'Đã cập nhật khách hàng' : 'Đã thêm khách hàng')
+      setCustomerModal(false)
       refetch()
-    } catch { toast.error('Không thể lưu khách hàng') }
+    } catch {
+      toast.error('Không thể lưu khách hàng')
+    }
   }
 
-  const handleToggleStatus = async (id: number, currentStatusId?: number) => {
-    const newStatusId = currentStatusId === 1 ? 2 : 1
+  const toggleCustomerStatus = useCallback(async (customer: TPosCustomer) => {
+    if (!customer.Id) return
+    const nextStatus = customer.Status?.Id === STATUS_ACTIVE ? STATUS_LOCKED : STATUS_ACTIVE
     try {
-      await updateStatus({ id, statusId: newStatusId }).unwrap()
+      await updateCustomerStatus({ id: customer.Id, statusId: nextStatus }).unwrap()
       refetch()
-    } catch { toast.error('Không thể cập nhật trạng thái') }
+    } catch {
+      toast.error('Không thể cập nhật trạng thái')
+    }
+  }, [refetch, updateCustomerStatus])
+
+  const deleteCustomer = useCallback(async (customer: TPosCustomer) => {
+    if (!customer.Id) return
+    if (!window.confirm(`Xóa khách hàng "${customer.Name}"?`)) return
+    try {
+      await updateCustomerStatus({ id: customer.Id, statusId: STATUS_DELETED }).unwrap()
+      toast.success('Đã xóa khách hàng')
+      refetch()
+    } catch {
+      toast.error('Không thể xóa khách hàng')
+    }
+  }, [refetch, updateCustomerStatus])
+
+  const openAddGroup = () => {
+    setGroupForm({ Name: '' })
+    setGroupModal(true)
   }
 
-  const columns: ColumnDef<TPosCustomer>[] = [
+  const openEditGroup = useCallback(async (group: CustomerGroupNode) => {
+    try {
+      const response = await request({ url: `customergroups/detail${query({ id: group.Id })}`, method: 'GET' }).unwrap()
+      setGroupForm({ Name: '', ...(response?.Data || group) })
+      setGroupModal(true)
+    } catch {
+      setGroupForm({ Id: group.Id, Name: group.Name || '', CustomerCode: group.CustomerCode || '' })
+      setGroupModal(true)
+    }
+  }, [request])
+
+  const saveCustomerGroup = async () => {
+    if (!groupForm.Name?.trim()) {
+      toast.error('Vui lòng nhập tên nhóm khách hàng')
+      return
+    }
+    try {
+      await saveGroup(groupForm).unwrap()
+      toast.success(groupForm.Id ? 'Cập nhật nhóm khách hàng thành công' : 'Thêm nhóm khách hàng thành công')
+      setGroupModal(false)
+      refetchGroups()
+      refetch()
+    } catch {
+      toast.error('Không thể lưu nhóm khách hàng')
+    }
+  }
+
+  const deleteCustomerGroup = async (group: CustomerGroupNode) => {
+    if (!window.confirm(`Xóa nhóm khách hàng "${group.Name}"?`)) return
+    try {
+      await updateGroupStatus({ id: group.Id, statusId: STATUS_DELETED }).unwrap()
+      toast.success('Xóa nhóm khách hàng thành công')
+      if (groupId === group.Id) {
+        setGroupId(0)
+        setPage(1)
+      }
+      refetchGroups()
+    } catch {
+      toast.error('Không thể xóa nhóm khách hàng')
+    }
+  }
+
+  const importExcel = async (file?: File) => {
+    if (!file) return
+    const form = new FormData()
+    form.append(file.name, file)
+    try {
+      await request({ url: 'customers/import-excel', method: 'POST', body: form }).unwrap()
+      toast.success('Nhập Excel thành công')
+      refetch()
+    } catch {
+      toast.error('Không thể nhập Excel')
+    }
+  }
+
+  const exportExcel = async () => {
+    try {
+      const blob = await downloadFile({
+        url: `customers/export-excel${query({
+          PageIndex: page - 1,
+          PageSize: PAGE_SIZE,
+          Keyword: keyword || undefined,
+          StatusId: statusId === '' ? undefined : statusId,
+          CustomerGroupId: groupId || undefined,
+        })}`,
+      }).unwrap()
+      downloadBlob(blob, 'khach-hang.xlsx')
+      toast.success('Xuất Excel thành công')
+    } catch {
+      toast.error('Không thể xuất Excel')
+    }
+  }
+
+  const columns = useMemo<ColumnDef<TPosCustomer>[]>(() => [
     {
       id: 'stt',
       header: 'STT',
-      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
+      meta: { className: 'w-14 text-center' },
+      cell: ({ row }) => <span className="text-slate-400">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
     },
     {
       id: 'code',
       header: 'Mã',
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.Code ?? '—'}</span>,
+      meta: { cellClassName: 'font-medium text-emerald-700 whitespace-nowrap' },
+      cell: ({ row }) => row.original.CustomerCode || row.original.Code || '-',
     },
     {
       id: 'name',
-      header: 'Tên khách hàng',
-      cell: ({ row }) => (
-        <div>
-          <div className="font-medium">{row.original.Name}</div>
-          {row.original.CompanyName && (
-            <div className="text-xs text-muted-foreground">{row.original.CompanyName}</div>
-          )}
-        </div>
-      ),
+      header: 'Tên',
+      cell: ({ row }) => {
+        const customer = row.original
+        return (
+          <div className="flex min-w-[180px] items-center gap-2">
+            <Avatar image={imgUrl(customer.Image?.Url)} />
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-slate-800">{customer.Name}</div>
+              {customer.Phone ? <div className="truncate text-xs text-slate-400">{customer.Phone}</div> : null}
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      id: 'company',
+      header: 'Tên ĐV',
+      meta: { cellClassName: 'max-w-[160px] truncate text-xs text-slate-600' },
+      cell: ({ row }) => row.original.CompanyName || '-',
     },
     {
       id: 'group',
-      header: 'Nhóm KH',
-      cell: ({ row }) => <span className="text-xs">{row.original.CustomerGroup?.Name ?? '—'}</span>,
+      header: 'Nhóm khách hàng',
+      cell: ({ row }) => {
+        const customer = row.original
+        const groupImage = imgUrl((customer.CustomerGroup as any)?.Image?.Url)
+        return (
+          <div className="flex min-w-[150px] items-center gap-2">
+            {groupImage ? <Avatar image={groupImage} size="sm" /> : null}
+            <span className="truncate text-xs">{customer.CustomerGroup?.Name || '-'}</span>
+          </div>
+        )
+      },
     },
     {
       id: 'phone',
       header: 'Điện thoại',
-      cell: ({ row }) => row.original.Phone ?? '—',
+      cell: ({ row }) => row.original.Phone || '-',
     },
     {
       id: 'address',
       header: 'Địa chỉ',
-      cell: ({ row }) => (
-        <span className="text-xs max-w-[140px] truncate block">{row.original.Address ?? '—'}</span>
-      ),
+      meta: { cellClassName: 'max-w-[190px] truncate text-xs text-slate-500' },
+      cell: ({ row }) => row.original.Address || '-',
     },
     {
       id: 'email',
       header: 'Email',
-      cell: ({ row }) => <span className="text-xs">{row.original.Email ?? '—'}</span>,
+      meta: { cellClassName: 'max-w-[170px] truncate text-xs text-slate-500' },
+      cell: ({ row }) => row.original.Email || '-',
     },
     {
       id: 'birthday',
       header: 'Sinh nhật',
-      cell: ({ row }) => <span className="whitespace-nowrap">{fmtDate(row.original.Birthday)}</span>,
+      meta: { className: 'text-center whitespace-nowrap' },
+      cell: ({ row }) => formatDate(row.original.Birthday),
     },
     {
       id: 'status',
-      header: 'TT',
+      header: 'Trạng thái',
+      meta: { className: 'w-28 text-center' },
       cell: ({ row }) => <StatusBadge status={row.original.Status} />,
     },
     {
       id: 'actions',
       header: 'Thao tác',
+      meta: { className: 'w-28 text-center' },
       cell: ({ row }) => {
-        const item = row.original
+        const customer = row.original
         return (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => item.Id && openEdit(item.Id)}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost" size="icon" className="h-7 w-7"
-              onClick={() => item.Id && handleToggleStatus(item.Id, item.Status?.Id)}
-              title={item.Status?.Id === 1 ? 'Ngừng hoạt động' : 'Kích hoạt'}
-            >
-              {item.Status?.Id === 1
-                ? <ToggleRight className="h-4 w-4 text-primary" />
-                : <ToggleLeft className="h-4 w-4 text-muted-foreground" />
-              }
-            </Button>
+          <div onClick={event => event.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openEditCustomer(customer.Id)}>Chi tiết / sửa</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toggleCustomerStatus(customer)}>
+                  {customer.Status?.Id === STATUS_ACTIVE ? 'Tạm khóa' : 'Kích hoạt'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteCustomer(customer)}>
+                  Xóa
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )
       },
     },
-  ]
+  ], [deleteCustomer, openEditCustomer, page, toggleCustomerStatus])
 
   return (
-    <div className="space-y-4">
-      <ListPageHeader title="Khách hàng" icon={Users}>
-        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder="Tìm khách hàng..." />
-        <select
-          value={statusId}
-          onChange={e => { setStatusId(e.target.value === '' ? '' : Number(e.target.value)); setPage(1) }}
-          className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="">Tất cả TT</option>
-          <option value={1}>Hoạt động</option>
-          <option value={2}>Ngừng HĐ</option>
-        </select>
-        <select
-          value={groupId}
-          onChange={e => { setGroupId(e.target.value === '' ? '' : Number(e.target.value)); setPage(1) }}
-          className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="">Tất cả nhóm</option>
-          {groups.map(g => <option key={g.Id} value={g.Id}>{g.Name}</option>)}
-        </select>
-        <Button size="sm" onClick={openAdd} className="h-8">
-          <Plus className="h-3.5 w-3.5 mr-1" /> Thêm khách hàng
-        </Button>
-      </ListPageHeader>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
+        <TreeSidebar
+          title="Nhóm khách hàng"
+          items={sidebarGroups}
+          selectedId={groupId}
+          searchText={groupSearch}
+          searchPlaceholder="Tìm kiếm nhóm..."
+          emptyText="Không tìm thấy nhóm khách hàng"
+          onSearchTextChange={setGroupSearch}
+          onSelect={group => {
+            setGroupId(group.Id)
+            setPage(1)
+          }}
+          onCreate={openAddGroup}
+          onEditItem={openEditGroup}
+          onDeleteItem={deleteCustomerGroup}
+          renderMeta={group => group.Id > 0 && group.Image?.Url ? (
+            <img src={imgUrl(group.Image.Url) || ''} alt="" className="h-5 w-5 rounded object-cover" />
+          ) : null}
+        />
 
-      <DataTable
-        columns={columns}
-        data={items}
-        loading={isLoading}
-        total={total}
-        page={page}
-        pageSize={PAGE_SIZE}
-        onPageChange={setPage}
-        emptyText="Không có khách hàng nào"
+        <section className="flex min-w-0 flex-1 flex-col gap-3">
+          <ListToolbar
+            searchValue={keyword}
+            searchPlaceholder="Tìm kiếm khách hàng..."
+            onSearchChange={value => {
+              setKeyword(value)
+              setPage(1)
+            }}
+            filters={(
+              <select
+                value={statusId}
+                onChange={event => {
+                  setStatusId(event.target.value === '' ? '' : Number(event.target.value))
+                  setPage(1)
+                }}
+                className="h-10 min-w-[150px] rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Tất cả TT</option>
+                <option value={STATUS_ACTIVE}>Hoạt động</option>
+                <option value={STATUS_LOCKED}>Tạm khóa</option>
+              </select>
+            )}
+            actions={(
+              <>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".xlsx,.xls"
+                  onChange={event => {
+                    importExcel(event.target.files?.[0])
+                    event.target.value = ''
+                  }}
+                />
+                <ToolbarButton tone="neutral" onClick={() => importInputRef.current?.click()}>
+                  <Upload className="h-4 w-4" />
+                  Nhập
+                </ToolbarButton>
+                <ToolbarButton tone="neutral" onClick={exportExcel}>
+                  <FileDown className="h-4 w-4" />
+                  Xuất
+                </ToolbarButton>
+                <ToolbarButton tone="primary" onClick={openAddCustomer}>
+                  <Plus className="h-4 w-4" />
+                  Thêm khách hàng
+                </ToolbarButton>
+              </>
+            )}
+          />
+
+          <DataTable
+            columns={columns}
+            data={items}
+            loading={isLoading}
+            total={total}
+            page={page}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+            onRowDoubleClick={customer => openEditCustomer(customer.Id)}
+            emptyText="Không có khách hàng nào"
+          />
+        </section>
+      </div>
+
+      <CustomerDialog
+        open={customerModal}
+        form={customerForm}
+        setForm={setCustomerForm}
+        groups={groups}
+        saving={savingCustomer}
+        onClose={() => setCustomerModal(false)}
+        onSave={saveCustomerForm}
       />
 
-      <Dialog open={modal} onOpenChange={setModal}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{form.Id ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng'}</DialogTitle>
-          </DialogHeader>
-          <CustomerForm form={form} onChange={setForm} groups={groups} />
+      <Dialog open={groupModal} onOpenChange={setGroupModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{groupForm.Id ? 'Sửa nhóm khách hàng' : 'Thêm nhóm khách hàng'}</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <Field label="Tên nhóm" required>
+              <Input value={groupForm.Name || ''} onChange={event => setGroupForm(current => ({ ...current, Name: event.target.value }))} />
+            </Field>
+            <Field label="Đánh mã khách hàng">
+              <Input value={groupForm.CustomerCode || ''} onChange={event => setGroupForm(current => ({ ...current, CustomerCode: event.target.value }))} placeholder="VD: KH001" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Chiết khấu (%)">
+                <Input type="number" value={groupForm.DiscountPercent ?? ''} onChange={event => setGroupForm(current => ({ ...current, DiscountPercent: Number(event.target.value) }))} />
+              </Field>
+              <Field label="Điểm">
+                <Input type="number" value={groupForm.Point ?? ''} onChange={event => setGroupForm(current => ({ ...current, Point: Number(event.target.value) }))} />
+              </Field>
+            </div>
+            <Field label="Ghi chú">
+              <Textarea rows={2} value={groupForm.Note || ''} onChange={event => setGroupForm(current => ({ ...current, Note: event.target.value }))} />
+            </Field>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setModal(false)}>Huỷ</Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Đang lưu...' : 'Lưu'}
-            </Button>
+            <Button variant="outline" onClick={() => setGroupModal(false)}>Hủy</Button>
+            <Button onClick={saveCustomerGroup} disabled={savingGroup}>{savingGroup ? 'Đang lưu...' : 'Lưu'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function CustomerDialog({
+  open,
+  form,
+  setForm,
+  groups,
+  saving,
+  onClose,
+  onSave,
+}: {
+  open: boolean
+  form: TPosCustomer
+  setForm: (value: TPosCustomer | ((current: TPosCustomer) => TPosCustomer)) => void
+  groups: Array<{ Id?: number; Name?: string }>
+  saving: boolean
+  onClose: () => void
+  onSave: () => void
+}) {
+  const set = (patch: Partial<TPosCustomer>) => setForm(current => ({ ...current, ...patch }))
+
+  const searchTaxNumber = async () => {
+    const taxId = (form.TaxNumber || form.TaxCode || '').trim()
+    if (!taxId) {
+      toast.warning('Vui lòng nhập mã số thuế')
+      return
+    }
+
+    try {
+      const response = await fetch(`https://api.vietqr.io/v2/business/${taxId}`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      })
+      const result = await response.json()
+      if (!result?.data) {
+        toast.error('MST không tồn tại')
+        return
+      }
+      set({
+        IsCompany: true,
+        TaxNumber: taxId,
+        TaxCode: taxId,
+        CompanyName: result.data.name || form.CompanyName || '',
+        Address: result.data.address || form.Address || '',
+        Name: form.Name || result.data.name || '',
+      })
+    } catch {
+      toast.error('Không thể tra cứu MST')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={value => !value && onClose()}>
+      <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
+        <DialogHeader><DialogTitle>{form.Id ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng'}</DialogTitle></DialogHeader>
+        <div className="grid gap-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Mã khách hàng">
+              <Input value={form.CustomerCode || form.Code || ''} onChange={event => set({ CustomerCode: event.target.value, Code: event.target.value })} placeholder="Tự động nếu bỏ trống" />
+            </Field>
+            <Field label="Tên khách hàng" required>
+              <Input value={form.Name || ''} onChange={event => set({ Name: event.target.value })} />
+            </Field>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 sm:items-end">
+            <div className="flex h-10 items-center gap-3 rounded-md border bg-slate-50 px-3">
+              <Switch checked={!!form.IsCompany} onCheckedChange={checked => set({ IsCompany: checked })} />
+              <span className="text-sm font-medium text-slate-700">Là doanh nghiệp/công ty</span>
+            </div>
+            <Field label="Nhóm khách hàng">
+              <select
+                value={form.CustomerGroup?.Id || ''}
+                onChange={event => {
+                  const id = Number(event.target.value)
+                  const group = groups.find(item => item.Id === id)
+                  set({ CustomerGroup: group ? { Id: group.Id, Name: group.Name } : undefined })
+                }}
+                className="h-10 w-full rounded-md border bg-white px-3 text-sm"
+              >
+                <option value="">Không có</option>
+                {groups.map(group => <option key={group.Id} value={group.Id}>{group.Name}</option>)}
+              </select>
+            </Field>
+          </div>
+
+          {form.IsCompany ? (
+            <div className="grid gap-3 rounded-lg border bg-slate-50 p-3 sm:grid-cols-2">
+              <Field label="Mã số thuế">
+                <div className="flex gap-2">
+                  <Input value={form.TaxNumber || form.TaxCode || ''} onChange={event => set({ TaxNumber: event.target.value, TaxCode: event.target.value })} />
+                  <Button type="button" size="icon" className="h-10 w-10" onClick={searchTaxNumber}>
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
+              </Field>
+              <Field label="Tên đơn vị/Công ty">
+                <Input value={form.CompanyName || ''} onChange={event => set({ CompanyName: event.target.value })} />
+              </Field>
+            </div>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Số điện thoại">
+              <Input value={form.Phone || ''} onChange={event => set({ Phone: event.target.value })} />
+            </Field>
+            <Field label="Căn cước công dân (CCCD)">
+              <Input value={form.CitizenId || form.IdCard || ''} onChange={event => set({ CitizenId: event.target.value, IdCard: event.target.value })} />
+            </Field>
+            <Field label="Địa chỉ Email">
+              <Input type="email" value={form.Email || ''} onChange={event => set({ Email: event.target.value })} />
+            </Field>
+            <Field label="Ngày thành lập / Sinh nhật">
+              <Input type="date" value={form.Birthday?.slice(0, 10) || ''} onChange={event => set({ Birthday: event.target.value })} />
+            </Field>
+          </div>
+
+          <Field label="Địa chỉ">
+            <Input value={form.Address || ''} onChange={event => set({ Address: event.target.value })} />
+          </Field>
+          <Field label="Ghi chú thêm">
+            <Textarea rows={3} value={form.Note || ''} onChange={event => set({ Note: event.target.value })} />
+          </Field>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Hủy</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function Avatar({ image, size = 'md' }: { image?: string | null; size?: 'sm' | 'md' }) {
+  return (
+    <span className={cn(
+      'flex shrink-0 items-center justify-center overflow-hidden rounded-md border bg-slate-50',
+      size === 'sm' ? 'h-6 w-6' : 'h-9 w-9',
+    )}>
+      {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <ImageIcon className={cn('text-slate-300', size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4')} />}
+    </span>
+  )
+}
+
+function StatusBadge({ status }: { status?: { Id?: number; Name?: string } }) {
+  const active = status?.Id === STATUS_ACTIVE
+  return (
+    <span className={cn(
+      'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
+      active ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
+    )}>
+      {status?.Name || (active ? 'Hoạt động' : 'Tạm khóa')}
+    </span>
+  )
+}
+
+function Field({ label, required, children, className }: { label: string; required?: boolean; children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('space-y-1.5', className)}>
+      <Label>{label}{required ? <span className="ml-0.5 text-destructive">*</span> : null}</Label>
+      {children}
     </div>
   )
 }

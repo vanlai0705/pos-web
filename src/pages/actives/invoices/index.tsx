@@ -80,6 +80,7 @@ export default function InvoicesPage() {
 
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(defaultMonthStart)
   const [dateTo, setDateTo] = useState(defaultToday)
   const [publishStatus, setPublishStatus] = useState<number | ''>('')
@@ -88,7 +89,7 @@ export default function InvoicesPage() {
 
   const params = {
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     Keyword: keyword || undefined,
     DateFrom: dateFrom,
     DateTo: dateTo,
@@ -195,7 +196,7 @@ export default function InvoicesPage() {
     {
       id: 'stt',
       header: '#',
-      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'date',
@@ -388,7 +389,7 @@ export default function InvoicesPage() {
           loading={isLoading}
           total={total}
           page={page}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize} onPageSizeChange={setPageSize}
           onPageChange={setPage}
           emptyText="Không có hoá đơn nào"
         />

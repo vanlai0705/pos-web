@@ -13,7 +13,7 @@ import {
 } from '@/store/slice/users/api/api'
 import type { TPosQuotation } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, StatusBadge, fmtCurrency, fmtDate, useListFilter, PAGE_SIZE } from '../shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, StatusBadge, fmtCurrency, fmtDate, useListFilter } from '../shared'
 
 const EMPTY: TPosQuotation = {}
 
@@ -77,14 +77,14 @@ function QuotationDetail({ form, onChange }: { form: TPosQuotation; onChange: (f
 }
 
 export default function QuotationPage() {
-  const { keyword, setKeyword, page, goPage, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
+  const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<TPosQuotation>(EMPTY)
 
   const { data, isLoading, refetch } = useFilterQuotationsQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     Keyword: keyword || undefined,
     DateFrom: dateFrom,
     DateTo: dateTo,
@@ -127,7 +127,7 @@ export default function QuotationPage() {
     {
       id: 'stt',
       header: 'STT',
-      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'code',
@@ -224,7 +224,7 @@ export default function QuotationPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={goPage}
         emptyText="Không có báo giá nào"
       />

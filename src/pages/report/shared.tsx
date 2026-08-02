@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, FileSpreadsheet, ChevronDown, X } from 'lucide-react'
+import { FileSpreadsheet, ChevronDown, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import dayjs from 'dayjs'
+import { DataPagination } from '@/components/ui/data-pagination'
 import {
   useLazyFilterCustomersQuery,
   useGetUserShopSettingQuery,
@@ -131,11 +132,11 @@ export function TH({ children, right = false, center = false }: {
   )
 }
 
-export function TD({ children, right = false, center = false, bold = false, className = '' }: {
-  children: React.ReactNode; right?: boolean; center?: boolean; bold?: boolean; className?: string
+export function TD({ children, right = false, center = false, bold = false, className = '', title }: {
+  children: React.ReactNode; right?: boolean; center?: boolean; bold?: boolean; className?: string; title?: string
 }) {
   return (
-    <td className={`px-2 py-1.5 text-xs text-slate-700 ${
+    <td title={title} className={`px-2 py-1.5 text-xs text-slate-700 ${
       right ? 'text-right' : center ? 'text-center' : ''
     } ${bold ? 'font-semibold' : ''} ${className}`}>
       {children}
@@ -155,27 +156,21 @@ export function TableNoData({ cols }: { cols: number }) {
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
-export function ReportPagination({ page, total, pageSize, onPage }: {
-  page: number; total: number; pageSize: number; onPage: (p: number) => void
+/** 0-based wrapper around the shared bar. */
+export function ReportPagination({ page, total, pageSize, onPage, onPageSizeChange }: {
+  page: number; total: number; pageSize: number
+  onPage: (p: number) => void
+  onPageSizeChange?: (size: number) => void
 }) {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
   return (
-    <div className="flex items-center justify-between px-2 py-1.5 shrink-0 border-t border-slate-100 bg-slate-50/50">
-      <span className="text-xs text-slate-500">Tổng: <strong>{total}</strong> dòng</span>
-      {totalPages > 1 && (
-        <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" className="h-7 w-7 p-0"
-            disabled={page === 0} onClick={() => onPage(page - 1)}>
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </Button>
-          <span className="text-xs text-slate-600 w-16 text-center">{page + 1} / {totalPages}</span>
-          <Button size="sm" variant="outline" className="h-7 w-7 p-0"
-            disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)}>
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      )}
-    </div>
+    <DataPagination
+      page={page + 1}
+      total={total}
+      pageSize={pageSize}
+      onPageChange={p => onPage(p - 1)}
+      onPageSizeChange={onPageSizeChange}
+      className="px-2 py-1.5 shrink-0 pt-1.5"
+    />
   )
 }
 
@@ -225,7 +220,7 @@ export function CustomerFilter({
   const [trigger, { data, isFetching }] = useLazyFilterCustomersQuery()
 
   useEffect(() => {
-    if (open) trigger({ PageSize: 15, PageIndex: 0, Search: search })
+    if (open) trigger({ PageSize: 15, PageIndex: 0, Search: search } as Parameters<typeof trigger>[0])
   }, [open, search, trigger])
 
   useEffect(() => {

@@ -7,12 +7,13 @@ import type { TPosCurrencyVoucher } from '@/store/slice/users/types/pos-types'
 
 export default function CashBalancePage() {
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
 
   const { data, isLoading } = useFilterReportQuery({
     path: 'reports/filter-cash-balance',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: pageSize },
   })
 
   const items = (data?.Items ?? []) as TPosCurrencyVoucher[]
@@ -20,7 +21,7 @@ export default function CashBalancePage() {
   const s = data?.Sumary ?? {}
 
   const columns: ColumnDef<TPosCurrencyVoucher>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'name', header: 'Số phiếu', cell: ({ row }) => <span className="font-medium text-primary">{row.original.Name ?? '—'}</span> },
     { id: 'date', header: 'Ngày', cell: ({ row }) => <span>{fmtDateTime(row.original.Date)}</span> },
     { id: 'detail', header: 'Diễn giải', cell: ({ row }) => <span className="text-xs">{row.original.Detail ?? '—'}</span> },
@@ -48,7 +49,7 @@ export default function CashBalancePage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có dữ liệu"
       />

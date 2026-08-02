@@ -25,13 +25,14 @@ const EMPTY = (): TShop => ({ Name: '', Phone: '', Address: '' })
 export default function ShopsPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<TShop>(EMPTY())
 
   const { data, isLoading, refetch } = useFilterReportQuery({
     path: 'shop/filter',
-    params: { Keyword: keyword || undefined, StatusId: statusId || undefined, PageIndex: page - 1, PageSize: PAGE_SIZE },
+    params: { Keyword: keyword || undefined, StatusId: statusId || undefined, PageIndex: page - 1, PageSize: pageSize },
   })
 
   const { mutate: save, isLoading: saving } = useApiMutation(
@@ -51,7 +52,7 @@ export default function ShopsPage() {
   const total = data?.TotalItemCount ?? 0
 
   const columns: ColumnDef<TShop>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'code', header: 'Mã CH', cell: ({ row }) => <span className="text-xs font-mono text-muted-foreground">{row.original.Code ?? '—'}</span> },
     { id: 'name', header: 'Tên cửa hàng', cell: ({ row }) => <span className="font-medium">{row.original.Name}</span> },
     { id: 'phone', header: 'Điện thoại', cell: ({ row }) => <span className="text-sm">{row.original.Phone ?? '—'}</span> },
@@ -89,7 +90,7 @@ export default function ShopsPage() {
         </Button>
       </ListPageHeader>
 
-      <DataTable columns={columns} data={items} loading={isLoading} total={total} page={page} pageSize={PAGE_SIZE} onPageChange={setPage} emptyText="Không có cửa hàng nào" />
+      <DataTable columns={columns} data={items} loading={isLoading} total={total} page={page} pageSize={pageSize} onPageSizeChange={setPageSize} onPageChange={setPage} emptyText="Không có cửa hàng nào" />
 
       <Dialog open={modal} onOpenChange={setModal}>
         <DialogContent className="max-w-lg">

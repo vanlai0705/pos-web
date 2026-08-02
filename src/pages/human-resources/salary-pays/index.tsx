@@ -17,19 +17,20 @@ interface TSalaryPay {
 export default function SalaryPaysPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
 
   const { data, isLoading } = useFilterReportQuery({
     path: 'salary/filter-salary-pay',
-    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: PAGE_SIZE },
+    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: pageSize },
   })
 
   const items = (data?.Items ?? []) as TSalaryPay[]
   const total = data?.TotalItemCount ?? 0
 
   const columns: ColumnDef<TSalaryPay>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'name', header: 'Mã phiếu', cell: ({ row }) => <span className="font-mono text-xs">{row.original.Name ?? '—'}</span> },
     { id: 'member', header: 'Nhân viên', cell: ({ row }) => <span className="font-medium">{row.original.Member?.Name ?? '—'}</span> },
     { id: 'month', header: 'Tháng', cell: ({ row }) => <span>{row.original.Month ?? '—'}</span> },
@@ -51,7 +52,7 @@ export default function SalaryPaysPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có phiếu chi lương nào"
       />

@@ -13,9 +13,10 @@ const TABS = ['Báo cáo đặt hàng', 'Tổng hợp mặt hàng đặt']
 
 function BookingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-booking',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -53,7 +54,7 @@ function BookingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={11} /> : items.length === 0 ? <TableNoData cols={11} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD center>{fmtDateOnly(item.Date)}</TD>
                 <TD bold>{item.Name}</TD>
                 <TD>{item.Customer?.Name || '—'}</TD>
@@ -70,7 +71,7 @@ function BookingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }
@@ -79,9 +80,10 @@ function BookingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 
 function BookingItemReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'reports/filter-booking-item',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: REPORT_PAGE_SIZE },
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
   })
 
   useEffect(() => { setPage(0) }, [dateFrom, dateTo])
@@ -113,7 +115,7 @@ function BookingItemReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
           <tbody className="divide-y divide-slate-100">
             {isFetching ? <SkeletonRows cols={7} /> : items.length === 0 ? <TableNoData cols={7} /> : items.map((item, idx) => (
               <tr key={idx} className="hover:bg-sky-50/50 transition-colors">
-                <TD center>{page * REPORT_PAGE_SIZE + idx + 1}</TD>
+                <TD center>{page * pageSize + idx + 1}</TD>
                 <TD className="text-slate-500">{item.Product?.Barcode || '—'}</TD>
                 <TD bold>{item.Product?.Name || '—'}</TD>
                 <TD>{item.Unit?.Name || '—'}</TD>
@@ -126,7 +128,7 @@ function BookingItemReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
         </table>
       </div>
 
-      <ReportPagination page={page} total={total} pageSize={REPORT_PAGE_SIZE} onPage={setPage} />
+      <ReportPagination page={page} total={total} pageSize={pageSize} onPage={setPage} onPageSizeChange={s => { setPageSize(s); setPage(0) }} />
     </div>
   )
 }

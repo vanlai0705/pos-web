@@ -8,12 +8,13 @@ import type { TPosDebtItem } from '@/store/slice/users/types/pos-types'
 export default function LiabilityCustomerPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
 
   const { data, isLoading } = useFilterReportQuery({
     path: 'liabilities/filter-customer',
-    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: PAGE_SIZE },
+    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: pageSize },
   })
 
   const items = (data?.Items ?? []) as TPosDebtItem[]
@@ -21,7 +22,7 @@ export default function LiabilityCustomerPage() {
   const s = data?.Sumary ?? {}
 
   const columns: ColumnDef<TPosDebtItem>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     {
       id: 'customer', header: 'Khách hàng',
       cell: ({ row }) => {
@@ -67,7 +68,7 @@ export default function LiabilityCustomerPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có công nợ khách hàng"
       />

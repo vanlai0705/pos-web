@@ -32,6 +32,7 @@ interface Props<T extends { Id?: number; Name: string; Status?: { Id: number } }
   page: number
   pageSize: number
   onPage: (p: number) => void
+  onPageSize?: (size: number) => void
   // row actions
   onEdit: (item: T) => void
   onChangeStatus: (id: number, statusId: number) => void
@@ -50,7 +51,7 @@ export function GenericManagerPage<T extends { Id?: number; Name: string; Status
   data, isLoading,
   columns,
   keyword, onKeyword, statusId, onStatus, searchPlaceholder, addLabel,
-  page, pageSize, onPage,
+  page, pageSize, onPage, onPageSize,
   onEdit, onChangeStatus,
   modal, onAdd, onCloseModal, modalTitle, onSave, saving,
   children,
@@ -116,7 +117,7 @@ export function GenericManagerPage<T extends { Id?: number; Name: string; Status
         </TableCard>
       )}
 
-      <PaginationBar page={page} total={total} pageSize={pageSize} onChange={onPage} />
+      <PaginationBar page={page} total={total} pageSize={pageSize} onChange={onPage} onPageSizeChange={onPageSize} />
 
       <CrudModal
         open={modal} onClose={onCloseModal}

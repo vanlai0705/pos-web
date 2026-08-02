@@ -28,7 +28,11 @@ export function useManagerPage<T extends { Id?: number; Status?: { Id: number } 
   const openEdit = (item: T) => { setForm({ ...item }); setModal(true) }
   const closeModal = () => setModal(false)
   const page = params.PageIndex ?? 0
+  const pageSize = params.PageSize ?? PAGE_SIZE
   const goPage = (p: number) => setParams(prev => ({ ...prev, PageIndex: p }))
+  // Changing size shifts every row, so start over from the first page.
+  const setPageSize = (size: number) =>
+    setParams(prev => ({ ...prev, PageSize: size, PageIndex: 0 }))
 
   function makeChangeStatus(
     updateStatus: (args: { id: number; statusId: number }) => Promise<void>,
@@ -70,6 +74,7 @@ export function useManagerPage<T extends { Id?: number; Status?: { Id: number } 
     modal, setModal, openAdd, openEdit, closeModal,
     form, setForm,
     page, goPage,
+    pageSize, setPageSize,
     PAGE_SIZE,
     makeChangeStatus,
     makeSave,

@@ -9,18 +9,18 @@ import {
   useCancelOrderMutation,
 } from '@/store/slice/users/api/api'
 import type { TPosOrder } from '@/store/slice/users/types/pos-types'
-import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, fmtCurrency, fmtDateTime, useListFilter, PAGE_SIZE } from '@/pages/actives/shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, fmtCurrency, fmtDateTime, useListFilter } from '@/pages/actives/shared'
 import { InvoiceDetailPanel, StatusChip } from '../shared'
 
 export default function SalesInvoicePage() {
-  const { keyword, setKeyword, page, goPage, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
+  const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [statusId, setStatusId] = useState<number | ''>('')
   const [selected, setSelected] = useState<TPosOrder | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
 
   const { data, isLoading, refetch } = useFilterOrdersQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     Keyword: keyword || undefined,
     DateFrom: dateFrom,
     DateTo: dateTo,
@@ -121,7 +121,7 @@ export default function SalesInvoicePage() {
                         onClick={() => handleSelect(item)}
                         className={`cursor-pointer transition-colors hover:bg-accent/50 ${selected?.Id === item.Id ? 'bg-primary/8 border-l-2 border-primary' : ''}`}
                       >
-                        <td className="px-3 py-2.5 text-muted-foreground">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{(page - 1) * pageSize + idx + 1}</td>
                         <td className="px-3 py-2.5 font-medium">{item.Code ?? '—'}</td>
                         <td className="px-3 py-2.5 whitespace-nowrap">{fmtDateTime(item.Date)}</td>
                         <td className="px-3 py-2.5 max-w-[100px] truncate">{item.Customer?.Name ?? '—'}</td>
@@ -138,7 +138,7 @@ export default function SalesInvoicePage() {
             </table>
           </div>
           <div className="px-4 py-2.5 border-t shrink-0">
-            <Pagination page={page} total={total} pageSize={PAGE_SIZE} onChange={goPage} />
+            <Pagination page={page} total={total} pageSize={pageSize} onPageSizeChange={setPageSize} onChange={goPage} />
           </div>
         </div>
 

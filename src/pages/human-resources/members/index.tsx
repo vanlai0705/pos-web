@@ -16,13 +16,14 @@ const EMPTY = (): TPosMember => ({ Name: '', Phone: '', Email: '' })
 export default function MembersPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<TPosMember>(EMPTY())
 
   const { data, isLoading, refetch } = useFilterMembersQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     Keyword: keyword || undefined,
     StatusId: statusId,
   })
@@ -53,7 +54,7 @@ export default function MembersPage() {
   }
 
   const columns: ColumnDef<TPosMember>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'code', header: 'Mã NV', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.Code ?? '—'}</span> },
     { id: 'name', header: 'Tên nhân viên', cell: ({ row }) => <span className="font-medium">{row.original.Name}</span> },
     { id: 'phone', header: 'Điện thoại', cell: ({ row }) => <span>{row.original.Phone ?? '—'}</span> },
@@ -101,7 +102,7 @@ export default function MembersPage() {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có nhân viên nào"
       />

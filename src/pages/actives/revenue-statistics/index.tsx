@@ -10,10 +10,11 @@ import {
 
 function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   const { data, isLoading } = useFilterRevenueStatisticsQuery({
     PageIndex: page - 1,
-    PageSize: PAGE_SIZE,
+    PageSize: pageSize,
     DateFrom: dateFrom,
     DateTo: dateTo,
   })
@@ -26,7 +27,7 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
     {
       id: 'stt',
       header: 'STT',
-      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'name',
@@ -89,7 +90,7 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có dữ liệu"
       />

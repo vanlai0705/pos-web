@@ -22,12 +22,13 @@ interface Props {
 export default function PromotionListPage({ type, title }: Props) {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
 
   const { data, isLoading } = useFilterReportQuery({
     path: 'promotions/filter',
-    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, Type: type, PageIndex: page - 1, PageSize: PAGE_SIZE },
+    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, Type: type, PageIndex: page - 1, PageSize: pageSize },
   })
 
   const items = (data?.Items ?? []) as TPromotion[]
@@ -36,7 +37,7 @@ export default function PromotionListPage({ type, title }: Props) {
   const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('vi-VN') : '—'
 
   const columns: ColumnDef<TPromotion>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * PAGE_SIZE + row.index + 1}</span> },
+    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'code', header: 'Mã', cell: ({ row }) => <span className="text-xs text-muted-foreground font-mono">{row.original.Code ?? '—'}</span> },
     { id: 'name', header: 'Tên chương trình', cell: ({ row }) => <span className="font-medium">{row.original.Name ?? '—'}</span> },
     { id: 'from', header: 'Từ ngày', cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.DateFrom)}</span> },
@@ -57,7 +58,7 @@ export default function PromotionListPage({ type, title }: Props) {
         loading={isLoading}
         total={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText={`Không có chương trình ${title.toLowerCase()} nào`}
       />
