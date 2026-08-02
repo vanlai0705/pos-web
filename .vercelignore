@@ -1,0 +1,11 @@
+# Local env files must never reach the build. They pin VITE_BASE_URL to the
+# absolute API origin, which the browser then blocks by CORS (the API only
+# whitelists posmobile.vn and localhost). Without them the app falls back to
+# "/api/v1" and goes through the rewrites in vercel.json.
+.env
+.env.*
+!.env.example
+
+.vercel
+dist
+node_modules
