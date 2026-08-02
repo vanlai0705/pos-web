@@ -17,7 +17,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/utils'
 
-const REPORT_HOST = 'https://api.posmobile.vn/'
+// DevExpress wants an absolute host ending in "/". Hosted builds point at their
+// own origin so the /DXXRDV and /DXXRD rewrites (vercel.json) proxy the calls —
+// the API only whitelists posmobile.vn and localhost for CORS. Dev keeps the
+// direct host because the vite proxy already covers those paths.
+const REPORT_HOST = import.meta.env.DEV
+  ? 'https://api.posmobile.vn/'
+  : `${window.location.origin}/`
 const VIEWER_ACTION = '/DXXRDV'
 const DESIGNER_MODEL_ACTION = '/DXXRD/GetDesignerModel'
 

@@ -5,7 +5,23 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!assets/).*)",
+      "comment": "Proxy the API so the browser sees same-origin calls. The backend only whitelists posmobile.vn and localhost, so a direct call from a *.vercel.app page is blocked by CORS.",
+      "source": "/api/:path*",
+      "destination": "https://api.posmobile.vn/api/:path*"
+    },
+    {
+      "comment": "DevExpress report viewer/designer endpoints.",
+      "source": "/DXXRDV/:path*",
+      "destination": "https://api.posmobile.vn/DXXRDV/:path*"
+    },
+    {
+      "comment": "DevExpress report designer endpoints.",
+      "source": "/DXXRD/:path*",
+      "destination": "https://api.posmobile.vn/DXXRD/:path*"
+    },
+    {
+      "comment": "SPA fallback — everything that is not a build asset or a proxied API path.",
+      "source": "/((?!api/|DXXRDV|DXXRD|assets/).*)",
       "destination": "/index.html"
     }
   ]

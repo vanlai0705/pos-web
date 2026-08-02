@@ -1,7 +1,22 @@
 export * from "./company";
 
-export const baseUrl = import.meta.env.VITE_BASE_URL;
-export const baseImageUrl = import.meta.env.VITE_BASE_IMAGE_URL;
+const API_ORIGIN = "https://api.posmobile.vn";
+
+/**
+ * .env* is gitignored, so a deploy can easily end up without these.
+ *
+ * The API only whitelists posmobile.vn and localhost for CORS, so a hosted
+ * build must go through the host's own /api proxy (see vercel.json) rather than
+ * calling the origin directly — same-origin requests are never CORS-checked.
+ * Dev keeps the absolute URL because localhost IS whitelisted.
+ */
+export const baseUrl: string =
+  import.meta.env.VITE_BASE_URL ||
+  (import.meta.env.DEV ? `${API_ORIGIN}/api/v1` : "/api/v1");
+
+// Images are plain <img src>, which CORS does not apply to.
+export const baseImageUrl: string =
+  import.meta.env.VITE_BASE_IMAGE_URL || API_ORIGIN;
 
 export const StorageKey = {
   TOKEN: "TOKEN",
