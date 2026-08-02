@@ -1,13 +1,32 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import * as path from "path";
+import * as fs from "fs";
 import * as dotenv from "dotenv";
 
 dotenv.config();
 
-// DevExpress packages are in the Angular project's node_modules.
-// We cannot install them here (disk constraints) so we alias them.
+// DevExpress lives in this project's node_modules on CI (it is declared in
+// package.json). Some local checkouts instead share the Angular project's copy,
+// so fall back to that path only when the package is missing here — never
+// hardcode it, or the build breaks anywhere that path does not exist (Vercel).
+const localNodeModules = path.join(__dirname, "node_modules");
 const angularNodeModules = "/Users/lelai/work/freelancer/POS/v2/pos_web/node_modules";
+
+function pkgDir(pkg: string) {
+  const local = path.join(localNodeModules, pkg);
+  if (fs.existsSync(local)) return local;
+  const shared = path.join(angularNodeModules, pkg);
+  if (fs.existsSync(shared)) return shared;
+  // Let Vite resolve it normally rather than aliasing to a path that is not there.
+  return null;
+}
+
+/** Alias entry only when we can point at a directory that actually exists. */
+function aliasIfPresent(find: string, pkg: string, subPath = "") {
+  const dir = pkgDir(pkg);
+  return dir ? [{ find, replacement: subPath ? path.join(dir, subPath) : dir }] : [];
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -17,15 +36,16 @@ export default defineConfig({
       { find: "@", replacement: path.join(__dirname, "./src") },
       { find: "@assets", replacement: path.resolve(__dirname, "./src/assets") },
       { find: "@utils", replacement: path.resolve(__dirname, "./src/utils") },
-      // DevExpress aliases → Angular project node_modules
-      { find: "devexpress-reporting", replacement: `${angularNodeModules}/devexpress-reporting` },
-      { find: "@devexpress/analytics-core", replacement: `${angularNodeModules}/@devexpress/analytics-core` },
-      { find: "devextreme", replacement: `${angularNodeModules}/devextreme` },
-      { find: "knockout", replacement: `${angularNodeModules}/knockout/build/output/knockout-latest.js` },
-      { find: "jquery", replacement: `${angularNodeModules}/jquery/dist/jquery.js` },
+      // DevExpress + its UMD friends. Each is skipped when the package is not on
+      // disk, so plain node_modules resolution takes over.
+      ...aliasIfPresent("devexpress-reporting", "devexpress-reporting"),
+      ...aliasIfPresent("@devexpress/analytics-core", "@devexpress/analytics-core"),
+      ...aliasIfPresent("devextreme", "devextreme"),
+      ...aliasIfPresent("knockout", "knockout", "build/output/knockout-latest.js"),
+      ...aliasIfPresent("jquery", "jquery", "dist/jquery.js"),
       // ace-builds is pulled in by the report designer; keep it on the same copy
       // as devexpress so both sides agree on the module instance.
-      { find: "ace-builds", replacement: `${angularNodeModules}/ace-builds` },
+      ...aliasIfPresent("ace-builds", "ace-builds"),
     ],
   },
   define: {

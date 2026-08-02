@@ -1,5 +1,5 @@
-import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useLocation, useNavigate, useParams } from "react-router-dom"
-import { useEffect, lazy, Suspense } from "react"
+import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useEffect, lazy, Suspense, type ReactNode } from "react"
 
 import AppLayout from "./components/layout"
 import PageNotFound from "./PageNotFound"
@@ -114,6 +114,11 @@ function DomainScope() {
     setStoredDomainName(domainName)
   }, [domainName])
   return <Outlet />
+}
+
+function ReportCustomEntry({ fallback }: { fallback: ReactNode }) {
+  const [searchParams] = useSearchParams()
+  return searchParams.get('code') ? <ReportCustomViewerPage /> : <>{fallback}</>
 }
 
 function renderPrivateAppRoutes() {
@@ -256,10 +261,10 @@ function renderPrivateAppRoutes() {
 
       {/* Report custom mirrors the Angular report module routes. */}
       <Route path="report-custom" element={<Navigate to="order" replace />} />
-      <Route path="report-custom/order" element={<ReportOrderPage />} />
-      <Route path="report-custom/booking" element={<ReportBookingPage />} />
-      <Route path="report-custom/currency" element={<ReportCurrencyPage />} />
-      <Route path="report-custom/stock" element={<ReportStockPage />} />
+      <Route path="report-custom/order" element={<ReportCustomEntry fallback={<ReportOrderPage />} />} />
+      <Route path="report-custom/booking" element={<ReportCustomEntry fallback={<ReportBookingPage />} />} />
+      <Route path="report-custom/currency" element={<ReportCustomEntry fallback={<ReportCurrencyPage />} />} />
+      <Route path="report-custom/stock" element={<ReportCustomEntry fallback={<ReportStockPage />} />} />
       <Route path="report-custom/viewer" element={<ReportCustomViewerPage />} />
       <Route path="report-custom/designer" element={<ReportDesignerPage />} />
       <Route path="report-custom/:code" element={<ReportCustomViewerPage />} />

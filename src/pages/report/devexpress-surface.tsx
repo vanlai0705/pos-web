@@ -17,19 +17,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/utils'
 
-const REPORT_HOST = import.meta.env.DEV ? '' : 'https://api.posmobile.vn/'
+const REPORT_HOST = 'https://api.posmobile.vn/'
 const VIEWER_ACTION = '/DXXRDV'
 const DESIGNER_MODEL_ACTION = '/DXXRD/GetDesignerModel'
 
 type ReportRequestBody = {
   FromDate: string | null
   ToDate: string | null
-}
-
-type RequestSettings = RequestInit & {
-  data?: unknown
-  actionKey?: string
-  beforeSend?: (settings: RequestSettings) => void | Promise<void>
 }
 
 type DevExpressBinding = {
@@ -69,6 +63,13 @@ function shouldAppendReportRequestBody(data: unknown) {
   return actionKey === 'openReport' || actionKey === 'startBuild'
 }
 
+function clearFetchSettings() {
+  const settings = fetchSetup.fetchSettings as Record<string, unknown>
+  Object.keys(settings || {}).forEach(key => {
+    delete settings[key]
+  })
+}
+
 function appendReportRequestBody(data: unknown, requestBody: ReportRequestBody) {
   if (!shouldAppendReportRequestBody(data)) return data
 
@@ -95,27 +96,17 @@ function appendReportRequestBody(data: unknown, requestBody: ReportRequestBody) 
 
 function setAuthorization(token: string) {
   if (!token) return
+  clearFetchSettings()
 
   ajaxSetup.ajaxSettings.headers = {
     ...(ajaxSetup.ajaxSettings.headers || {}),
     Authorization: `Bearer ${token}`,
   }
-
-  fetchSetup.fetchSettings.headers = {
-    ...(fetchSetup.fetchSettings.headers || {}),
-    Authorization: `Bearer ${token}`,
-  }
 }
 
-type FetchBeforeSend = NonNullable<RequestSettings['beforeSend']>
-
-function clearReportRequestHooks(ajaxHook?: JQueryAjaxSettings['beforeSend'], fetchHook?: FetchBeforeSend) {
+function clearReportRequestHooks(ajaxHook?: JQueryAjaxSettings['beforeSend']) {
   if (ajaxHook && ajaxSetup.ajaxSettings.beforeSend === ajaxHook) {
     delete ajaxSetup.ajaxSettings.beforeSend
-  }
-
-  if (fetchHook && fetchSetup.fetchSettings.beforeSend === fetchHook) {
-    delete fetchSetup.fetchSettings.beforeSend
   }
 }
 
@@ -167,7 +158,6 @@ export function DevExpressReportViewer({
   const containerRef = useRef<HTMLDivElement>(null)
   const bindingRef = useRef<DevExpressBinding | null>(null)
   const ajaxBeforeSendRef = useRef<JQueryAjaxSettings['beforeSend']>()
-  const fetchBeforeSendRef = useRef<FetchBeforeSend>()
   const requestBodyRef = useRef<ReportRequestBody>({
     FromDate: formatReportDate(dayjs().startOf('month').format('YYYY-MM-DD'), 'start'),
     ToDate: formatReportDate(dayjs().endOf('month').format('YYYY-MM-DD'), 'end'),
@@ -188,22 +178,15 @@ export function DevExpressReportViewer({
     try {
       setError(null)
       setAuthorization(token)
-      clearReportRequestHooks(ajaxBeforeSendRef.current, fetchBeforeSendRef.current)
+      clearReportRequestHooks(ajaxBeforeSendRef.current)
 
       if (custom) {
         const ajaxHook: JQueryAjaxSettings['beforeSend'] = (_xhr, settings) => {
           settings.data = appendReportRequestBody(settings.data, requestBodyRef.current) as JQueryAjaxSettings['data']
         }
-        const fetchHook: FetchBeforeSend = settings => {
-          const requestSettings = settings
-          requestSettings.body = appendReportRequestBody(requestSettings.body, requestBodyRef.current) as BodyInit | null | undefined
-          requestSettings.data = appendReportRequestBody(requestSettings.data, requestBodyRef.current)
-        }
 
         ajaxBeforeSendRef.current = ajaxHook
-        fetchBeforeSendRef.current = fetchHook
         ajaxSetup.ajaxSettings.beforeSend = ajaxHook
-        fetchSetup.fetchSettings.beforeSend = fetchHook
       }
 
       disposeViewer()
@@ -231,7 +214,7 @@ export function DevExpressReportViewer({
     initViewer()
 
     return () => {
-      clearReportRequestHooks(ajaxBeforeSendRef.current, fetchBeforeSendRef.current)
+      clearReportRequestHooks(ajaxBeforeSendRef.current)
       disposeViewer()
     }
   }, [disposeViewer, initViewer, viewerKey])
