@@ -1,0 +1,80 @@
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .print-body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-hide {
+    display: none !important;
+  }
+
+  .border-b-4 {
+    border-bottom: 4px solid black !important;
+  }
+
+  .border-8 {
+    border: 8px solid black !important;
+  }
+
+  .border-4 {
+    border: 4px solid black !important;
+  }
+
+  .border-2 {
+    border: 2px solid black !important;
+  }
+
+  .border-r {
+    border-right: 1px solid black !important;
+  }
+
+  .border-b {
+    border-bottom: 1px solid black !important;
+  }
+
+  .border-t-2 {
+    border-top: 2px solid black !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  td,
+  th {
+    border: 1px solid black !important;
+  }
+
+  button {
+    display: none !important;
+  }
+
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  html,
+  body {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .mt-6,
+  .mt-4 {
+    display: none !important;
+  }
+}

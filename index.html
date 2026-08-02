@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pos Mobile</title>
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        z-index: 9999;
+        gap: 16px;
+        transition: opacity 0.3s ease;
+      }
+      #splash.hide {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #splash img {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: contain;
+        background: #f3f4f6;
+      }
+      #splash .ring {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid transparent;
+        border-top-color: #22c55e;
+        animation: spin 0.8s linear infinite;
+        position: absolute;
+      }
+      #splash .wrap {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #splash p {
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        color: #888;
+        margin: 0;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+
+  <body>
+    <div id="splash">
+      <div class="wrap">
+        <div class="ring"></div>
+        <img src="/logo.png" alt="POS Mobile" />
+      </div>
+      <p>Đang tải...</p>
+    </div>
+    <div id="root"></div>
+    <script>
+      window.__hideSplash = function() {
+        var el = document.getElementById('splash');
+        if (el) {
+          el.classList.add('hide');
+          setTimeout(function() { el.remove(); }, 350);
+        }
+      };
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
