@@ -1,5 +1,5 @@
 import { STATUS } from '@/constants/data';
-import { Badge } from './ui/badge';
+import { StatusBadge } from './ui/status-badge';
 
 
 
@@ -12,5 +12,5 @@ type StatusProps = {
 export const Status: React.FC<StatusProps> = ({
   status
 }) => {
-  return <Badge className={status === STATUS.ACTIVE ? "bg-success" : `bg-error`}>{status === STATUS.ACTIVE ? 'Hoạt động' : 'Ngưng hoạt động'}</Badge>;
+  return <StatusBadge statusId={status} label={status === STATUS.ACTIVE ? 'Hoạt động' : 'Ngưng hoạt động'} />;
 };

@@ -4,6 +4,7 @@ import { Receipt, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { withDomainPath } from '@/utils/domain-route'
 import { Button } from '@/components/ui/button'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { useAppSelector } from '@/store/hooks'
 import { selectAuth } from '@/store/slice/users/app'
 import {
@@ -20,13 +21,6 @@ import { baseUrl } from '@/constants'
 import dayjs from 'dayjs'
 
 const DEFAULT_RETAIL = 'BÁN CHO NGƯỜI TIÊU DÙNG'
-
-const STATUS_CLASS: Record<number, string> = {
-  0: 'bg-blue-100 text-blue-700',
-  1: 'bg-yellow-100 text-yellow-700',
-  2: 'bg-green-100 text-green-700',
-  3: 'bg-red-100 text-red-700',
-}
 
 const STATUS_LIST = [
   { value: '' as any, label: 'Tất cả trạng thái' },
@@ -235,9 +229,7 @@ export default function InvoicesPage() {
       cell: ({ row }) => {
         const inv = row.original
         return inv.PublishStatus != null ? (
-          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[inv.PublishStatus] ?? 'bg-gray-100 text-gray-700'}`}>
-            {inv.PublishStatusName ?? inv.PublishStatus}
-          </span>
+          <StatusBadge statusId={inv.PublishStatus} label={inv.PublishStatusName ?? inv.PublishStatus} />
         ) : '—'
       },
     },

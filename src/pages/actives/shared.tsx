@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { Search } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { translateKnownText, translateMenuTitle } from '@/i18n/nav-title-map'
+export { StatusBadge } from '@/components/ui/status-badge'
 
 // ─── Currency format ──────────────────────────────────────────────────────────
 
@@ -31,19 +31,6 @@ export function defaultDateFrom() {
 }
 export function defaultDateTo() {
   return dayjs().format('YYYY-MM-DD')
-}
-
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
-export function StatusBadge({ status }: { status?: { Id?: number; Name?: string } }) {
-  const { t } = useTranslation()
-  if (!status) return <span className="text-muted-foreground text-xs">—</span>
-  const id = status.Id ?? 0
-  const variant =
-    id === 1 ? 'default' :
-    id === 2 ? 'secondary' :
-    id === 4 ? 'destructive' : 'outline'
-  return <Badge variant={variant} className="text-xs">{translateKnownText(status.Name, t) ?? t('common.status')}</Badge>
 }
 
 // ─── DateRange filter ─────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { X, Printer, Ban } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
 import type { TPosOrder, TPosBooking } from '@/store/slice/users/types/pos-types'
 
 export function fmtCurrency(val?: number | null) {
@@ -15,15 +16,7 @@ export function fmtDateTime(dateStr?: string | null) {
 }
 
 export function StatusChip({ status }: { status?: { Id?: number; Name?: string } }) {
-  const id = status?.Id ?? 0
-  const map: Record<number, { label: string; cls: string }> = {
-    1: { label: 'Chờ xử lý', cls: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300' },
-    2: { label: 'Hoàn thành', cls: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' },
-    3: { label: 'Đã thanh toán', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
-    4: { label: 'Đã huỷ', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
-  }
-  const cfg = map[id] ?? { label: status?.Name ?? '—', cls: 'bg-muted text-muted-foreground' }
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cfg.cls}`}>{cfg.label}</span>
+  return <StatusBadge status={status} />
 }
 
 // ─── Order detail panel shared by sales + restaurant ─────────────────────────

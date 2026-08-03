@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Edit2, FileQuestion, Headset, ImagePlus, Lock, Plus, RotateCcw, Trash2, Unlock } from 'lucide-react'
 import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -109,22 +109,6 @@ function buildMultipartModel(model: SupportItem, files: File[]) {
   formData.append('model', new Blob([JSON.stringify(payload)], { type: 'application/json' }))
   files.forEach(file => formData.append(file.name, file))
   return formData
-}
-
-function StatusBadge({ status }: { status?: LookupItem }) {
-  const name = status?.Name || 'Đang hoạt động'
-  const isLocked = Number(status?.Id) === STATUS.Locked || /kh[oó]a/i.test(name)
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        'border-emerald-200 bg-emerald-50 text-emerald-700',
-        isLocked && 'border-amber-200 bg-amber-50 text-amber-700',
-      )}
-    >
-      {name}
-    </Badge>
-  )
 }
 
 function LookupDisplay({ item, fallbackIcon: FallbackIcon }: { item?: LookupItem; fallbackIcon: typeof FileQuestion }) {

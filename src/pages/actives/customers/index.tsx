@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { StatusBadge } from '@/components/ui/status-badge'
 import {
   useFilterCustomersQuery,
   useGenericDownloadMutation,
@@ -637,18 +638,6 @@ function Avatar({ image, size = 'md' }: { image?: string | null; size?: 'sm' | '
       size === 'sm' ? 'h-6 w-6' : 'h-9 w-9',
     )}>
       {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <ImageIcon className={cn('text-slate-300', size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4')} />}
-    </span>
-  )
-}
-
-function StatusBadge({ status }: { status?: { Id?: number; Name?: string } }) {
-  const active = status?.Id === STATUS_ACTIVE
-  return (
-    <span className={cn(
-      'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
-      active ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
-    )}>
-      {status?.Name || (active ? 'Hoạt động' : 'Tạm khóa')}
     </span>
   )
 }

@@ -911,18 +911,65 @@ export interface TPosDebtItem {
 
 // ─── HR: Nhân viên ────────────────────────────────────────────────────────────
 
+/** Employment details — the server nests these under the member's `UserInfo`. */
+export interface TPosMemberUserInfo {
+  Address?: string
+  Note?: string
+  /** Index into `salary/get-salary-types` */
+  SalaryType?: number
+  Salary?: number
+  IsMonday?: boolean
+  IsTuesday?: boolean
+  IsWednesday?: boolean
+  IsThursday?: boolean
+  IsFriday?: boolean
+  IsSaturday?: boolean
+  IsSunday?: boolean
+}
+
 export interface TPosMember {
   Id?: number
-  Code?: string
+  /** Family name — the UI splits the full name into Surname + Name */
+  Surname?: string
   Name?: string
+  FullName?: string
   Phone?: string
   Email?: string
-  Position?: string
-  Department?: string
-  BaseSalary?: number
+  /** Shops this member may work in */
+  Shops?: Array<{ Id?: number; Name?: string; LongName?: string; Image?: TPosItemImage }>
+  UserInfo?: TPosMemberUserInfo
+  Image?: TPosItemImage | null
+  UserGroups?: TPosAccountUserGroup[]
   Status?: TPosItemStatus
-  JoinDate?: string
-  Note?: string
+}
+
+/** One row of the account ↔ permission-group join. */
+export interface TPosAccountUserGroup {
+  Id?: number
+  UserGroupId?: number
+  Actived?: boolean
+  UserGroup?: { Id?: number; Name?: string }
+}
+
+/** Login account for a member — `user-infos/*`, separate from the member record. */
+export interface TPosUserAccount {
+  Id?: number
+  UserName?: string
+  PasswordSalt?: string
+  /** Client-side only; hashed into PasswordSalt before sending */
+  Password?: string
+  ConfirmPassword?: string
+  Member?: { Id?: number } | null
+  UserGroups?: TPosAccountUserGroup[]
+  Name?: string
+  Surname?: string
+  FullName?: string
+}
+
+export interface TPosSalaryType {
+  Value?: number
+  Name?: string
+  Detail?: string
 }
 
 // ─── HR: Bảng lương ───────────────────────────────────────────────────────────

@@ -26,6 +26,9 @@ import {
   TPosSettingGeneral,
   TPosSettingOrder,
   TPosFundType,
+  TPosMember,
+  TPosUserAccount,
+  TPosSalaryType,
   TPosSettingProduct,
   TPosSettingStock,
   TPosSettingNotification,
@@ -1043,11 +1046,59 @@ export const userApiSlice = createApi({
     updateShiftStatus: builder.mutation<void, { id: number; statusId: number }>({
       query: ({ id, statusId }) => ({ url: `shift/update-status?id=${id}&statusId=${statusId}`, method: 'POST', body: {} }),
     }),
-    saveMember: builder.mutation<void, Record<string, any>>({
-      query: (data) => ({ url: data.Id ? 'users/update' : 'users/create', method: 'POST', body: data }),
+    /** Full member record — the list rows omit UserInfo/Shops/Image. */
+    getMemberDetail: builder.query<TPosMember | null, number>({
+      query: (id) => ({ url: `users/detail?id=${id}` }),
+      transformResponse: (res: TPosResponse<TPosMember>) => res.Data ?? null,
     }),
+
+    /**
+     * users/create|update takes multipart: the model as a JSON blob plus any
+     * avatar file, same as Angular's `postMultipart`.
+     */
+    saveMember: builder.mutation<TPosMember, { model: TPosMember; file?: File | null }>({
+      query: ({ model, file }) => {
+        const form = new FormData()
+        form.append('model', new Blob([JSON.stringify(model)], { type: 'application/json' }))
+        if (file) form.append(file.name, file)
+        return { url: model.Id ? 'users/update' : 'users/create', method: 'POST', body: form }
+      },
+      transformResponse: (res: TPosResponse<TPosMember>) => res.Data,
+    }),
+
     updateMemberStatus: builder.mutation<void, { id: number; statusId: number }>({
       query: ({ id, statusId }) => ({ url: `users/update-status?id=${id}&statusId=${statusId}`, method: 'POST', body: {} }),
+    }),
+
+    /** Login account attached to a member (may not exist yet). */
+    getAccountByMember: builder.query<TPosUserAccount | null, number>({
+      query: (id) => ({ url: `user-infos/detail-by-user?id=${id}` }),
+      transformResponse: (res: TPosResponse<TPosUserAccount>) => res.Data ?? null,
+    }),
+
+    saveAccount: builder.mutation<TPosUserAccount, TPosUserAccount>({
+      query: (data) => {
+        const form = new FormData()
+        form.append('model', new Blob([JSON.stringify(data)], { type: 'application/json' }))
+        return { url: data.Id ? 'user-infos/update' : 'user-infos/create', method: 'POST', body: form }
+      },
+      transformResponse: (res: TPosResponse<TPosUserAccount>) => res.Data,
+    }),
+
+    getShopsSimple: builder.query<TPosShop[], void>({
+      query: () => ({ url: `shop/filter-simple${query({ PageIndex: 0, PageSize: 1000 })}` }),
+      transformResponse: (res: TPosResponse<TPosFilterData<TPosShop>>) => res.Data?.Items ?? [],
+    }),
+
+    getUserGroups: builder.query<Array<{ Id?: number; Name?: string }>, void>({
+      query: () => ({ url: `usergroup/filter${query({ PageIndex: 0, PageSize: 1000 })}` }),
+      transformResponse: (res: TPosResponse<TPosFilterData<{ Id?: number; Name?: string }>>) =>
+        res.Data?.Items ?? [],
+    }),
+
+    getSalaryTypes: builder.query<TPosSalaryType[], void>({
+      query: () => ({ url: 'salary/get-salary-types' }),
+      transformResponse: (res: TPosResponse<TPosSalaryType[]>) => res.Data ?? [],
     }),
 
     // ─── Reports ─────────────────────────────────────────────────────────────
@@ -1228,6 +1279,12 @@ export const {
   useSaveShiftMutation,
   useUpdateShiftStatusMutation,
   useSaveMemberMutation,
+  useLazyGetMemberDetailQuery,
+  useLazyGetAccountByMemberQuery,
+  useSaveAccountMutation,
+  useGetShopsSimpleQuery,
+  useGetUserGroupsQuery,
+  useGetSalaryTypesQuery,
   useUpdateMemberStatusMutation,
   // Reports
   useFilterReportQuery,

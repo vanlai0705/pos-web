@@ -1,7 +1,7 @@
 import { Search, Plus, MoreHorizontal, Check, Lock, Trash2, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge as UiStatusBadge } from "@/components/ui/status-badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -18,10 +18,7 @@ import { translateKnownText } from "@/i18n/nav-title-map"
 // ─── Status ────────────────────────────────────────────────────────────────────
 
 export function StatusBadge({ statusId }: { statusId?: number }) {
-  const { t } = useTranslation()
-  if (statusId === 1) return <Badge variant="secondary" className="text-yellow-600 bg-yellow-50 border-yellow-200">{t('common.locked')}</Badge>
-  if (statusId === 2) return <Badge variant="destructive">{t('common.deleted')}</Badge>
-  return <Badge variant="outline" className="text-green-600 bg-green-50 border-green-200">{t('common.active')}</Badge>
+  return <UiStatusBadge statusId={statusId} />
 }
 
 // ─── Search bar ────────────────────────────────────────────────────────────────
