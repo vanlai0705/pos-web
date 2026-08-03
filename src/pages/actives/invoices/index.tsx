@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { withDomainPath } from '@/utils/domain-route'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { CodeTag, MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 import { useAppSelector } from '@/store/hooks'
 import { selectAuth } from '@/store/slice/users/app'
 import {
@@ -16,7 +17,7 @@ import {
 } from '@/store/slice/users/api/api'
 import type { TPosOrderInvoice } from '@/store/slice/users/types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, fmtCurrency, PAGE_SIZE } from '../shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE } from '../shared'
 import { baseUrl } from '@/constants'
 import dayjs from 'dayjs'
 
@@ -210,16 +211,13 @@ export default function InvoicesPage() {
       cell: ({ row }) => {
         const inv = row.original
         return (
-          <span
+          <button
+            type="button"
             onClick={() => goOrder(inv)}
-            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${
-              inv.PublishStatus !== 2
-                ? 'cursor-pointer bg-green-50 text-green-700 hover:bg-green-100'
-                : 'bg-gray-50 text-red-700'
-            }`}
+            className={inv.PublishStatus !== 2 ? 'cursor-pointer' : 'cursor-default'}
           >
-            {inv.OrderId ?? '—'}
-          </span>
+            <VoucherTag value={inv.OrderId} className={inv.PublishStatus === 2 ? 'opacity-70' : ''} />
+          </button>
         )
       },
     },
@@ -250,7 +248,7 @@ export default function InvoicesPage() {
     {
       id: 'taxAgencyCode',
       header: 'Mã CQ Thuế',
-      cell: ({ row }) => row.original.TaxAgencyCode || '—',
+      cell: ({ row }) => <CodeTag value={row.original.TaxAgencyCode} />,
     },
     {
       id: 'phone',
@@ -297,7 +295,7 @@ export default function InvoicesPage() {
       id: 'totalAmount',
       header: 'Tổng cộng',
       cell: ({ row }) => (
-        <span className="tabular-nums font-medium">{fmtCurrency(row.original.TotalAmount)}</span>
+        <MoneyTag value={row.original.TotalAmount} />
       ),
     },
     {

@@ -7,13 +7,14 @@ import * as XLSX from 'xlsx'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
+import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 import {
   useFilterWarehousesQuery,
   useGenericDownloadMutation,
   useGenericPostMutation,
   useLazyFilterReportQuery,
 } from '@/store/slice/users/api/api'
-import { cn } from '@/utils'
+import { cn, downloadBlob } from '@/utils'
 
 type EntityKey = 'Customer' | 'Supplier'
 
@@ -99,17 +100,6 @@ function readExcelFile(file: File, extra: Record<string, any>) {
     reader.onerror = reject
     reader.readAsArrayBuffer(file)
   })
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
 }
 
 function toPascalImage(image: any) {
@@ -404,7 +394,7 @@ export function OpeningBalanceEntityPage({
       meta: { className: 'w-48' },
       cell: ({ row }) => {
         const entity = getEntity(row.original, entityKey)
-        return <span className="font-mono text-xs text-slate-500">{entity.CustomerCode || entity.SupplierCode || entity.Code || '-'}</span>
+        return <CodeTag value={entity.CustomerCode || entity.SupplierCode || entity.Code} />
       },
     },
     {
@@ -657,7 +647,7 @@ export function OpeningInventoryPageContent() {
       id: 'code',
       header: 'Mã hàng',
       meta: { className: 'w-40' },
-      cell: ({ row }) => <span className="font-mono text-xs font-semibold">{row.original.Product?.ProductCode || row.original.Product?.Barcode || row.original.Product?.Code || '-'}</span>,
+      cell: ({ row }) => <CodeTag value={row.original.Product?.ProductCode || row.original.Product?.Barcode || row.original.Product?.Code} />,
     },
     {
       id: 'name',
@@ -708,7 +698,7 @@ export function OpeningInventoryPageContent() {
       id: 'amount',
       header: 'Giá trị',
       meta: { className: 'w-44 text-right' },
-      cell: ({ row }) => <span className="font-semibold tabular-nums text-emerald-700">{formatMoney(row.original.Amount)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.Amount} />,
     },
   ], [page, pageSize, selectedStock?.Name])
 

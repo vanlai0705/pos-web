@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { CodeTag } from '@/components/ui/data-tag'
 import {
   useGenericPostMutation,
   useLazyFilterReportQuery,
   useLazyGenericGetQuery,
 } from '@/store/slice/users/api/api'
-import { cn, query } from '@/utils'
+import { buildModelFormData } from '@/utils/multipart'
+
 
 const STATUS = {
   Actived: 0,
@@ -53,7 +55,6 @@ const configByMode = {
     detailUrl: 'helps/detail',
     createUrl: 'helps/create',
     updateUrl: 'helps/update',
-    statusUrl: 'helps/update-status',
     lookupUrl: 'functions/filter-simple',
     lookupLabel: 'Chức năng',
     emptyText: 'Chưa có hướng dẫn nào',
@@ -65,10 +66,8 @@ const configByMode = {
     icon: Headset,
     filterUrl: 'supports/filter',
     detailUrl: 'supports/detail',
-    detailGuidUrl: 'supports/detail-guid',
     createUrl: 'supports/create',
     updateUrl: 'supports/update',
-    statusUrl: 'supports/update-status',
     lookupUrl: 'supports/filter-support-type',
     lookupLabel: 'Loại hỗ trợ',
     emptyText: 'Chưa có yêu cầu hỗ trợ nào',
@@ -100,15 +99,12 @@ function setLookup(item: SupportItem, mode: PageMode, value?: LookupItem): Suppo
   return mode === 'help' ? { ...item, Function: value } : { ...item, SupportType: value }
 }
 
-function buildMultipartModel(model: SupportItem, files: File[]) {
-  const formData = new FormData()
+function buildSupportBody(model: SupportItem, files: File[]) {
   const payload = {
     ...model,
     Images: model.Images?.filter(image => Number(image.Id) > 0) || [],
   }
-  formData.append('model', new Blob([JSON.stringify(payload)], { type: 'application/json' }))
-  files.forEach(file => formData.append(file.name, file))
-  return formData
+  return buildModelFormData(payload, files)
 }
 
 function LookupDisplay({ item, fallbackIcon: FallbackIcon }: { item?: LookupItem; fallbackIcon: typeof FileQuestion }) {
@@ -215,9 +211,9 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
   const openDetailByGuid = async (value: string) => {
     if (mode !== 'support') return
     try {
-      // Only the support config has this endpoint; the guard above already
-      // proves we are in support mode, but `config` is the union type.
-      const result = await fetchDetail({ url: configByMode.support.detailGuidUrl, params: { guid: value } }).unwrap()
+      // There is no supports/detail-guid route (it 404s) — the plain detail
+      // endpoint accepts the guid as its id.
+      const result = await fetchDetail({ url: configByMode.support.detailUrl, params: { id: value } }).unwrap()
       setForm(result?.Data || emptyForm)
       setSelectedFiles([])
       setModalOpen(true)
@@ -238,7 +234,7 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
       return
     }
     try {
-      const body = buildMultipartModel(form, selectedFiles)
+      const body = buildSupportBody(form, selectedFiles)
       const url = form.Id ? config.updateUrl : config.createUrl
       await request({ url, body }).unwrap()
       toast.success(form.Id ? 'Cập nhật thành công' : 'Thêm mới thành công')
@@ -249,10 +245,18 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
     }
   }
 
+  /**
+   * helps/supports expose no update-status route (both 404) — unlike the other
+   * modules. Status changes therefore go through the normal update, resending
+   * the row with the new Status.
+   */
   const updateStatus = async (id: number | undefined, nextStatusId: number) => {
     if (!id) return
+    const row = rows.find(r => r.Id === id)
+    if (!row) return
     try {
-      await request({ url: `${config.statusUrl}${query({ id, statusId: nextStatusId })}`, body: {} }).unwrap()
+      const body = buildSupportBody({ ...row, Status: { ...(row.Status ?? {}), Id: nextStatusId } }, [])
+      await request({ url: config.updateUrl, body }).unwrap()
       toast.success(nextStatusId === STATUS.Deleted ? 'Đã xóa dữ liệu' : 'Cập nhật trạng thái thành công')
       loadRows()
     } catch (error) {
@@ -268,7 +272,7 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
     },
     {
       header: mode === 'support' ? 'Mã hỗ trợ' : 'Mã',
-      cell: ({ row }) => <span className="font-mono font-semibold text-slate-800">{row.original.Code || row.original.Id || '-'}</span>,
+      cell: ({ row }) => <CodeTag value={row.original.Code || row.original.Id} />,
       meta: { className: 'w-32' },
     },
     {

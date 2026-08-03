@@ -5,8 +5,9 @@ import { useFilterRevenueStatisticsQuery, useFilterRevenueStatisticsSummaryQuery
 import type { TPosRevenueStatItem } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {
-  ListPageHeader, DateRangeFilter, SummaryCard, fmtCurrency, fmtDateTime, useListFilter, PAGE_SIZE,
+  ListPageHeader, DateRangeFilter, SummaryCard, fmtDateTime, useListFilter, PAGE_SIZE,
 } from '../shared'
+import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 
 function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [page, setPage] = useState(1)
@@ -32,7 +33,7 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
     {
       id: 'name',
       header: 'Số phiếu',
-      cell: ({ row }) => <span className="font-medium">{row.original.Name ?? '—'}</span>,
+      cell: ({ row }) => <VoucherTag value={row.original.Name} />,
     },
     {
       id: 'date',
@@ -47,12 +48,12 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
     {
       id: 'subTotal',
       header: 'Tiền hàng',
-      cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.SubTotal)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.SubTotal} />,
     },
     {
       id: 'discount',
       header: 'Giảm giá',
-      cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.Discount)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.Discount} />,
     },
     {
       id: 'discountPercent',
@@ -66,12 +67,12 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
     {
       id: 'transferCost',
       header: 'Phí VC',
-      cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.TransferCost)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.TransferCost} />,
     },
     {
       id: 'total',
       header: 'Tổng cộng',
-      cell: ({ row }) => <span className="tabular-nums font-semibold">{fmtCurrency(row.original.Total)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.Total} />,
     },
   ]
 
@@ -107,7 +108,7 @@ function SummaryTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30 flex items-center justify-between">
           <span className="font-semibold text-sm">TỔNG DOANH SỐ</span>
-          <span className="font-bold text-base tabular-nums">{fmtCurrency(totalAmount || undefined)}</span>
+          <MoneyTag value={totalAmount || undefined} className="text-sm" />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -128,7 +129,7 @@ function SummaryTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
                 : items.map((item, idx) => (
                   <tr key={idx} className="hover:bg-muted/30 transition-colors">
                     <td className="px-3 py-2.5">{item.FundType?.Name ?? '—'}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums font-medium">{fmtCurrency(item.Total)}</td>
+                    <td className="px-3 py-2.5 text-right"><MoneyTag value={item.Total} /></td>
                   </tr>
                 ))
               }

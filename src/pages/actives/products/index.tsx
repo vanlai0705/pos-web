@@ -9,8 +9,9 @@ import {
 } from '@/store/slice/users/api/api'
 import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, StatusBadge, fmtCurrency, PAGE_SIZE } from '../shared'
+import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE } from '../shared'
 import { getImageUrl } from '@/utils/common'
+import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 
 function imgUrl(url?: string | null) {
   return getImageUrl(url ?? undefined) ?? null
@@ -68,7 +69,7 @@ export default function ActiveProductsPage() {
     {
       id: 'code',
       header: 'Mã hàng',
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.Code ?? '—'}</span>,
+      cell: ({ row }) => <CodeTag value={row.original.Code} />,
     },
     {
       id: 'name',
@@ -88,12 +89,12 @@ export default function ActiveProductsPage() {
     {
       id: 'price',
       header: 'Giá bán',
-      cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.Price)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.Price} />,
     },
     {
       id: 'importPrice',
       header: 'Giá nhập',
-      cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.ImportPrice)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.ImportPrice} />,
     },
     {
       id: 'quantity',

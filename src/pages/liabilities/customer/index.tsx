@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Users } from 'lucide-react'
 import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, fmtCurrency, PAGE_SIZE, defaultDateFrom, defaultDateTo, SummaryCard } from '@/pages/actives/shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, defaultDateFrom, defaultDateTo, SummaryCard } from '@/pages/actives/shared'
 import type { TPosDebtItem } from '@/store/slice/users/types/pos-types'
+import { MoneyTag } from '@/components/ui/data-tag'
 
 export default function LiabilityCustomerPage() {
   const [keyword, setKeyword] = useState('')
@@ -36,14 +37,14 @@ export default function LiabilityCustomerPage() {
         )
       },
     },
-    { id: 'beginning', header: 'Nợ đầu kỳ', cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.BeginningDebt)}</span> },
-    { id: 'inDebt', header: 'Phát sinh nợ', cell: ({ row }) => <span className="tabular-nums text-rose-700">{fmtCurrency(row.original.InDebt)}</span> },
-    { id: 'outDebt', header: 'Đã trả', cell: ({ row }) => <span className="tabular-nums text-emerald-700">{fmtCurrency(row.original.OutDebt)}</span> },
+    { id: 'beginning', header: 'Nợ đầu kỳ', cell: ({ row }) => <MoneyTag value={row.original.BeginningDebt} /> },
+    { id: 'inDebt', header: 'Phát sinh nợ', cell: ({ row }) => <MoneyTag value={row.original.InDebt} /> },
+    { id: 'outDebt', header: 'Đã trả', cell: ({ row }) => <MoneyTag value={row.original.OutDebt} /> },
     {
       id: 'ending', header: 'Nợ cuối kỳ',
       cell: ({ row }) => {
         const v = row.original.EndingDebt
-        return <span className={`tabular-nums font-semibold ${(v ?? 0) > 0 ? 'text-rose-700' : 'text-foreground'}`}>{fmtCurrency(v)}</span>
+        return <MoneyTag value={v} />
       },
     },
   ]

@@ -84,6 +84,7 @@ import PromotionListPage from "./pages/promotions/promotion-list"
 import SupportHubPage from "./pages/supports"
 import HelpsPage from "./pages/supports/helps"
 import SupportsPage from "./pages/supports/supports"
+import AdminTenantsPage from "./pages/admins/tenants"
 import { useAuth } from "./hooks/useAuth"
 import { DOMAIN_KEY, normalizeDomainName, setStoredDomainName, withDomainPath } from "./utils/domain-route"
 
@@ -283,7 +284,13 @@ function renderPrivateAppRoutes() {
       </Route>
 
       {/* Admin */}
-      <Route path="admins/*" element={<ComingSoonPage />} />
+      {/* Hệ thống */}
+      <Route path="admins">
+        <Route index element={<Navigate to="tenants" replace />} />
+        <Route path="tenants" element={<AdminTenantsPage />} />
+        <Route path="partner-list" element={<AdminTenantsPage />} />
+        <Route path="*" element={<ComingSoonPage />} />
+      </Route>
 
       {/* Hỗ trợ */}
       <Route path="supports" element={<SupportHubPage />} />

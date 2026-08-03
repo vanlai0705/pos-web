@@ -32,7 +32,7 @@ interface InvoiceDetailPanelProps {
 }
 
 export function InvoiceDetailPanel({ order, loading, onClose, onCancel, onPrint }: InvoiceDetailPanelProps) {
-  const items = order.OrderItems ?? []
+  const items = order.Items ?? []
   const subTotal = items.reduce((s, i) => s + (i.Total ?? 0), 0)
 
   if (loading) {

@@ -3,7 +3,8 @@ import { Crown } from 'lucide-react'
 import { useFilterRoyalCustomersQuery, useGetCustomerGroupsSimpleQuery } from '@/store/slice/users/api/api'
 import type { TPosCustomer } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, fmtCurrency, fmtDate, PAGE_SIZE } from '../shared'
+import { ListPageHeader, SearchBar, fmtDate, PAGE_SIZE } from '../shared'
+import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 
 export default function CustomerRoyalPage() {
   const [keyword, setKeyword] = useState('')
@@ -32,7 +33,7 @@ export default function CustomerRoyalPage() {
     {
       id: 'code',
       header: 'Mã',
-      cell: ({ row }) => <span className="text-muted-foreground text-xs">{row.original.Code ?? '—'}</span>,
+      cell: ({ row }) => <CodeTag value={row.original.Code} />,
     },
     {
       id: 'name',
@@ -76,7 +77,7 @@ export default function CustomerRoyalPage() {
     {
       id: 'totalAmount',
       header: 'Doanh số',
-      cell: ({ row }) => <span className="tabular-nums font-medium">{fmtCurrency(row.original.TotalAmount)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.TotalAmount} />,
     },
     {
       id: 'totalOrder',

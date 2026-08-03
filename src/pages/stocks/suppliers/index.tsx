@@ -10,6 +10,7 @@ import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE } from '@/pages/actives/shared'
 import { useApiMutation } from '@/hooks/use-api-mutation'
+import { CodeTag } from '@/components/ui/data-tag'
 
 interface TSupplier {
   Id?: number
@@ -55,7 +56,7 @@ export default function SuppliersPage() {
 
   const columns: ColumnDef<TSupplier>[] = [
     { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
-    { id: 'code', header: 'Mã NCC', cell: ({ row }) => <span className="text-xs font-mono text-muted-foreground">{row.original.Code ?? '—'}</span> },
+    { id: 'code', header: 'Mã NCC', cell: ({ row }) => <CodeTag value={row.original.Code} /> },
     { id: 'name', header: 'Tên nhà cung cấp', cell: ({ row }) => <span className="font-medium">{row.original.Name}</span> },
     { id: 'phone', header: 'Điện thoại', cell: ({ row }) => <span className="text-sm">{row.original.Phone ?? '—'}</span> },
     { id: 'email', header: 'Email', cell: ({ row }) => <span className="text-xs">{row.original.Email ?? '—'}</span> },

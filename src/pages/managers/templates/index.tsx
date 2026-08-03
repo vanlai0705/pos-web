@@ -21,7 +21,8 @@ import {
   useGenericDownloadMutation,
   useGenericPostMutation,
 } from '@/store/slice/users/api/api'
-import { cn, query } from '@/utils'
+import { cn, query, downloadBlob } from '@/utils'
+import { buildModelFormData } from '@/utils/multipart'
 
 const PAGE_SIZE = 10
 const STATUS_ACTIVE = 0
@@ -127,26 +128,6 @@ function getTemplateTypeName(value?: number) {
 function getFileExtension(fileName: string) {
   const parts = fileName.split('.')
   return parts.length > 1 ? `.${parts.pop()}` : ''
-}
-
-function buildMultipart(model: Record<string, unknown> | null, files: File[]) {
-  const form = new FormData()
-  if (model) {
-    form.append('model', new Blob([JSON.stringify(model)], { type: 'application/json' }))
-  }
-  files.forEach(file => form.append(file.name, file))
-  return form
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const blobUrl = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = blobUrl
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  window.URL.revokeObjectURL(blobUrl)
-  link.remove()
 }
 
 export default function TemplatesPage() {
@@ -461,7 +442,7 @@ export default function TemplatesPage() {
       await request({
         url: isUpdate ? 'report-templates/update-multipart' : 'report-templates/create-multipart',
         method: isUpdate ? 'PUT' : 'POST',
-        body: buildMultipart(payload, templateFile ? [templateFile] : []),
+        body: buildModelFormData(payload, templateFile ? [templateFile] : []),
       }).unwrap()
       toast.success(isUpdate ? 'Cập nhật template thành công' : 'Tạo template thành công')
       setTemplateModal(false)
@@ -599,7 +580,7 @@ export default function TemplatesPage() {
       await request({
         url: `report-templates/import-template${query({ id: selectedTemplate.Id })}`,
         method: 'POST',
-        body: buildMultipart(null, [importFile]),
+        body: buildModelFormData(null, [importFile]),
       }).unwrap()
       toast.success('Import template thành công')
       setImportModal(false)

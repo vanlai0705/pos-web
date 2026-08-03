@@ -601,7 +601,7 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
           Note: note || undefined,
           SubTotal: subTotal,
           Total: total,
-          OrderItems: items,
+          Items: items,
         }).unwrap()
         toast.success('Đặt hàng thành công!')
         setCart([])
@@ -618,7 +618,7 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
           Note: note || undefined,
           SubTotal: subTotal,
           Total: total,
-          OrderItems: items,
+          Items: items,
         }).unwrap()
         toast.success('Đã tạo báo giá!')
         setCart([])

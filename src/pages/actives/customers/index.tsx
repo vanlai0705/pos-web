@@ -19,6 +19,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { CodeTag } from '@/components/ui/data-tag'
 import {
   useFilterCustomersQuery,
   useGenericDownloadMutation,
@@ -31,7 +32,7 @@ import {
   useUpdateCustomerStatusMutation,
 } from '@/store/slice/users/api/api'
 import type { TPosCustomer, TPosCustomerGroup } from '@/store/slice/users/types/pos-types'
-import { cn, query } from '@/utils'
+import { cn, query, downloadBlob } from '@/utils'
 import { getImageUrl } from '@/utils/common'
 
 const PAGE_SIZE = 15
@@ -54,17 +55,6 @@ function emptyCustomer(groupId?: number): TPosCustomer {
     IsCompany: false,
     CustomerGroup: groupId ? { Id: groupId } : undefined,
   }
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  URL.revokeObjectURL(url)
-  link.remove()
 }
 
 function formatDate(value?: string) {
@@ -272,8 +262,8 @@ export default function CustomersPage() {
     {
       id: 'code',
       header: 'Mã',
-      meta: { cellClassName: 'font-medium text-emerald-700 whitespace-nowrap' },
-      cell: ({ row }) => row.original.CustomerCode || row.original.Code || '-',
+      meta: { cellClassName: 'whitespace-nowrap' },
+      cell: ({ row }) => <CodeTag value={row.original.CustomerCode || row.original.Code} />,
     },
     {
       id: 'name',

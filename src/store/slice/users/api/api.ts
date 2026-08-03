@@ -199,7 +199,7 @@ export const userApiSlice = createApi({
 
     getUsers: builder.query<TUsersListResponse, TUsersRequest>({
       query: (payload: TUsersRequest) => ({
-        url: `users/list${query(payload)}`,
+        url: `users/filter${query(payload)}`,
         method: "GET",
       }),
       transformResponse: (response: any) =>
@@ -471,7 +471,7 @@ export const userApiSlice = createApi({
 
     /** Payment methods, each with its linked bank/wallet accounts. */
     getPaymentTypes: builder.query<TPosFundType[], void>({
-      query: () => ({ url: "fundType/get-payment-type", method: "GET" }),
+      query: () => ({ url: "fundtype/get-payment-type", method: "GET" }),
       transformResponse: (res: TPosResponse<TPosFundType[]>) => res.Data ?? [],
     }),
 
@@ -1018,10 +1018,10 @@ export const userApiSlice = createApi({
 
     // ─── Currencies: Create mutations ─────────────────────────────────────────
     createReceipt: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'Receipt/create', method: 'POST', body }),
+      query: (body) => ({ url: 'receipt/create', method: 'POST', body }),
     }),
     createPayment: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'Payment/create', method: 'POST', body }),
+      query: (body) => ({ url: 'payment/create', method: 'POST', body }),
     }),
 
     // ─── HR: Filter queries ───────────────────────────────────────────────────
@@ -1080,7 +1080,9 @@ export const userApiSlice = createApi({
       query: (data) => {
         const form = new FormData()
         form.append('model', new Blob([JSON.stringify(data)], { type: 'application/json' }))
-        return { url: data.Id ? 'user-infos/update' : 'user-infos/create', method: 'POST', body: form }
+        // Swagger exposes no user-infos/create — the account row already
+        // exists once the member is saved, so this is always an update.
+        return { url: 'user-infos/update', method: 'POST', body: form }
       },
       transformResponse: (res: TPosResponse<TPosUserAccount>) => res.Data,
     }),

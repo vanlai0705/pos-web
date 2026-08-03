@@ -11,6 +11,7 @@ import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE } from '@/pages/activ
 import { Textarea } from '@/components/ui/textarea'
 import { PosImage } from '@/components/ui/pos-image'
 import { cn } from '@/utils'
+import { buildModelFormData } from '@/utils/multipart'
 
 const REWARD_TYPE = 0
 const PUNISH_TYPE = 1
@@ -26,13 +27,6 @@ interface TRPReason {
 }
 
 const EMPTY = (): TRPReason => ({ Name: '', Note: '', Type: REWARD_TYPE })
-
-function buildMultipart(model: TRPReason, file?: File | null) {
-  const form = new FormData()
-  form.append('model', new Blob([JSON.stringify(model)], { type: 'application/json' }))
-  if (file) form.append(file.name, file)
-  return form
-}
 
 function getDetailData(result: any) {
   return (result?.Data ?? result ?? {}) as TRPReason
@@ -102,7 +96,7 @@ export default function RewardPunishReasonPage() {
       await request({
         url: payload.Id ? 'rewardpunishreasons/update' : 'rewardpunishreasons/create',
         method: 'POST',
-        body: buildMultipart(payload, imageFile),
+        body: buildModelFormData(payload, [imageFile]),
       }).unwrap()
       toast.success(payload.Id ? 'Đã cập nhật lý do' : 'Đã thêm lý do')
       closeModal()

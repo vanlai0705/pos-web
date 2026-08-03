@@ -24,6 +24,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
+import { StatusBadge } from '@/components/ui/status-badge'
 import {
   useFilterActiveProductsQuery,
   useGenericDownloadMutation,
@@ -34,8 +36,9 @@ import {
   useUpdateProductGroupStatusMutation,
 } from '@/store/slice/users/api/api'
 import type { TPosActiveProduct, TPosProductGroupFull } from '@/store/slice/users/types/pos-types'
-import { cn, query } from '@/utils'
+import { cn, query, downloadBlob } from '@/utils'
 import { getImageUrl } from '@/utils/common'
+import { buildModelFormData } from '@/utils/multipart'
 
 const PAGE_SIZE = 15
 const STATUS_ACTIVE = 0
@@ -48,24 +51,6 @@ interface ProductGroupNode extends TreeSidebarNode {
 
 function imgUrl(url?: string | null) {
   return getImageUrl(url ?? undefined) ?? null
-}
-
-function buildMultipart(model: Record<string, unknown>, files: File[] = []) {
-  const form = new FormData()
-  form.append('model', new Blob([JSON.stringify(model)], { type: 'application/json' }))
-  files.forEach(file => form.append(file.name, file))
-  return form
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  URL.revokeObjectURL(url)
-  link.remove()
 }
 
 function emptyProduct(groupId?: number): TPosActiveProduct {
@@ -171,7 +156,7 @@ export default function ProductsNewPage() {
       await request({
         url: productForm.Id ? 'products/update' : 'products/create',
         method: 'POST',
-        body: buildMultipart(payload, productImageFile ? [productImageFile] : []),
+        body: buildModelFormData(payload, productImageFile ? [productImageFile] : []),
       }).unwrap()
       toast.success(productForm.Id ? 'Cập nhật mặt hàng thành công' : 'Thêm mặt hàng thành công')
       setProductModal(false)
@@ -362,8 +347,8 @@ export default function ProductsNewPage() {
     {
       id: 'code',
       header: 'Mã hàng',
-      meta: { cellClassName: 'font-medium text-emerald-700 whitespace-nowrap' },
-      cell: ({ row }) => row.original.ProductCode || row.original.Code || '-',
+      meta: { cellClassName: 'whitespace-nowrap' },
+      cell: ({ row }) => <CodeTag value={row.original.ProductCode || row.original.Code} />,
     },
     {
       id: 'name',
@@ -393,13 +378,13 @@ export default function ProductsNewPage() {
       id: 'price',
       header: 'Giá bán',
       meta: { className: 'text-right', cellClassName: 'text-right font-medium text-indigo-600' },
-      cell: ({ row }) => (row.original.Price || 0).toLocaleString('vi-VN'),
+      cell: ({ row }) => <MoneyTag value={row.original.Price || 0} />,
     },
     {
       id: 'inputPrice',
       header: 'Giá nhập',
       meta: { className: 'text-right', cellClassName: 'text-right' },
-      cell: ({ row }) => (row.original.PriceInput ?? row.original.ImportPrice ?? 0).toLocaleString('vi-VN'),
+      cell: ({ row }) => <MoneyTag value={row.original.PriceInput ?? row.original.ImportPrice ?? 0} />,
     },
     {
       id: 'quantity',
@@ -411,14 +396,7 @@ export default function ProductsNewPage() {
       id: 'status',
       header: 'TT',
       meta: { className: 'w-24 text-center' },
-      cell: ({ row }) => (
-        <span className={cn(
-          'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
-          row.original.Status?.Id === STATUS_ACTIVE ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
-        )}>
-          {row.original.Status?.Name || (row.original.Status?.Id === STATUS_ACTIVE ? 'Hoạt động' : 'Khóa')}
-        </span>
-      ),
+      cell: ({ row }) => <StatusBadge status={row.original.Status} />,
     },
     {
       id: 'actions',

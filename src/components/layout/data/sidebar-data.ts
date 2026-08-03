@@ -12,6 +12,7 @@ import {
   IconUserCircle,
   IconArrowsShuffle,
   IconLifebuoy,
+  IconStar,
 } from "@tabler/icons-react"
 import { type SidebarData } from "../types"
 
@@ -77,6 +78,19 @@ export const sidebarData: SidebarData = {
             { title: "Nhà cung cấp", url: "/liabilities/supplier" },
           ],
         },
+        {
+          title: "Khuyến mãi",
+          icon: IconStar,
+          items: [
+            { title: "Giảm giá tổng ĐH", url: "/promotions/discount-bill" },
+            { title: "Giảm giá theo ĐH", url: "/promotions/discount-bill-total" },
+            { title: "Giảm giá theo nhóm", url: "/promotions/categories" },
+            { title: "Giảm giá theo MH", url: "/promotions/products" },
+            { title: "Giảm giá theo SL MH", url: "/promotions/product-quantity" },
+            { title: "Mặt hàng đồng giá", url: "/promotions/product-same-price" },
+            { title: "Mua 1 tặng 1", url: "/promotions/bye-1-get-1" },
+          ],
+        },
       ],
     },
     {
@@ -92,7 +106,11 @@ export const sidebarData: SidebarData = {
           icon: IconUserCircle,
           items: [
             { title: "Nhân viên", url: "/human-resources/members" },
-            { title: "Bảng lương", url: "/human-resources/salaries" },
+            { title: "Chấm công", url: "/human-resources/salaries" },
+            { title: "Bảng lương", url: "/human-resources/salary-pays" },
+            { title: "Thưởng phạt", url: "/human-resources/reward-punish" },
+            { title: "Lý do TP", url: "/human-resources/reward-punish-reason" },
+            { title: "Nhóm quyền", url: "/human-resources/user-groups" },
             { title: "Ca làm việc", url: "/human-resources/shifts" },
           ],
         },

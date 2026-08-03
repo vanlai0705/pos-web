@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, fmtCurrency, PAGE_SIZE, defaultDateFrom, defaultDateTo, SummaryCard } from '@/pages/actives/shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, defaultDateFrom, defaultDateTo, SummaryCard } from '@/pages/actives/shared'
+import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 
 interface TInventoryItem {
   Product?: { ProductCode?: string; Name?: string; Unit?: { Name?: string }; Price?: number }
@@ -31,7 +32,7 @@ export default function StockInventoryPage() {
 
   const columns: ColumnDef<TInventoryItem>[] = [
     { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
-    { id: 'code', header: 'Mã hàng', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.Product?.ProductCode ?? '—'}</span> },
+    { id: 'code', header: 'Mã hàng', cell: ({ row }) => <CodeTag value={row.original.Product?.ProductCode} /> },
     { id: 'name', header: 'Tên mặt hàng', cell: ({ row }) => <span className="font-medium">{row.original.Product?.Name ?? '—'}</span> },
     { id: 'unit', header: 'ĐVT', cell: ({ row }) => <span className="text-xs">{row.original.Product?.Unit?.Name ?? row.original.Unit?.Name ?? '—'}</span> },
     { id: 'begin', header: 'Tồn đầu kỳ', cell: ({ row }) => <span className="tabular-nums">{row.original.QuantityBeginning?.toLocaleString('vi-VN') ?? '—'}</span> },
@@ -44,8 +45,8 @@ export default function StockInventoryPage() {
         return <span className={`tabular-nums font-semibold ${q < 0 ? 'text-rose-700' : ''}`}>{q.toLocaleString('vi-VN')}</span>
       },
     },
-    { id: 'price', header: 'Đơn giá', cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.Product?.Price)}</span> },
-    { id: 'amount', header: 'Thành tiền', cell: ({ row }) => <span className="tabular-nums font-medium text-emerald-700">{fmtCurrency(row.original.Amount)}</span> },
+    { id: 'price', header: 'Đơn giá', cell: ({ row }) => <MoneyTag value={row.original.Product?.Price} /> },
+    { id: 'amount', header: 'Thành tiền', cell: ({ row }) => <MoneyTag value={row.original.Amount} /> },
   ]
 
   return (

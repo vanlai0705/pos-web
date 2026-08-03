@@ -616,7 +616,6 @@ export interface TPosOrder {
   Code?: string
   Stock?: { Id?: number; Name?: string }
   FundType?: { Id?: number; Name?: string } | null
-  OrderItems?: TPosOrderItem[]
   IsInvoice?: boolean
   CustomerDebt?: boolean
 }
@@ -644,7 +643,7 @@ export interface TPosBooking {
   Total?: number
   Status?: TPosItemStatus
   Note?: string
-  OrderItems?: TPosOrderItem[]
+  Items?: TPosOrderItem[]
 }
 
 // ─── Actives: Quotations ─────────────────────────────────────────────────────
@@ -661,7 +660,7 @@ export interface TPosQuotation {
   Total?: number
   Status?: TPosItemStatus
   Note?: string
-  OrderItems?: TPosOrderItem[]
+  Items?: TPosOrderItem[]
 }
 
 // ─── Actives: Products ───────────────────────────────────────────────────────

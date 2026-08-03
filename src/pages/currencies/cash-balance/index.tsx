@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Wallet } from 'lucide-react'
 import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, DateRangeFilter, fmtCurrency, fmtDateTime, PAGE_SIZE, defaultDateFrom, defaultDateTo, SummaryCard } from '@/pages/actives/shared'
+import { ListPageHeader, DateRangeFilter, fmtDateTime, PAGE_SIZE, defaultDateFrom, defaultDateTo, SummaryCard } from '@/pages/actives/shared'
 import type { TPosCurrencyVoucher } from '@/store/slice/users/types/pos-types'
+import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 
 export default function CashBalancePage() {
   const [page, setPage] = useState(1)
@@ -22,12 +23,12 @@ export default function CashBalancePage() {
 
   const columns: ColumnDef<TPosCurrencyVoucher>[] = [
     { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
-    { id: 'name', header: 'Số phiếu', cell: ({ row }) => <span className="font-medium text-primary">{row.original.Name ?? '—'}</span> },
+    { id: 'name', header: 'Số phiếu', cell: ({ row }) => <VoucherTag value={row.original.Name} /> },
     { id: 'date', header: 'Ngày', cell: ({ row }) => <span>{fmtDateTime(row.original.Date)}</span> },
     { id: 'detail', header: 'Diễn giải', cell: ({ row }) => <span className="text-xs">{row.original.Detail ?? '—'}</span> },
-    { id: 'receipt', header: 'Thu', cell: ({ row }) => <span className="tabular-nums text-emerald-700">{row.original.Receipt ? fmtCurrency(row.original.Receipt) : '—'}</span> },
-    { id: 'payment', header: 'Chi', cell: ({ row }) => <span className="tabular-nums text-rose-700">{row.original.Payment ? fmtCurrency(row.original.Payment) : '—'}</span> },
-    { id: 'balance', header: 'Tồn', cell: ({ row }) => <span className="tabular-nums font-medium">{fmtCurrency(row.original.Balance)}</span> },
+    { id: 'receipt', header: 'Thu', cell: ({ row }) => row.original.Receipt ? <MoneyTag value={row.original.Receipt} /> : '-' },
+    { id: 'payment', header: 'Chi', cell: ({ row }) => row.original.Payment ? <MoneyTag value={row.original.Payment} /> : '-' },
+    { id: 'balance', header: 'Tồn', cell: ({ row }) => <MoneyTag value={row.original.Balance} /> },
   ]
 
   return (

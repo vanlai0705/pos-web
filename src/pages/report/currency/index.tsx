@@ -4,7 +4,7 @@ import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import {
   fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
   StatCards, ReportDateFilter, ReportTabs,
-  TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn,
+  TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
 } from '../shared'
 
 const TABS = ['Danh sách thu chi', 'Phiếu thu', 'Phiếu chi', 'Tồn quỹ']
@@ -256,6 +256,20 @@ export default function ReportCurrencyPage() {
   const range = currentMonthRange()
   const [dateFrom, setDateFrom] = useState(range.from)
   const [dateTo, setDateTo] = useState(range.to)
+  const { exportExcel, exporting } = useReportExcel()
+
+  /** One export endpoint per tab, all scoped by the shared date range. */
+  const EXPORTS = [
+    { url: 'excels/export-receipt-payment', file: 'danh-sach-thu-chi.xlsx' },
+    { url: 'excels/export-receipt', file: 'phieu-thu.xlsx' },
+    { url: 'excels/export-payment', file: 'phieu-chi.xlsx' },
+    { url: 'excels/export-cash-balance', file: 'ton-quy.xlsx' },
+  ]
+
+  const handleExport = () => {
+    const target = EXPORTS[tab]
+    if (target) exportExcel(target.url, { DateFrom: dateFrom, DateTo: dateTo }, target.file)
+  }
 
   return (
     <div className="flex flex-col h-full gap-0">
@@ -274,7 +288,7 @@ export default function ReportCurrencyPage() {
           <ReportTabs tabs={TABS} active={tab} onSelect={setTab} />
           <div className="flex items-center gap-2 flex-wrap">
             <ReportDateFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
-            <ExcelBtn onClick={() => {}} />
+            <ExcelBtn onClick={handleExport} loading={exporting} />
           </div>
         </div>
       </div>
