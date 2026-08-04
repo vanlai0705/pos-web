@@ -39,6 +39,7 @@ import type {
 } from '@/store/slice/users/types/pos-types'
 import { getImageUrl } from '@/utils/common'
 import { cn } from '@/utils'
+import { useNumberDraft } from '@/components/ui/number-input'
 import { useAuth } from '@/hooks/useAuth'
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -247,7 +248,7 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
   const { data, isLoading } = useFilterActiveProductsQuery({
     PageIndex: 0, PageSize: 60,
     Keyword: keyword || undefined,
-    GroupId: groupId ?? undefined,
+    ProductGroupId: groupId ?? undefined,
   })
   const products = data?.Items ?? []
 
@@ -512,7 +513,11 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
       Guid: newGuid(),
       Product: { ...c.product, Tax: tax, Total: lineTotal, Amount: lineAmount },
       Quantity: c.qty,
-      Discount: itemDiscount(c),
+      // `Discount` (a flat amount) and `DiscountPercent` are independent
+      // reductions the server applies on top of each other (OrderService.
+      // getTotalBeforeTaxItem subtracts both) — the line editor here only
+      // exposes a percent, so Discount must stay 0, never itemDiscount(c).
+      Discount: 0,
       DiscountPercent: c.discountPct,
       Tax: tax,
       IsPromotion: false,
@@ -705,13 +710,13 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
     }
 
     try {
-      const res = await completeOrder(isTableMode ? withTable(order) : order).unwrap()
-      if (action === 'print') {
-        toast.success('Đã thanh toán — đang mở hoá đơn...')
-        if (res?.Id) await printOrderPdf(res.Id)
-      } else {
-        toast.success('Thanh toán thành công!')
-      }
+      // "Thanh toán và in" is not a separate flow — it is the exact same
+      // completeOrder call as "Thanh toán", with IsPrint:true already set on
+      // `order` above (line ~677). The server is what prints (via the shop's
+      // configured printer); fetching a PDF back here duplicated the print
+      // and could fail independently of the payment succeeding.
+      await completeOrder(isTableMode ? withTable(order) : order).unwrap()
+      toast.success('Thanh toán thành công!')
       setCart([])
       // In the restaurant flow the caller sends us back to the floor plan and
       // refetches the tables; only the standalone POS jumps to the order list.
@@ -818,16 +823,25 @@ function MoneyRow({ label, children }: { label: string; children: React.ReactNod
   )
 }
 
+/** Per-line discount %, kept clearable and clamped to 0–100. */
+function PercentInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const draft = useNumberDraft(value, onChange, { min: 0, max: 100 })
+  return (
+    <input type="number" min={0} max={100} {...draft}
+      className="w-full text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-center" />
+  )
+}
+
 function NumInput({ value, onChange, suffix, className }: {
   value: number
   onChange: (v: number) => void
   suffix?: string
   className?: string
 }) {
+  const draft = useNumberDraft(value, onChange, { min: 0 })
   return (
     <div className={cn('flex items-center border border-input rounded px-1.5 py-0.5 bg-background', className)}>
-      <input type="number" min={0} value={value}
-        onChange={e => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+      <input type="number" min={0} {...draft}
         className="w-0 flex-1 text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-right" />
       {suffix && <span className="text-xs text-muted-foreground ml-0.5">{suffix}</span>}
     </div>
@@ -1054,9 +1068,8 @@ function InternalOrderPanel({
                     <td className="px-2 py-1.5 tabular-nums text-foreground whitespace-nowrap">{fmt(item.price)}</td>
                     <td className="px-2 py-1.5">
                       <div className="flex items-center w-16 border border-input rounded px-1.5 py-0.5 bg-background">
-                        <input type="number" min={0} max={100} value={item.discountPct}
-                          onChange={e => onUpdateItem(idx, 'discountPct', Math.min(100, Math.max(0, Number(e.target.value))))}
-                          className="w-full text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-center" />
+                        <PercentInput value={item.discountPct}
+                          onChange={v => onUpdateItem(idx, 'discountPct', v)} />
                         <span className="text-muted-foreground text-[10px]">%</span>
                       </div>
                     </td>

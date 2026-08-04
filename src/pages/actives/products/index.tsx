@@ -1,7 +1,10 @@
 import { useState } from 'react'
-import { Package, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Package, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   useFilterActiveProductsQuery,
   useUpdateActiveProductStatusMutation,
@@ -12,6 +15,9 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE } from '../shared'
 import { getImageUrl } from '@/utils/common'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
+
+// STATUS in pos_web: 0 = Actived, 1 = Locked, 2 = Deleted.
+const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
 
 function imgUrl(url?: string | null) {
   return getImageUrl(url ?? undefined) ?? null
@@ -29,7 +35,7 @@ export default function ActiveProductsPage() {
     PageSize: pageSize,
     Keyword: keyword || undefined,
     StatusId: statusId,
-    GroupId: groupId || undefined,
+    ProductGroupId: groupId || undefined,
   })
   const { data: groups = [] } = useGetProductGroupsSimpleQuery()
   const [updateStatus] = useUpdateActiveProductStatusMutation()
@@ -37,10 +43,10 @@ export default function ActiveProductsPage() {
   const items = data?.Items ?? []
   const total = data?.TotalItemCount ?? 0
 
-  const handleToggleStatus = async (id: number, currentStatusId?: number) => {
-    const newStatusId = currentStatusId === 1 ? 2 : 1
+  const changeStatus = async (id: number, statusId: number) => {
+    if (statusId === STATUS.DELETED && !window.confirm('Xoá mặt hàng này?')) return
     try {
-      await updateStatus({ id, statusId: newStatusId }).unwrap()
+      await updateStatus({ id, statusId }).unwrap()
       refetch()
     } catch { toast.error('Không thể cập nhật trạng thái') }
   }
@@ -113,17 +119,29 @@ export default function ActiveProductsPage() {
       header: 'Thao tác',
       cell: ({ row }) => {
         const item = row.original
+        if (!item.Id) return null
         return (
-          <Button
-            variant="ghost" size="icon" className="h-7 w-7"
-            onClick={() => item.Id && handleToggleStatus(item.Id, item.Status?.Id)}
-            title={item.Status?.Id === 1 ? 'Ngừng hoạt động' : 'Kích hoạt'}
-          >
-            {item.Status?.Id === 1
-              ? <ToggleRight className="h-4 w-4 text-primary" />
-              : <ToggleLeft className="h-4 w-4 text-muted-foreground" />
-            }
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {item.Status?.Id !== STATUS.ACTIVE && (
+                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.ACTIVE)}>
+                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> Kích hoạt
+                </DropdownMenuItem>
+              )}
+              {item.Status?.Id !== STATUS.LOCKED && (
+                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.LOCKED)}>
+                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> Khoá
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(item.Id!, STATUS.DELETED)}>
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )
       },
     },
@@ -139,8 +157,8 @@ export default function ActiveProductsPage() {
           className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">Tất cả TT</option>
-          <option value={1}>Hoạt động</option>
-          <option value={2}>Ngừng HĐ</option>
+          <option value={STATUS.ACTIVE}>Hoạt động</option>
+          <option value={STATUS.LOCKED}>Đã khoá</option>
         </select>
         <select
           value={groupId}

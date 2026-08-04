@@ -7,6 +7,7 @@ import {
 } from "@/store/slice/users/api/api"
 import type { TPosCustomerGroup } from "@/store/slice/users/types"
 import { Input } from "@/components/ui/input"
+import { NumberInput } from '@/components/ui/number-input'
 import { Textarea } from "@/components/ui/textarea"
 import { GenericManagerPage } from "../GenericManagerPage"
 import { FormField } from "../components"
@@ -59,18 +60,18 @@ export default function CustomerGroupsPage() {
       </FormField>
       <div className="grid grid-cols-2 gap-3">
         <FormField label="Tỷ lệ giảm giá (%)">
-          <Input
-            type="number" min={0} max={100}
-            value={mp.form.DiscountPercent ?? ""}
-            onChange={e => mp.setForm(f => ({ ...f, DiscountPercent: e.target.value === "" ? undefined : Number(e.target.value) }))}
+          <NumberInput
+            min={0} max={100}
+            value={mp.form.DiscountPercent ?? 0}
+            onChange={v => mp.setForm(f => ({ ...f, DiscountPercent: v }))}
             placeholder="0"
           />
         </FormField>
         <FormField label="Điểm tích luỹ">
-          <Input
-            type="number" min={0}
-            value={mp.form.Point ?? ""}
-            onChange={e => mp.setForm(f => ({ ...f, Point: e.target.value === "" ? undefined : Number(e.target.value) }))}
+          <NumberInput
+            min={0}
+            value={mp.form.Point ?? 0}
+            onChange={v => mp.setForm(f => ({ ...f, Point: v }))}
             placeholder="0"
           />
         </FormField>

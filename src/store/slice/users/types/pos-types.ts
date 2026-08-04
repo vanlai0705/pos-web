@@ -878,17 +878,29 @@ export interface TPosStockCheck {
 
 // ─── Currencies: Phiếu thu/chi ───────────────────────────────────────────────
 
+/** CashBalanceModel — a distinct, ledger-shaped report row (not a voucher). */
+export interface TPosCashBalanceItem {
+  Name?: string
+  Date?: string
+  Detail?: string
+  Receipt?: number
+  Payment?: number
+  Balance?: number
+}
+
 export interface TPosCurrencyVoucher {
   Id?: number
   Name?: string
   Date?: string
+  Type?: number
   ObjectName?: string
   Address?: string
   OriginDocument?: string
   ReceiptPaymentReason?: { Id?: number; Name?: string }
-  Receipt?: number
-  Payment?: number
-  Balance?: number
+  /** ReceiptPaymentModel — the single money field is Amount, not Receipt/Payment */
+  Amount?: number
+  IsTransfer?: boolean
+  Shop?: { Id?: number; Name?: string }
   Detail?: string
   Status?: TPosItemStatus
   Note?: string
@@ -896,16 +908,32 @@ export interface TPosCurrencyVoucher {
 
 // ─── Liabilities ──────────────────────────────────────────────────────────────
 
+/**
+ * LiabilitiesCustomerModel / LiabilitiesSupplierModel — the only figure the
+ * server returns per row is the current outstanding `Total`. There is no
+ * beginning/in/out breakdown; that only exists per-voucher in the detail
+ * dialog (see TPosLiabilityVoucher below).
+ */
 export interface TPosDebtItem {
-  Id?: number
-  Customer?: { Id?: number; Name?: string; Phone?: string }
-  Supplier?: { Id?: number; Name?: string; Phone?: string }
+  Customer?: {
+    Id?: number; Name?: string; Phone?: string; Address?: string; Email?: string
+    CustomerCode?: string; TaxCode?: string; CustomerGroup?: { Id?: number; Name?: string }
+  }
+  Supplier?: {
+    Id?: number; Name?: string; Phone?: string; Address?: string; Email?: string
+    SupplierCode?: string; TaxNumber?: string; SupplierGroup?: { Id?: number; Name?: string }
+  }
   ObjectName?: string
-  BeginningDebt?: number
-  InDebt?: number
-  OutDebt?: number
-  EndingDebt?: number
+  Total?: number
+}
+
+/** LiabilitiesDetailModel — one row in the "Chi tiết công nợ" dialog. */
+export interface TPosLiabilityVoucher {
   Date?: string
+  Name?: string
+  Detail?: string
+  Total?: number
+  Payment?: number
 }
 
 // ─── HR: Nhân viên ────────────────────────────────────────────────────────────
@@ -991,8 +1019,10 @@ export interface TPosSalaryRecord {
 export interface TPosShift {
   Id?: number
   Name?: string
-  StartTime?: string
-  EndTime?: string
+  Image?: TPosItemImage
+  /** Percent of a full day's wage this shift is worth (defaults to 100). */
+  SalaryPercent?: number
+  Parent?: { Id?: number; Name?: string } | null
   Status?: TPosItemStatus
   Note?: string
 }

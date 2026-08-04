@@ -7,6 +7,7 @@ export default function OpeningBalancesCustomerPage() {
       entityLabel="Khách hàng"
       entityKey="Customer"
       filterUrl="opening-balances/filter-customer"
+      headerUrl="opening-balances/get-excel-header-customer"
       importUrl="opening-balances/import-excel-customer"
       updateUrl="opening-balances/update-customer"
       exportUrl="opening-balances/export-excel-customer"

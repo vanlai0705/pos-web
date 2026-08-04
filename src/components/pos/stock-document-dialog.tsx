@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Search, Trash2, Package } from 'lucide-react'
 import { toast } from 'sonner'
+import { buildModelFormData } from '@/utils/multipart'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
@@ -179,7 +181,7 @@ export function StockDocumentDialog({
       await request({
         url: form.Id ? endpoints.update : endpoints.create,
         method: 'POST',
-        body: form,
+        body: buildModelFormData(form),
       }).unwrap()
       toast.success(form.Id ? 'Cập nhật thành công' : 'Tạo phiếu thành công')
       onOpenChange(false)
@@ -268,12 +270,12 @@ export function StockDocumentDialog({
                         {isCheck ? (
                           <>
                             <td className="px-2 py-1.5">
-                              <Input type="number" className="h-7 w-24 text-xs" value={l.QuantitySystem ?? 0}
-                                onChange={e => setLine(i, { QuantitySystem: Number(e.target.value) })} />
+                              <NumberInput className="h-7 w-24 text-xs" value={l.QuantitySystem ?? 0}
+                                onChange={v => setLine(i, { QuantitySystem: v })} />
                             </td>
                             <td className="px-2 py-1.5">
-                              <Input type="number" className="h-7 w-24 text-xs" value={l.QuantityReal ?? 0}
-                                onChange={e => setLine(i, { QuantityReal: Number(e.target.value) })} />
+                              <NumberInput className="h-7 w-24 text-xs" value={l.QuantityReal ?? 0}
+                                onChange={v => setLine(i, { QuantityReal: v })} />
                             </td>
                             <td className={`px-2 py-1.5 tabular-nums font-semibold ${
                               lineQty(l, true) > 0 ? 'text-emerald-600' : lineQty(l, true) < 0 ? 'text-rose-600' : ''}`}>
@@ -283,12 +285,12 @@ export function StockDocumentDialog({
                         ) : (
                           <>
                             <td className="px-2 py-1.5">
-                              <Input type="number" min={0} className="h-7 w-20 text-xs" value={l.Quantity ?? 0}
-                                onChange={e => setLine(i, { Quantity: Number(e.target.value) })} />
+                              <NumberInput min={0} className="h-7 w-20 text-xs" value={l.Quantity ?? 0}
+                                onChange={v => setLine(i, { Quantity: v })} />
                             </td>
                             <td className="px-2 py-1.5">
-                              <Input type="number" min={0} className="h-7 w-28 text-xs" value={l.Price ?? 0}
-                                onChange={e => setLine(i, { Price: Number(e.target.value) })} />
+                              <NumberInput min={0} className="h-7 w-28 text-xs" value={l.Price ?? 0}
+                                onChange={v => setLine(i, { Price: v })} />
                             </td>
                             <td className="px-2 py-1.5 tabular-nums font-semibold">{lineTotal(l).toLocaleString('vi-VN')}</td>
                           </>

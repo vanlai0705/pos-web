@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { buildModelFormData } from '@/utils/multipart'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -86,7 +88,7 @@ export function RewardPunishDialog({ open, onOpenChange, editId, lockedUser, onS
       await request({
         url: form.Id ? REWARD_PUNISH_ENDPOINTS.update : REWARD_PUNISH_ENDPOINTS.create,
         method: 'POST',
-        body: { ...form, Amount: Number(form.Amount) || 0 },
+        body: buildModelFormData({ ...form, Amount: Number(form.Amount) || 0 }),
       }).unwrap()
       toast.success(form.Id ? 'Cập nhật thành công' : 'Thêm thành công')
       onOpenChange(false)
@@ -149,8 +151,8 @@ export function RewardPunishDialog({ open, onOpenChange, editId, lockedUser, onS
 
           <div className="space-y-1">
             <Label>Tổng cộng</Label>
-            <Input type="number" min={0} max={999999999} value={form.Amount ?? 0}
-              onChange={e => setForm(f => ({ ...f, Amount: Number(e.target.value) }))} />
+            <NumberInput min={0} max={999999999} value={form.Amount ?? 0}
+              onChange={v => setForm(f => ({ ...f, Amount: v }))} />
           </div>
 
           <div className="space-y-1">

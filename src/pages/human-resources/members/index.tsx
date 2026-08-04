@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { UserCheck, Plus, Lock, Check, Trash2, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -421,8 +422,8 @@ export default function MembersPage() {
                       </div>
                       <div className="space-y-1">
                         <Label>Lương</Label>
-                        <Input type="number" min={0} max={999999999} value={form.UserInfo?.Salary ?? 0}
-                          onChange={e => setUserInfo({ Salary: Number(e.target.value) })} />
+                        <NumberInput min={0} max={999999999} value={form.UserInfo?.Salary ?? 0}
+                          onChange={v => setUserInfo({ Salary: v })} />
                       </div>
                     </div>
                     <div>

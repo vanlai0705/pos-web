@@ -47,6 +47,11 @@ export const sidebarData: SidebarData = {
           icon: IconPackage,
         },
         {
+          title: "Mặt hàng mới",
+          url: "/actives/products-new",
+          icon: IconPackage,
+        },
+        {
           title: "Tồn kho",
           icon: IconBuildingStore,
           items: [

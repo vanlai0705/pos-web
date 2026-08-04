@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Banknote, Plus, MoreHorizontal, Trash2, Check, Lock } from 'lucide-react'
 import { toast } from 'sonner'
+import { buildModelFormData } from '@/utils/multipart'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -163,7 +164,7 @@ export default function SalariesPage() {
       await request({
         url: form.Id ? 'salary/update' : 'salary/create',
         method: 'POST',
-        body: { ...form, Month: Number(form.Month), Year: Number(form.Year) },
+        body: buildModelFormData({ ...form, Month: Number(form.Month), Year: Number(form.Year) }),
       }).unwrap()
       toast.success(form.Id ? 'Đã cập nhật bảng lương' : 'Đã tạo bảng lương')
       setModal(false)
@@ -264,7 +265,7 @@ export default function SalariesPage() {
                 </div>
                 <div className="space-y-1">
                   <Label>Năm</Label>
-                  <Input type="number" value={form.Year ?? ''} onChange={e => setForm(f => ({ ...f, Year: Number(e.target.value) }))} />
+                  <NumberInput value={form.Year ?? 0} onChange={v => setForm(f => ({ ...f, Year: v }))} />
                 </div>
               </div>
 
@@ -280,8 +281,8 @@ export default function SalariesPage() {
                 </div>
                 <div className="space-y-1">
                   <Label>Lương</Label>
-                  <Input type="number" min={0} value={form.UserSalary?.Salary ?? 0}
-                    onChange={e => setUserSalary({ Salary: Number(e.target.value) })} />
+                  <NumberInput min={0} value={form.UserSalary?.Salary ?? 0}
+                    onChange={v => setUserSalary({ Salary: v })} />
                 </div>
               </div>
 

@@ -16,7 +16,7 @@ export default function CustomerRoyalPage() {
     PageIndex: page - 1,
     PageSize: pageSize,
     Keyword: keyword || undefined,
-    GroupId: groupId || undefined,
+    CustomerGroupId: groupId || undefined,
   })
 
   const { data: groups = [] } = useGetCustomerGroupsSimpleQuery()

@@ -1,4 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
+import { buildModelFormData } from "@/utils/multipart";
 
 import {
   TChangePasswordRequest,
@@ -776,7 +777,9 @@ export const userApiSlice = createApi({
     }),
 
     getOrderDetail: builder.query<TPosOrder, number>({
-      query: (id) => ({ url: `orders/detail?id=${id}` }),
+      // orders/detail takes `orderId`, not `id` — every other */detail endpoint
+      // uses `id`, this one is the exception (matches Angular's order-manager).
+      query: (id) => ({ url: `orders/detail?orderId=${id}` }),
       transformResponse: (res: TPosResponse<TPosOrder>) => res.Data,
     }),
 
@@ -842,7 +845,7 @@ export const userApiSlice = createApi({
       query: (data) => ({
         url: data.Id ? 'bookings/update' : 'bookings/create',
         method: 'POST',
-        body: { model: data },
+        body: buildModelFormData(data),
       }),
     }),
 
@@ -871,7 +874,7 @@ export const userApiSlice = createApi({
       query: (data) => ({
         url: data.Id ? 'quotations/update' : 'quotations/create',
         method: 'POST',
-        body: { model: data },
+        body: buildModelFormData(data),
       }),
     }),
 
@@ -885,7 +888,7 @@ export const userApiSlice = createApi({
 
     // ─── Actives: Products ──────────────────────────────────────────────────
 
-    filterActiveProducts: builder.query<TPosFilterData<TPosActiveProduct>, TPosFilterParams & { GroupId?: number }>({
+    filterActiveProducts: builder.query<TPosFilterData<TPosActiveProduct>, TPosFilterParams & { ProductGroupId?: number }>({
       query: (p) => ({ url: `products/filter${query({ PageIndex: 0, PageSize: 15, ...p })}` }),
       transformResponse: (res: TPosResponse<TPosFilterData<TPosActiveProduct>>) =>
         res.Data ?? { Items: [], TotalItemCount: 0 },
@@ -906,7 +909,7 @@ export const userApiSlice = createApi({
 
     // ─── Actives: Statistics ────────────────────────────────────────────────
 
-    filterProductStatistics: builder.query<TPosProductStatistic, { PageIndex?: number; PageSize?: number; DateFrom?: string; DateTo?: string; GroupId?: number; ShopId?: number }>({
+    filterProductStatistics: builder.query<TPosProductStatistic, { PageIndex?: number; PageSize?: number; DateFrom?: string; DateTo?: string; ProductGroupId?: number; ShopId?: number }>({
       query: (p) => ({ url: `statistic/filter-product-statistic${query({ PageIndex: 0, PageSize: 20, ...p })}` }),
       transformResponse: (res: TPosResponse<TPosProductStatistic>) =>
         res.Data ?? { Items: [], TotalItemCount: 0, Sumary: { Quantity: 0, Amount: 0, AmountInput: 0, Profit: 0 } },
@@ -965,7 +968,7 @@ export const userApiSlice = createApi({
       }),
     }),
 
-    filterRoyalCustomers: builder.query<TPosFilterData<TPosCustomer>, TPosFilterParams & { GroupId?: number }>({
+    filterRoyalCustomers: builder.query<TPosFilterData<TPosCustomer>, TPosFilterParams & { CustomerGroupId?: number }>({
       query: (p) => ({ url: `customers/filter-royal${query({ PageIndex: 0, PageSize: 15, ...p })}` }),
       transformResponse: (res: TPosResponse<TPosFilterData<TPosCustomer>>) =>
         res.Data ?? { Items: [], TotalItemCount: 0 },
@@ -996,7 +999,7 @@ export const userApiSlice = createApi({
         res.Data ?? { Items: [], TotalItemCount: 0, Sumary: null },
     }),
     saveWarehouse: builder.mutation<void, Record<string, any>>({
-      query: (data) => ({ url: data.Id ? 'stock/update' : 'stock/create', method: 'POST', body: data }),
+      query: (data) => ({ url: data.Id ? 'stock/update' : 'stock/create', method: 'POST', body: buildModelFormData(data) }),
     }),
     updateWarehouseStatus: builder.mutation<void, { id: number; statusId: number }>({
       query: ({ id, statusId }) => ({ url: `stock/update-status?id=${id}&statusId=${statusId}`, method: 'POST', body: {} }),
@@ -1004,24 +1007,24 @@ export const userApiSlice = createApi({
 
     // ─── Stocks: Create mutations ─────────────────────────────────────────────
     createStockInput: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'stockinputs/create', method: 'POST', body }),
+      query: (body) => ({ url: 'stockinputs/create', method: 'POST', body: buildModelFormData(body) }),
     }),
     createStockOutput: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'stockoutputs/create', method: 'POST', body }),
+      query: (body) => ({ url: 'stockoutputs/create', method: 'POST', body: buildModelFormData(body) }),
     }),
     createStockTransfer: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'stocktransfers/create', method: 'POST', body }),
+      query: (body) => ({ url: 'stocktransfers/create', method: 'POST', body: buildModelFormData(body) }),
     }),
     createStockCheck: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'stockchecks/create', method: 'POST', body }),
+      query: (body) => ({ url: 'stockchecks/create', method: 'POST', body: buildModelFormData(body) }),
     }),
 
     // ─── Currencies: Create mutations ─────────────────────────────────────────
     createReceipt: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'receipt/create', method: 'POST', body }),
+      query: (body) => ({ url: 'receipt/create', method: 'POST', body: buildModelFormData(body) }),
     }),
     createPayment: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'payment/create', method: 'POST', body }),
+      query: (body) => ({ url: 'payment/create', method: 'POST', body: buildModelFormData(body) }),
     }),
 
     // ─── HR: Filter queries ───────────────────────────────────────────────────
@@ -1041,7 +1044,7 @@ export const userApiSlice = createApi({
         res.Data ?? { Items: [], TotalItemCount: 0, Sumary: null },
     }),
     saveShift: builder.mutation<void, Record<string, any>>({
-      query: (data) => ({ url: data.Id ? 'shift/update' : 'shift/create', method: 'POST', body: data }),
+      query: (data) => ({ url: data.Id ? 'shift/update' : 'shift/create', method: 'POST', body: buildModelFormData(data) }),
     }),
     updateShiftStatus: builder.mutation<void, { id: number; statusId: number }>({
       query: ({ id, statusId }) => ({ url: `shift/update-status?id=${id}&statusId=${statusId}`, method: 'POST', body: {} }),

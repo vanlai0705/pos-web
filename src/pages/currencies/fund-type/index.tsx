@@ -9,6 +9,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
+import { buildModelFormData } from '@/utils/multipart'
 import {
   useFilterReportQuery, useLazyGenericGetQuery, useGenericPostMutation,
 } from '@/store/slice/users/api/api'
@@ -94,7 +95,7 @@ export default function FundTypePage() {
       await request({
         url: form.Id ? 'fundtype/update' : 'fundtype/create',
         method: 'POST',
-        body: form,
+        body: buildModelFormData(form),
       }).unwrap()
       toast.success(form.Id ? 'Đã cập nhật' : 'Đã thêm loại quỹ')
       setModal(false)

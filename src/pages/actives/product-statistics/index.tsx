@@ -17,7 +17,7 @@ export default function ProductStatisticsPage() {
     PageSize: pageSize,
     DateFrom: dateFrom,
     DateTo: dateTo,
-    GroupId: groupId || undefined,
+    ProductGroupId: groupId || undefined,
   })
 
   const { data: groups = [] } = useGetProductGroupsSimpleQuery()

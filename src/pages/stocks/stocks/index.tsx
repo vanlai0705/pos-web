@@ -1,24 +1,33 @@
 import { useState } from 'react'
-import { Warehouse, Plus, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Warehouse, Plus, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { useFilterWarehousesQuery, useSaveWarehouseMutation, useUpdateWarehouseStatusMutation } from '@/store/slice/users/api/api'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE } from '@/pages/actives/shared'
 
+// STATUS in pos_web: 0 = Actived, 1 = Locked, 2 = Deleted.
+const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
+
 interface TWarehouse {
   Id?: number
   Name?: string
-  IsAllowNegative?: boolean
-  Status?: { Id?: number; Name?: string }
+  /** stock-detail.component.ts — field is IsNegative, not IsAllowNegative */
+  IsNegative?: boolean
   Note?: string
+  Status?: { Id?: number; Name?: string }
 }
 
-const EMPTY = (): TWarehouse => ({ Name: '', IsAllowNegative: false })
+// Angular defaults IsNegative to true for a new kho.
+const EMPTY = (): TWarehouse => ({ Name: '', IsNegative: true, Note: '' })
 
 export default function WarehousesPage() {
   const [keyword, setKeyword] = useState('')
@@ -53,9 +62,10 @@ export default function WarehousesPage() {
     }
   }
 
-  const handleToggleStatus = async (id: number, currentStatusId?: number) => {
+  const changeStatus = async (id: number, statusId: number) => {
+    if (statusId === STATUS.DELETED && !window.confirm('Xoá kho này?')) return
     try {
-      await updateStatus({ id, statusId: currentStatusId === 1 ? 2 : 1 }).unwrap()
+      await updateStatus({ id, statusId }).unwrap()
       refetch()
     } catch { toast.error('Không thể cập nhật trạng thái') }
   }
@@ -66,8 +76,8 @@ export default function WarehousesPage() {
     {
       id: 'allowNeg', header: 'Cho phép âm kho',
       cell: ({ row }) => (
-        <span className={row.original.IsAllowNegative ? 'text-emerald-600 text-xs font-medium' : 'text-muted-foreground text-xs'}>
-          {row.original.IsAllowNegative ? 'Có' : 'Không'}
+        <span className={row.original.IsNegative ? 'text-emerald-600 text-xs font-medium' : 'text-muted-foreground text-xs'}>
+          {row.original.IsNegative ? 'Có' : 'Không'}
         </span>
       ),
     },
@@ -76,16 +86,31 @@ export default function WarehousesPage() {
       id: 'actions', header: 'Thao tác',
       cell: ({ row }) => {
         const item = row.original
+        if (!item.Id) return null
         return (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => { setForm(item); setModal(true) }}>Sửa</Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => item.Id && handleToggleStatus(item.Id, item.Status?.Id)}
-              title={item.Status?.Id === 1 ? 'Ngừng hoạt động' : 'Kích hoạt'}>
-              {item.Status?.Id === 1
-                ? <ToggleRight className="h-4 w-4 text-primary" />
-                : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => { setForm(item); setModal(true) }}>Chỉnh sửa</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {item.Status?.Id !== STATUS.ACTIVE && (
+                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.ACTIVE)}>
+                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> Kích hoạt
+                </DropdownMenuItem>
+              )}
+              {item.Status?.Id !== STATUS.LOCKED && (
+                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.LOCKED)}>
+                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> Khoá
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(item.Id!, STATUS.DELETED)}>
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )
       },
     },
@@ -98,8 +123,8 @@ export default function WarehousesPage() {
         <select value={statusId} onChange={e => { setStatusId(e.target.value === '' ? '' : Number(e.target.value)); setPage(1) }}
           className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="">Tất cả TT</option>
-          <option value={1}>Hoạt động</option>
-          <option value={2}>Ngừng HĐ</option>
+          <option value={STATUS.ACTIVE}>Hoạt động</option>
+          <option value={STATUS.LOCKED}>Đã khoá</option>
         </select>
         <Button size="sm" className="h-8" onClick={() => { setForm(EMPTY()); setModal(true) }}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Thêm kho
@@ -127,10 +152,14 @@ export default function WarehousesPage() {
             </div>
             <div className="flex items-center gap-3">
               <Switch
-                checked={form.IsAllowNegative ?? false}
-                onCheckedChange={v => setForm(f => ({ ...f, IsAllowNegative: v }))}
+                checked={form.IsNegative ?? false}
+                onCheckedChange={v => setForm(f => ({ ...f, IsNegative: v }))}
               />
               <Label>Cho phép âm kho</Label>
+            </div>
+            <div className="space-y-1">
+              <Label>Ghi chú</Label>
+              <Textarea rows={2} value={form.Note ?? ''} onChange={e => setForm(f => ({ ...f, Note: e.target.value }))} />
             </div>
           </div>
           <DialogFooter>

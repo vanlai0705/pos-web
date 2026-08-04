@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, CalendarDays, Download, FileSpreadsheet, Save, Upload, Warehouse } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import * as XLSX from 'xlsx'
 
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
+import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 import {
   useFilterWarehousesQuery,
   useGenericDownloadMutation,
@@ -59,47 +59,6 @@ function formatNumber(value?: number | null) {
 
 function formatMoney(value?: number | null) {
   return Number(value || 0).toLocaleString('vi-VN')
-}
-
-function readExcelFile(file: File, extra: Record<string, any>) {
-  return new Promise<Record<string, any>>((resolve, reject) => {
-    const reader = new FileReader()
-
-    reader.onload = event => {
-      try {
-        const data = new Uint8Array(event.target?.result as ArrayBuffer)
-        const workbook = XLSX.read(data, { type: 'array' })
-        const sheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[sheetName]
-        const rows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1, defval: '' })
-        const headers = (rows[0] || []).map((name, index) => ({
-          id: index,
-          name: `${name || `Column ${index + 1}`}`,
-          value: index,
-        }))
-        const excelMappedItems = rows.slice(1).flatMap((row, rowIndex) =>
-          headers.map(header => ({
-            id: rowIndex,
-            name: header.name,
-            value: row[header.value] ?? '',
-          })),
-        )
-
-        resolve({
-          fileName: file.name,
-          excelHeader: headers,
-          excelMappedItems,
-          excelMapperItems: excelMappedItems,
-          ...extra,
-        })
-      } catch (error) {
-        reject(error)
-      }
-    }
-
-    reader.onerror = reject
-    reader.readAsArrayBuffer(file)
-  })
 }
 
 function toPascalImage(image: any) {
@@ -257,6 +216,7 @@ export function OpeningBalanceEntityPage({
   entityLabel,
   entityKey,
   filterUrl,
+  headerUrl,
   importUrl,
   updateUrl,
   exportUrl,
@@ -265,12 +225,13 @@ export function OpeningBalanceEntityPage({
   entityLabel: string
   entityKey: EntityKey
   filterUrl: string
+  headerUrl: string
   importUrl: string
   updateUrl: string
   exportUrl: string
 }) {
   const navigate = useNavigate()
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const [fetchRows, { isFetching }] = useLazyFilterReportQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
@@ -327,22 +288,6 @@ export function OpeningBalanceEntityPage({
       if (rowIndex !== index) return row
       return { ...row, AmountText: mode === 'focus' ? (row.Amount ? `${row.Amount}` : '') : formatNumber(row.Amount) }
     }))
-  }
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    try {
-      const payload = await readExcelFile(file, { date })
-      await request({ url: importUrl, method: 'POST', body: payload }).unwrap()
-      toast.success('Nhập Excel thành công')
-      loadRows()
-    } catch {
-      toast.error('Không đọc được file Excel')
-    } finally {
-      event.target.value = ''
-    }
   }
 
   const exportExcel = async () => {
@@ -460,8 +405,7 @@ export function OpeningBalanceEntityPage({
         )}
         actions={(
           <>
-            <input ref={importInputRef} type="file" hidden accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={handleImport} />
-            <ToolbarButton tone="neutral" onClick={() => importInputRef.current?.click()}>
+            <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" />
               Nhập
             </ToolbarButton>
@@ -471,6 +415,14 @@ export function OpeningBalanceEntityPage({
             </ToolbarButton>
           </>
         )}
+      />
+
+      <ExcelImportDialog
+        open={importOpen} onOpenChange={setImportOpen}
+        headerUrl={headerUrl}
+        dataUrl="opening-balances/get-excel-data"
+        importUrl={importUrl}
+        onImported={loadRows}
       />
 
       <div className="min-h-0 flex-1">
@@ -508,7 +460,7 @@ export function OpeningBalanceEntityPage({
 
 export function OpeningInventoryPageContent() {
   const navigate = useNavigate()
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const [fetchRows, { isFetching }] = useLazyFilterReportQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
@@ -582,22 +534,6 @@ export function OpeningInventoryPageContent() {
       const textKey = key === 'Quantity' ? 'QuantityText' : 'UnitPriceText'
       return { ...row, [textKey]: mode === 'focus' ? (row[key] ? `${row[key]}` : '') : formatNumber(row[key]) }
     }))
-  }
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    try {
-      const payload = await readExcelFile(file, { date, stockId })
-      await request({ url: 'opening-balances/import-excel-inventory', method: 'POST', body: payload }).unwrap()
-      toast.success('Nhập Excel thành công')
-      loadRows()
-    } catch {
-      toast.error('Không đọc được file Excel')
-    } finally {
-      event.target.value = ''
-    }
   }
 
   const exportExcel = async () => {
@@ -743,8 +679,7 @@ export function OpeningInventoryPageContent() {
         )}
         actions={(
           <>
-            <input ref={importInputRef} type="file" hidden accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={handleImport} />
-            <ToolbarButton tone="neutral" onClick={() => importInputRef.current?.click()}>
+            <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" />
               Nhập
             </ToolbarButton>
@@ -754,6 +689,14 @@ export function OpeningInventoryPageContent() {
             </ToolbarButton>
           </>
         )}
+      />
+
+      <ExcelImportDialog
+        open={importOpen} onOpenChange={setImportOpen}
+        headerUrl="opening-balances/get-excel-header-inventory"
+        dataUrl="opening-balances/get-excel-data"
+        importUrl="opening-balances/import-excel-inventory"
+        onImported={loadRows}
       />
 
       <div className="min-h-0 flex-1">

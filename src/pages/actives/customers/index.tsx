@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FileDown, Image as ImageIcon, MoreHorizontal, Plus, Search, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
@@ -14,9 +14,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { CodeTag } from '@/components/ui/data-tag'
@@ -77,7 +79,7 @@ export default function CustomersPage() {
   const [groupModal, setGroupModal] = useState(false)
   const [groupForm, setGroupForm] = useState<TPosCustomerGroup>({ Name: '' })
 
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   const { data, isLoading, refetch } = useFilterCustomersQuery({
     PageIndex: page - 1,
@@ -218,19 +220,6 @@ export default function CustomersPage() {
       refetchGroups()
     } catch {
       toast.error('Không thể xóa nhóm khách hàng')
-    }
-  }
-
-  const importExcel = async (file?: File) => {
-    if (!file) return
-    const form = new FormData()
-    form.append(file.name, file)
-    try {
-      await request({ url: 'customers/import-excel', method: 'POST', body: form }).unwrap()
-      toast.success('Nhập Excel thành công')
-      refetch()
-    } catch {
-      toast.error('Không thể nhập Excel')
     }
   }
 
@@ -408,17 +397,7 @@ export default function CustomersPage() {
             )}
             actions={(
               <>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  className="hidden"
-                  accept=".xlsx,.xls"
-                  onChange={event => {
-                    importExcel(event.target.files?.[0])
-                    event.target.value = ''
-                  }}
-                />
-                <ToolbarButton tone="neutral" onClick={() => importInputRef.current?.click()}>
+                <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
                   <Upload className="h-4 w-4" />
                   Nhập
                 </ToolbarButton>
@@ -470,10 +449,10 @@ export default function CustomersPage() {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Chiết khấu (%)">
-                <Input type="number" value={groupForm.DiscountPercent ?? ''} onChange={event => setGroupForm(current => ({ ...current, DiscountPercent: Number(event.target.value) }))} />
+                <NumberInput value={groupForm.DiscountPercent ?? 0} onChange={v => setGroupForm(current => ({ ...current, DiscountPercent: v }))} />
               </Field>
               <Field label="Điểm">
-                <Input type="number" value={groupForm.Point ?? ''} onChange={event => setGroupForm(current => ({ ...current, Point: Number(event.target.value) }))} />
+                <NumberInput value={groupForm.Point ?? 0} onChange={v => setGroupForm(current => ({ ...current, Point: v }))} />
               </Field>
             </div>
             <Field label="Ghi chú">
@@ -486,6 +465,14 @@ export default function CustomersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ExcelImportDialog
+        open={importOpen} onOpenChange={setImportOpen}
+        headerUrl="customers/get-excel-header"
+        dataUrl="customers/get-excel-data"
+        importUrl="customers/import-excel"
+        onImported={refetch}
+      />
     </div>
   )
 }

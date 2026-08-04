@@ -28,7 +28,7 @@ export default function ReceiptPage() {
 
   const { data, isLoading, refetch } = useFilterReportQuery({
     path: 'receipt/filter',
-    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: pageSize },
+    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, Type: RECEIPT_PAYMENT_TYPE.RECEIPT, PageIndex: page - 1, PageSize: pageSize },
   })
   const [request] = useGenericPostMutation()
 
@@ -71,7 +71,7 @@ export default function ReceiptPage() {
     { id: 'object', header: 'Tên đối tượng', cell: ({ row }) => <span>{row.original.ObjectName ?? '—'}</span> },
     { id: 'address', header: 'Địa chỉ', cell: ({ row }) => <span className="text-muted-foreground text-xs">{row.original.Address ?? '—'}</span> },
     { id: 'reason', header: 'Lý do', cell: ({ row }) => <span className="text-xs">{row.original.ReceiptPaymentReason?.Name ?? '—'}</span> },
-    { id: 'receipt', header: 'Số tiền thu', cell: ({ row }) => <MoneyTag value={row.original.Receipt} /> },
+    { id: 'receipt', header: 'Số tiền thu', cell: ({ row }) => <MoneyTag value={row.original.Amount} /> },
     {
       id: 'actions', header: '',
       cell: ({ row }) => (

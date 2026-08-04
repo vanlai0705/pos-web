@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { buildModelFormData } from '@/utils/multipart'
 import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
@@ -101,8 +103,9 @@ function emptyPromotion(type: number): Promotion {
     DateFrom: dayjs().format('YYYY-MM-DD'), DateTo: '',
     Priority: 0, Note: '',
     Status: { Id: STATUS.ACTIVE },
-    // Giảm giá tổng hoá đơn always carries exactly one row.
-    Items: type === PROMOTION_TYPE.Discount ? [newItem(type)] : [],
+    // Types that build rows by hand start with one, so the form is usable
+    // straight away — an empty detail table is rejected by the server.
+    Items: rowMode(type) === 'productGroup' || rowMode(type) === 'product' ? [] : [newItem(type)],
   }
 }
 
@@ -176,18 +179,23 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
 
   const handleSave = async () => {
     if (!form.Name?.trim()) { toast.error('Vui lòng nhập tên chương trình'); return }
-    if (mode !== 'single' && !(form.Items ?? []).length) { toast.error('Vui lòng thêm ít nhất một dòng'); return }
+    if (mode !== 'single' && !(form.Items ?? []).length) {
+      toast.error('Chi tiết khuyến mãi đang trống — vui lòng thêm ít nhất một dòng')
+      return
+    }
     try {
       await request({
         url: form.Id ? ENDPOINTS.update : ENDPOINTS.create,
         method: 'POST',
-        body: {
+        // pos_web posts every detail form as multipart with the model under
+        // `model`; these endpoints read Request.Form and reject raw JSON.
+        body: buildModelFormData({
           ...form,
           Type: type,
           Priority: Number(form.Priority) || 0,
           // TempId is a client-side row key; the API rejects unknown fields.
           Items: (form.Items ?? []).map(({ TempId: _TempId, ...rest }) => rest),
-        },
+        }),
       }).unwrap()
       toast.success(form.Id ? 'Cập nhật thành công' : 'Thêm chương trình thành công')
       onOpenChange(false)
@@ -225,8 +233,8 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
           <div className="grid grid-cols-4 items-end gap-3">
             <div className="space-y-1">
               <Label>Ưu tiên</Label>
-              <Input type="number" min={0} max={999999} value={form.Priority ?? 0}
-                onChange={e => setForm(f => ({ ...f, Priority: Number(e.target.value) }))} />
+              <NumberInput min={0} max={999999} value={form.Priority ?? 0}
+                onChange={v => setForm(f => ({ ...f, Priority: v }))} />
             </div>
             <div className="col-span-2 space-y-1">
               <Label>Ghi chú</Label>
@@ -244,19 +252,21 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
             <div className="grid grid-cols-2 gap-3 rounded-xl border bg-muted/30 p-3">
               <div className="space-y-1">
                 <Label>Tỷ lệ giảm giá (%)</Label>
-                <Input type="number" min={0} max={100} value={items[0]?.DiscountPercent ?? 0}
-                  onChange={e => patchItem(items[0]?.TempId ?? '', { DiscountPercent: Number(e.target.value) })} />
+                <NumberInput min={0} max={100} value={items[0]?.DiscountPercent ?? 0}
+                  onChange={v => patchItem(items[0]?.TempId ?? '', { DiscountPercent: v })} />
               </div>
               <div className="space-y-1">
                 <Label>Giảm giá</Label>
-                <Input type="number" min={0} max={999999999} value={items[0]?.Discount ?? 0}
-                  onChange={e => patchItem(items[0]?.TempId ?? '', { Discount: Number(e.target.value) })} />
+                <NumberInput min={0} max={999999999} value={items[0]?.Discount ?? 0}
+                  onChange={v => patchItem(items[0]?.TempId ?? '', { Discount: v })} />
               </div>
             </div>
           ) : (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label className="flex-1">Chi tiết khuyến mãi</Label>
+                <Label className="flex-1">
+                  Chi tiết khuyến mãi <span className="text-destructive">*</span>
+                </Label>
                 {mode === 'productGroup' && (
                   <LookupSelect className="w-64" endpoint="productgroups/filter-simple" placeholder="Chọn nhóm hàng để thêm"
                     value={null} onChange={v => addByPick('ProductGroup', v)} />
@@ -298,7 +308,13 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
                   </thead>
                   <tbody>
                     {items.length === 0 && (
-                      <tr><td colSpan={12} className="p-4 text-center text-xs text-muted-foreground">Chưa có dòng nào</td></tr>
+                      <tr>
+                        <td colSpan={12} className="p-4 text-center text-xs text-muted-foreground">
+                          {mode === 'manual'
+                            ? 'Chưa có dòng nào — bấm "Thêm dòng"'
+                            : 'Chưa có dòng nào — chọn mặt hàng/nhóm hàng ở trên để thêm'}
+                        </td>
+                      </tr>
                     )}
                     {items.map((item, index) => {
                       const key = item.TempId ?? String(index)
@@ -318,9 +334,9 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
 
                           {type === PROMOTION_TYPE.DiscountByBillTotal && (
                             <td className="px-2 py-1">
-                              <Input type="number" min={0} max={999999999} className="h-8 text-right"
+                              <NumberInput min={0} max={999999999} className="h-8 text-right"
                                 value={item.Amount ?? 0}
-                                onChange={e => patchItem(key, { Amount: Number(e.target.value) })} />
+                                onChange={v => patchItem(key, { Amount: v })} />
                             </td>
                           )}
 
@@ -347,24 +363,24 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
 
                           {type === PROMOTION_TYPE.DiscountByQuantity && (
                             <td className="px-2 py-1 w-[110px]">
-                              <Input type="number" min={0} max={999999} className="h-8 text-right"
+                              <NumberInput min={0} max={999999} className="h-8 text-right"
                                 value={item.Quantity ?? 0}
-                                onChange={e => patchItem(key, { Quantity: Number(e.target.value) })} />
+                                onChange={v => patchItem(key, { Quantity: v })} />
                             </td>
                           )}
 
                           {showDiscount && (
                             <td className="px-2 py-1 w-[90px]">
-                              <Input type="number" min={0} max={100} className="h-8 text-right"
+                              <NumberInput min={0} max={100} className="h-8 text-right"
                                 value={item.DiscountPercent ?? 0}
-                                onChange={e => patchItem(key, { DiscountPercent: Number(e.target.value) })} />
+                                onChange={v => patchItem(key, { DiscountPercent: v })} />
                             </td>
                           )}
                           {showDiscount && (
                             <td className="px-2 py-1 w-[120px]">
-                              <Input type="number" min={0} max={999999999} className="h-8 text-right"
+                              <NumberInput min={0} max={999999999} className="h-8 text-right"
                                 value={item.Discount ?? 0}
-                                onChange={e => patchItem(key, { Discount: Number(e.target.value) })} />
+                                onChange={v => patchItem(key, { Discount: v })} />
                             </td>
                           )}
 
@@ -373,9 +389,9 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
                           )}
                           {type === PROMOTION_TYPE.ProductSamePrice && (
                             <td className="px-2 py-1 w-[130px]">
-                              <Input type="number" min={0} max={999999999} className="h-8 text-right"
+                              <NumberInput min={0} max={999999999} className="h-8 text-right"
                                 value={item.PriceDiscount ?? 0}
-                                onChange={e => patchItem(key, { PriceDiscount: Number(e.target.value) })} />
+                                onChange={v => patchItem(key, { PriceDiscount: v })} />
                             </td>
                           )}
 

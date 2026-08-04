@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Wallet, Plus, MoreHorizontal, Trash2, Check, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -9,6 +10,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
+import { buildModelFormData } from '@/utils/multipart'
 import {
   useFilterReportQuery, useLazyGenericGetQuery, useGenericPostMutation,
 } from '@/store/slice/users/api/api'
@@ -99,7 +101,7 @@ export default function FundPage() {
       await request({
         url: form.Id ? 'fund/update' : 'fund/create',
         method: 'POST',
-        body: { ...form, Amount: Number(form.Amount) || 0 },
+        body: buildModelFormData({ ...form, Amount: Number(form.Amount) || 0 }),
       }).unwrap()
       toast.success(form.Id ? 'Đã cập nhật' : 'Đã thêm phiếu chuyển quỹ')
       setModal(false)
@@ -200,8 +202,8 @@ export default function FundPage() {
 
             <div className="space-y-1">
               <Label>Số tiền <span className="text-destructive">*</span></Label>
-              <Input type="number" min={0} max={999999999} value={form.Amount ?? 0}
-                onChange={e => setForm(f => ({ ...f, Amount: Number(e.target.value) }))} />
+              <NumberInput min={0} max={999999999} value={form.Amount ?? 0}
+                onChange={v => setForm(f => ({ ...f, Amount: v }))} />
             </div>
 
             <div className="space-y-1">

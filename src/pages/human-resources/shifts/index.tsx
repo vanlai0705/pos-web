@@ -1,17 +1,25 @@
 import { useState } from 'react'
-import { Clock, Plus, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Clock, Plus, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { NumberInput } from '@/components/ui/number-input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
-import { useFilterShiftsQuery, useSaveShiftMutation, useUpdateShiftStatusMutation } from '@/store/slice/users/api/api'
+import { useFilterShiftsQuery, useSaveShiftMutation, useUpdateShiftStatusMutation, useLazyGenericGetQuery } from '@/store/slice/users/api/api'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE } from '@/pages/actives/shared'
 import type { TPosShift } from '@/store/slice/users/types/pos-types'
 
-const EMPTY = (): TPosShift => ({ Name: '' })
+// STATUS in pos_web: 0 = Actived, 1 = Locked, 2 = Deleted.
+const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
+
+// Angular defaults a new shift to full salary (100%).
+const EMPTY = (): TPosShift => ({ Name: '', SalaryPercent: 100, Note: '' })
 
 export default function ShiftsPage() {
   const [keyword, setKeyword] = useState('')
@@ -29,6 +37,7 @@ export default function ShiftsPage() {
   })
   const [saveShift, { isLoading: saving }] = useSaveShiftMutation()
   const [updateStatus] = useUpdateShiftStatusMutation()
+  const [fetchDetail] = useLazyGenericGetQuery()
 
   const items = (data?.Items ?? []) as TPosShift[]
   const total = data?.TotalItemCount ?? 0
@@ -36,7 +45,7 @@ export default function ShiftsPage() {
   const handleSave = async () => {
     if (!form.Name?.trim()) { toast.error('Vui lòng nhập tên ca'); return }
     try {
-      await saveShift(form).unwrap()
+      await saveShift({ ...form, SalaryPercent: Number(form.SalaryPercent) || 0 }).unwrap()
       toast.success(form.Id ? 'Đã cập nhật ca làm việc' : 'Đã thêm ca làm việc')
       setModal(false)
       setForm(EMPTY())
@@ -46,34 +55,61 @@ export default function ShiftsPage() {
     }
   }
 
-  const handleToggleStatus = async (id: number, currentStatusId?: number) => {
+  const changeStatus = async (id: number, statusId: number) => {
+    if (statusId === STATUS.DELETED && !window.confirm('Xoá ca làm việc này?')) return
     try {
-      await updateStatus({ id, statusId: currentStatusId === 1 ? 2 : 1 }).unwrap()
+      await updateStatus({ id, statusId }).unwrap()
       refetch()
     } catch { toast.error('Không thể cập nhật trạng thái') }
+  }
+
+  // ShiftModel (list) has no `Note` — only ShiftDetailModel does.
+  const openEdit = async (row: TPosShift) => {
+    if (!row.Id) return
+    try {
+      const res = await fetchDetail({ url: 'shift/detail', params: { id: row.Id } }).unwrap()
+      setForm({ ...EMPTY(), ...((res?.Data ?? row) as TPosShift) })
+      setModal(true)
+    } catch {
+      setForm(row)
+      setModal(true)
+    }
   }
 
   const columns: ColumnDef<TPosShift>[] = [
     { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'name', header: 'Tên ca', cell: ({ row }) => <span className="font-medium">{row.original.Name}</span> },
-    { id: 'start', header: 'Giờ bắt đầu', cell: ({ row }) => <span>{row.original.StartTime ?? '—'}</span> },
-    { id: 'end', header: 'Giờ kết thúc', cell: ({ row }) => <span>{row.original.EndTime ?? '—'}</span> },
-    { id: 'note', header: 'Ghi chú', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.Note ?? '—'}</span> },
+    { id: 'salary', header: 'Tỷ lệ lương', cell: ({ row }) => <span className="tabular-nums">{row.original.SalaryPercent ?? 100}%</span> },
     { id: 'status', header: 'TT', cell: ({ row }) => <StatusBadge status={row.original.Status} /> },
     {
       id: 'actions', header: 'Thao tác',
       cell: ({ row }) => {
         const item = row.original
+        if (!item.Id) return null
         return (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => { setForm(item); setModal(true) }}>Sửa</Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => item.Id && handleToggleStatus(item.Id, item.Status?.Id)}
-              title={item.Status?.Id === 1 ? 'Ngừng hoạt động' : 'Kích hoạt'}>
-              {item.Status?.Id === 1
-                ? <ToggleRight className="h-4 w-4 text-primary" />
-                : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEdit(item)}>Chỉnh sửa</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {item.Status?.Id !== STATUS.ACTIVE && (
+                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.ACTIVE)}>
+                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> Kích hoạt
+                </DropdownMenuItem>
+              )}
+              {item.Status?.Id !== STATUS.LOCKED && (
+                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.LOCKED)}>
+                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> Khoá
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(item.Id!, STATUS.DELETED)}>
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )
       },
     },
@@ -86,8 +122,8 @@ export default function ShiftsPage() {
         <select value={statusId} onChange={e => { setStatusId(e.target.value === '' ? '' : Number(e.target.value)); setPage(1) }}
           className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="">Tất cả TT</option>
-          <option value={1}>Hoạt động</option>
-          <option value={2}>Ngừng HĐ</option>
+          <option value={STATUS.ACTIVE}>Hoạt động</option>
+          <option value={STATUS.LOCKED}>Đã khoá</option>
         </select>
         <Button size="sm" className="h-8" onClick={() => { setForm(EMPTY()); setModal(true) }}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Thêm ca
@@ -113,15 +149,10 @@ export default function ShiftsPage() {
               <Label>Tên ca <span className="text-destructive">*</span></Label>
               <Input value={form.Name ?? ''} onChange={e => setForm(f => ({ ...f, Name: e.target.value }))} placeholder="Tên ca làm việc" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Giờ bắt đầu</Label>
-                <Input type="time" value={form.StartTime ?? ''} onChange={e => setForm(f => ({ ...f, StartTime: e.target.value }))} />
-              </div>
-              <div className="space-y-1">
-                <Label>Giờ kết thúc</Label>
-                <Input type="time" value={form.EndTime ?? ''} onChange={e => setForm(f => ({ ...f, EndTime: e.target.value }))} />
-              </div>
+            <div className="space-y-1">
+              <Label>Tỷ lệ lương (%)</Label>
+              <NumberInput min={0} max={100} value={form.SalaryPercent ?? 100}
+                onChange={v => setForm(f => ({ ...f, SalaryPercent: v }))} />
             </div>
             <div className="space-y-1">
               <Label>Ghi chú</Label>

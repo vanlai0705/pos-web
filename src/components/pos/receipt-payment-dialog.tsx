@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
@@ -237,15 +238,11 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
           <div className="grid grid-cols-3 items-end gap-3 rounded-xl border bg-muted/30 p-3">
             <div className="space-y-1">
               <Label>Số tiền <span className="text-destructive">*</span></Label>
-              <Input
-                type="number"
+              <NumberInput
                 min={0}
                 max={999999999}
-                value={form.Amount ?? ''}
-                onChange={e => {
-                  const value = e.target.value
-                  setForm(f => ({ ...f, Amount: value === '' ? '' : Number(value) }))
-                }}
+                value={Number(form.Amount) || 0}
+                onChange={v => setForm(f => ({ ...f, Amount: v }))}
               />
             </div>
             <div className="space-y-1">
