@@ -18,6 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { withDomainPath } from '@/utils/domain-route'
 import {
@@ -240,20 +241,51 @@ function calcTotals(
 /** Packed grid — 4 across once there is room; 3 keeps cards legible when narrow. */
 const PRODUCT_GRID = 'grid grid-cols-3 lg:grid-cols-4 gap-1.5'
 
+const PRODUCT_PAGE_SIZE = 30
+
 interface ProductPanelProps { onAdd: (p: TPosActiveProduct) => void }
 
 function ProductPanel({ onAdd }: ProductPanelProps) {
   const [keyword, setKeyword] = useState('')
   const [groupId, setGroupId] = useState<number | null>(null)
   const [showCost, setShowCost] = useState(false)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [products, setProducts] = useState<TPosActiveProduct[]>([])
+  const gridRef = useRef<HTMLDivElement>(null)
+  // Only append a page once — StrictMode/refetches must not duplicate rows.
+  const appendedPage = useRef(-1)
 
   const { data: groups = [] } = useGetProductGroupsSimpleQuery()
-  const { data, isLoading } = useFilterActiveProductsQuery({
-    PageIndex: 0, PageSize: 60,
+  const { data, isFetching, isLoading } = useFilterActiveProductsQuery({
+    PageIndex: pageIndex, PageSize: PRODUCT_PAGE_SIZE,
     Keyword: keyword || undefined,
     ProductGroupId: groupId ?? undefined,
   })
-  const products = data?.Items ?? []
+
+  // New search/filter — start over from page 0.
+  useEffect(() => {
+    setPageIndex(0)
+    setProducts([])
+    appendedPage.current = -1
+    gridRef.current?.scrollTo({ top: 0 })
+  }, [keyword, groupId])
+
+  useEffect(() => {
+    if (!data || appendedPage.current === pageIndex) return
+    appendedPage.current = pageIndex
+    setProducts(prev => pageIndex === 0 ? data.Items : [...prev, ...data.Items])
+  }, [data, pageIndex])
+
+  const total = data?.TotalItemCount ?? 0
+  const hasMore = products.length < total
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!hasMore || isFetching) return
+    const el = e.currentTarget
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
+      setPageIndex(p => p + 1)
+    }
+  }
 
   return (
     <div className="h-full flex flex-col min-h-0 rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -303,8 +335,8 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
-        {isLoading ? (
+      <div ref={gridRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-2">
+        {isLoading && pageIndex === 0 ? (
           <div className={PRODUCT_GRID}>
             {Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} className="aspect-[5/4] rounded-lg" />)}
           </div>
@@ -319,42 +351,44 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
               const c = ci(p.Id, i)
               const url = imgUrl(p.Image?.Url ?? p.Images?.[0]?.Url)
               const cost = p.PriceInput ?? p.ImportPrice
+              const barcode = p.Barcode || p.Code || p.ProductCode
               return (
                 <button key={p.Id ?? i} onClick={() => onAdd(p)}
-                  className={`group relative aspect-[5/4] rounded-lg border overflow-hidden text-left transition-all active:scale-95 hover:shadow-lg hover:border-primary/50 duration-150 ${CARD_COLORS[c]}`}
+                  className={`group relative flex flex-col rounded-lg border overflow-hidden text-left transition-all active:scale-95 hover:shadow-lg hover:border-primary/50 duration-150 ${CARD_COLORS[c]}`}
                 >
-                  {url
-                    ? <img src={url} alt={p.Name} className="absolute inset-0 w-full h-full object-cover" />
-                    : <div className={`absolute inset-0 flex items-center justify-center ${ICON_COLORS[c]}`}><Package className="h-6 w-6 opacity-50" /></div>
-                  }
-
-                  {/* Scrim keeps the overlaid text readable over any image */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/55 to-black/15" />
-
-                  {/* Đơn vị + tồn kho */}
-                  <div className="absolute top-0.5 left-0.5 right-0.5 flex items-start justify-between gap-0.5">
-                    {p.Unit?.Name && (
-                      <span className="px-1 rounded bg-black/60 backdrop-blur-sm text-[8px] font-semibold text-white/90 truncate max-w-[55%]">
-                        {p.Unit.Name}
-                      </span>
-                    )}
-                    {p.Quantity != null && (
-                      <span className={cn(
-                        'px-1 rounded backdrop-blur-sm text-[8px] font-bold tabular-nums ml-auto',
-                        p.Quantity > 0 ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white',
-                      )}>
-                        {p.Quantity.toLocaleString('vi-VN')}
-                      </span>
-                    )}
+                  {/* Ảnh — không còn lớp phủ tối, chỉ 2 badge góc trên tự có nền riêng */}
+                  <div className="relative aspect-[4/3] shrink-0">
+                    {url
+                      ? <img src={url} alt={p.Name} className="absolute inset-0 w-full h-full object-cover" />
+                      : <div className={`absolute inset-0 flex items-center justify-center ${ICON_COLORS[c]}`}><Package className="h-7 w-7 opacity-50" /></div>
+                    }
+                    <div className="absolute top-0.5 left-0.5 right-0.5 flex items-start justify-between gap-0.5">
+                      {p.Unit?.Name && (
+                        <span className="px-1 rounded bg-black/60 backdrop-blur-sm text-[9px] font-semibold text-white/90 truncate max-w-[55%]">
+                          {p.Unit.Name}
+                        </span>
+                      )}
+                      {p.Quantity != null && (
+                        <span className={cn(
+                          'px-1 rounded backdrop-blur-sm text-[10px] font-bold tabular-nums ml-auto',
+                          p.Quantity > 0 ? 'bg-emerald-500/90 text-white' : 'bg-rose-500/90 text-white',
+                        )}>
+                          {p.Quantity.toLocaleString('vi-VN')}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Tên + giá */}
-                  <div className="absolute bottom-0 left-0 right-0 px-1 pb-1">
-                    <p className="text-[9px] font-bold text-white leading-[1.15] line-clamp-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
+                  {/* Tên + mã hàng + giá — nền đặc, không cần lớp phủ */}
+                  <div className="flex-1 min-w-0 px-1.5 py-1 space-y-0.5 bg-card">
+                    <p className="text-[11px] font-bold text-foreground leading-tight line-clamp-2">
                       {p.Name}
                     </p>
-                    <div className="mt-0.5 flex items-center gap-0.5 flex-wrap">
-                      <span className="px-1 rounded bg-primary text-primary-foreground text-[9px] font-extrabold tabular-nums shadow-sm">
+                    {barcode && (
+                      <p className="text-[9px] font-mono text-muted-foreground truncate">{barcode}</p>
+                    )}
+                    <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                      <span className="text-[12px] font-extrabold tabular-nums text-primary">
                         {fmt(p.Price)}
                       </span>
                       {showCost && cost != null && (
@@ -367,6 +401,11 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
                 </button>
               )
             })}
+          </div>
+        )}
+        {isFetching && pageIndex > 0 && (
+          <div className={cn(PRODUCT_GRID, 'mt-1.5')}>
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3] rounded-lg" />)}
           </div>
         )}
       </div>
@@ -492,7 +531,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
     setCart(prev => prev.filter((_, i) => i !== idx))
   }, [])
 
-  const updateItem = useCallback((idx: number, field: 'discountPct' | 'note' | 'price', value: number | string) => {
+  const updateItem = useCallback((idx: number, field: 'discountPct' | 'note' | 'price' | 'qty', value: number | string) => {
     setCart(prev => {
       const next = [...prev]
       next[idx] = { ...next[idx], [field]: value }
@@ -968,7 +1007,7 @@ interface InternalOrderPanelProps {
   onQty: (idx: number, delta: number) => void
   onRemove: (idx: number) => void
   onClear: () => void
-  onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price', value: number | string) => void
+  onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price' | 'qty', value: number | string) => void
   onSave: (action: OrderAction) => void
   saving: boolean
   settings?: TPosSettingOrder
@@ -1008,10 +1047,12 @@ function InternalOrderPanel({
   const [panelTab, setPanelTab] = useState<PanelTab>('sales')
   const { data: fundTypes = [] } = useGetPaymentTypesQuery()
   const [fundTypeId, setFundTypeId] = useState<number | null>(null)
-  const [accountId, setAccountId] = useState<number | null>(null)
   const [selectedCustomer, setSelectedCustomer] = useState<TPosCustomerSimple | null>(null)
   const [selectedStaff, setSelectedStaff] = useState<TPosUser | null>(null)
   const [note, setNote] = useState('')
+  // Picking a QR-bearing payment method pops the code up big enough to scan,
+  // instead of relying on the small inline thumbnail.
+  const [qrAccount, setQrAccount] = useState<TPosFundAccount | null>(null)
 
   const { subTotal, orderDiscount, totalTax, total } = totals
   const { payment } = money
@@ -1034,14 +1075,18 @@ function InternalOrderPanel({
 
   const setFund = (f: TPosFundType) => {
     setFundTypeId(f.Id ?? null)
-    // One linked account auto-selects; several require an explicit pick.
-    const auto = f.Items?.length === 1 ? f.Items[0].Id : undefined
-    setAccountId(auto ?? null)
-    onFundTypeChange(f, auto)
+    // The inline account card is gone — the QR popup is now the only place
+    // to see/pick an account, so default straight to the first one (its own
+    // switcher lets the user flip to another if the fund type has several).
+    const list = f.Items?.length ? f.Items : (hasAccountInfo(f) ? [f as TPosFundAccount] : [])
+    const first = list[0]
+    onFundTypeChange(f, first?.Id)
+    setQrAccount(first?.QrCodeUrl ? first : null)
   }
-  const setAccount = (a: TPosFundAccount) => {
-    setAccountId(a.Id ?? null)
+  /** Switching accounts from inside the QR popup — always stays open, even for a QR-less account. */
+  const switchAccount = (a: TPosFundAccount) => {
     if (selectedFund) onFundTypeChange(selectedFund, a.Id)
+    setQrAccount(a)
   }
   const setCust = (c: TPosCustomerSimple | null) => {
     setSelectedCustomer(c)
@@ -1164,21 +1209,32 @@ function InternalOrderPanel({
                     <td className="px-2 py-1.5 max-w-[140px]">
                       <div className="flex items-center gap-1.5">
                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${DOT_COLORS[c]}`} />
-                        <span className="font-medium text-foreground line-clamp-1">{item.product.Name}</span>
+                        <div className="min-w-0">
+                          <span className="font-medium text-foreground line-clamp-1">{item.product.Name}</span>
+                          {perItemTax && Number(item.product.Tax) > 0 && (
+                            <span className="ml-1 inline-block px-1 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 text-[9px] font-bold whitespace-nowrap align-middle">
+                              VAT {item.product.Tax}%
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-2 py-1.5">
                       <div className="flex items-center gap-0.5">
-                        <button onClick={() => onQty(idx, -1)} className="h-5 w-5 rounded border border-input flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground">
+                        <button onClick={() => onQty(idx, -1)} className="h-5 w-5 rounded border border-input flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground shrink-0">
                           <Minus className="h-2 w-2" />
                         </button>
-                        <span className="w-6 text-center font-bold tabular-nums text-foreground">{item.qty}</span>
-                        <button onClick={() => onQty(idx, 1)} className="h-5 w-5 rounded bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors">
+                        <NumInput value={item.qty} className="w-11"
+                          onChange={v => onUpdateItem(idx, 'qty', Math.max(1, Math.round(v)))} />
+                        <button onClick={() => onQty(idx, 1)} className="h-5 w-5 rounded bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors shrink-0">
                           <Plus className="h-2 w-2" />
                         </button>
                       </div>
                     </td>
-                    <td className="px-2 py-1.5 tabular-nums text-foreground whitespace-nowrap">{fmt(item.price)}</td>
+                    <td className="px-2 py-1.5">
+                      <NumInput value={item.price} className="w-20"
+                        onChange={v => onUpdateItem(idx, 'price', Math.max(0, v))} />
+                    </td>
                     <td className="px-2 py-1.5">
                       <div className="flex items-center w-16 border border-input rounded px-1.5 py-0.5 bg-background">
                         <PercentInput value={item.discountPct}
@@ -1186,7 +1242,14 @@ function InternalOrderPanel({
                         <span className="text-muted-foreground text-[10px]">%</span>
                       </div>
                     </td>
-                    <td className="px-2 py-1.5 tabular-nums text-orange-500 whitespace-nowrap">{disc > 0 ? `-${fmt(disc)}` : '—'}</td>
+                    <td className="px-2 py-1.5">
+                      <NumInput value={disc} className="w-20"
+                        onChange={v => {
+                          const base = item.price * item.qty
+                          const pct = base > 0 ? Math.min(100, Math.max(0, v / base * 100)) : 0
+                          onUpdateItem(idx, 'discountPct', pct)
+                        }} />
+                    </td>
                     <td className="px-2 py-1.5 tabular-nums font-semibold text-foreground whitespace-nowrap">{fmt(rowTotal)}</td>
                     <td className="px-2 py-1.5">
                       <input type="text" placeholder="Ghi chú..." value={item.note}
@@ -1227,23 +1290,6 @@ function InternalOrderPanel({
                 >
                   <Icon className="h-3 w-3 shrink-0" />
                   <span className="truncate">{f.Name}</span>
-                </button>
-              )
-            })}
-
-            {/* Thông tin chuyển khoản của phương thức đang chọn */}
-            {accounts.map(a => {
-              const picked = accounts.length === 1 || accountId === a.Id
-              return (
-                <button key={a.Id} type="button" onClick={() => setAccount(a)}
-                  className={`mt-0.5 rounded-lg border p-1.5 text-left transition-all ${picked ? 'border-primary bg-primary/5' : 'border-input hover:bg-muted/40'}`}
-                >
-                  {a.QrCodeUrl && <img src={a.QrCodeUrl} alt="QR" className="w-full h-24 object-contain" />}
-                  <div className="text-[9px] leading-tight mt-1 space-y-0.5">
-                    <p className="font-semibold text-foreground truncate">{a.ShortName || a.Name}</p>
-                    {a.AccountNumber && <p className="tabular-nums text-primary font-bold">{a.AccountNumber}</p>}
-                    {a.AccountName && <p className="text-muted-foreground truncate">{a.AccountName}</p>}
-                  </div>
                 </button>
               )
             })}
@@ -1387,6 +1433,41 @@ function InternalOrderPanel({
       </div>
         </>
       )}
+
+      <Dialog open={!!qrAccount} onOpenChange={v => !v && setQrAccount(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader><DialogTitle>Quét mã để thanh toán</DialogTitle></DialogHeader>
+          <div className="flex flex-col items-center gap-2">
+            {accounts.length > 1 && (
+              <div className="flex flex-wrap justify-center gap-1">
+                {accounts.map(a => (
+                  <button key={a.Id} type="button" onClick={() => switchAccount(a)}
+                    className={cn(
+                      'px-2 py-1 rounded-full text-[10px] font-semibold border transition-colors',
+                      qrAccount?.Id === a.Id ? 'border-primary bg-primary/10 text-primary' : 'border-input text-muted-foreground hover:bg-muted',
+                    )}
+                  >
+                    {a.ShortName || a.Name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {qrAccount?.QrCodeUrl && (
+              <img src={qrAccount.QrCodeUrl} alt="QR" className="w-56 h-56 object-contain rounded-lg border bg-white" />
+            )}
+            <div className="text-center space-y-0.5">
+              <p className="font-semibold text-sm">{qrAccount?.ShortName || qrAccount?.Name}</p>
+              {qrAccount?.AccountNumber && <p className="text-primary font-bold tabular-nums">{qrAccount.AccountNumber}</p>}
+              {qrAccount?.AccountName && <p className="text-xs text-muted-foreground">{qrAccount.AccountName}</p>}
+            </div>
+            <div className="w-full rounded-lg bg-muted px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Số tiền cần thanh toán</span>
+              <span className="font-bold tabular-nums">{fmt(total)}</span>
+            </div>
+            <Button className="w-full" onClick={() => setQrAccount(null)}>Đóng</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
