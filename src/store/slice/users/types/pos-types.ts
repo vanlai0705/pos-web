@@ -582,7 +582,8 @@ export interface TPosOrder {
   Status?: TPosItemStatus
   Items?: TPosOrderItem[]
   PromotionItems?: TPosOrderItem[]
-  Printers?: unknown[]
+  /** Printer(s) the server assigned this order to — drives local-bridge print dispatch. */
+  Printers?: { PrinterIp?: string; PrinterPort?: number; PrinterName?: string; PrinterUrl?: string }[]
   /** Sum of line Amount (tax included) */
   SubTotalItems?: number
   /** Sum of line Total (pre-tax) */
@@ -618,6 +619,12 @@ export interface TPosOrder {
   FundType?: { Id?: number; Name?: string } | null
   IsInvoice?: boolean
   CustomerDebt?: boolean
+}
+
+/** tables/get-order-kitchen — one group of items per printer they route to. */
+export interface TPosKitchenPrintGroup {
+  Items?: { ProductName?: string }[]
+  Printer?: { PrinterIp?: string; PrinterPort?: number; PrinterName?: string; PrinterUrl?: string }
 }
 
 export interface TPosOrderFilterParams {

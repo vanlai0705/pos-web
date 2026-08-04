@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   Search, Plus, Minus, Trash2, X,
@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { toast } from 'sonner'
 import { withDomainPath } from '@/utils/domain-route'
 import {
@@ -32,7 +33,9 @@ import {
   useSaveTableOrderMutation,
   useDeleteTableOrderMutation,
   useGenericDownloadMutation,
+  useLazyGetOrderKitchenQuery,
 } from '@/store/slice/users/api/api'
+import { printData, printDatas, type PrinterSetting } from '@/utils/print-service'
 import type {
   TPosActiveProduct, TPosOrder, TPosOrderItem, TPosCustomerInvoice, TPosSettingOrder,
   TPosFundType, TPosFundAccount,
@@ -386,10 +389,12 @@ interface SalesTabProps {
   bookingId?: number
   /** Set in the restaurant flow — switches to the table button set and `tables/*` saves. */
   tableId?: number
+  /** The table's own Guid (not the order's) — what the kitchen-print routes key on. */
+  tableGuid?: string
   onBack?: () => void
 }
 
-function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
+function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTabProps) {
   const navigate = useNavigate()
   const [cart, setCart] = useState<CartItem[]>([])
   const [saveOrder, { isLoading: savingOrder }] = useSaveOrderMutation()
@@ -398,6 +403,7 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
   const [saveQuotation, { isLoading: savingQuotation }] = useSaveQuotationMutation()
   const [loadTableOrder] = useLazyGetTableOrderDetailQuery()
   const [saveTableOrder, { isLoading: savingTable }] = useSaveTableOrderMutation()
+  const [fetchOrderKitchen] = useLazyGetOrderKitchenQuery()
   // The order the server already has on this table. Its identity fields must
   // ride back out on save/pay or the table is never released.
   const [baseOrder, setBaseOrder] = useState<TPosOrder | null>(null)
@@ -533,11 +539,19 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
   })
 
   /**
-   * Fetch the order PDF and hand it to the browser's print dialog. This is the
-   * API-only print path; the kitchen/label printers go through a local bridge
-   * (settings.PrinterUrl) that the React app does not talk to yet.
+   * "Provisional invoice" print path (settings.IsPrintProvisionalInvoice):
+   * fetch the order PDF and preview it inline in a side sheet — mirrors
+   * Angular's `app-pdf` drawer — instead of a physical printer.
    */
-  const printOrderPdf = async (orderId: number) => {
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
+  const pdfFrameRef = useRef<HTMLIFrameElement>(null)
+  // The screen must stay put while the PDF is up (Angular's
+  // `closeAfterProvisionalInvoice`) — navigating away unmounts the sheet
+  // before it can render. Whatever save/pay flow triggered the preview hands
+  // us its "now go do the exit/navigate" step to run once the user closes it.
+  const pdfCloseCallbackRef = useRef<(() => void) | null>(null)
+
+  const printOrderPdf = async (orderId: number, onClosed?: () => void) => {
     try {
       const blob = await downloadFile({
         url: 'orders/print-order-pdf',
@@ -545,10 +559,89 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
         body: { OrderId: orderId },
       }).unwrap()
       const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
-      window.open(url, '_blank')
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      pdfCloseCallbackRef.current = onClosed ?? null
+      setPdfPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url })
     } catch {
       toast.error('Không thể tải hoá đơn để in')
+      onClosed?.()
+    }
+  }
+
+  const closePdfPreview = () => {
+    setPdfPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    const onClosed = pdfCloseCallbackRef.current
+    pdfCloseCallbackRef.current = null
+    onClosed?.()
+  }
+
+  const printPdfPreview = () => {
+    const frameWindow = pdfFrameRef.current?.contentWindow
+    if (!frameWindow) return
+    frameWindow.focus()
+    frameWindow.print()
+  }
+
+  /** The response's own printer(s), or the shop's single default bill printer. */
+  const printersOrDefault = (printers?: PrinterSetting[]): PrinterSetting[] =>
+    printers?.length
+      ? printers
+      : settings?.PrinterUrl
+        ? [{ PrinterUrl: settings.PrinterUrl, PrinterName: settings.BillPrinterName }]
+        : []
+
+  /**
+   * Bill printing after payment. Mirrors Angular's `printOrder` (retail,
+   * `sell-main.component.ts`) / `handlePrintInvoice(..., isOrder=true)`
+   * (restaurant, `restaurant-sell.component.ts`): a provisional-invoice shop
+   * setting always wins and opens the PDF instead of hitting a physical
+   * printer; otherwise retail always uses its single configured printer via
+   * `printData`, while the restaurant flow fans out to every printer the
+   * server assigned this order to via `printDatas`.
+   */
+  const printBill = (orderId: number, orderPrinters?: PrinterSetting[], onDone?: () => void) => {
+    if (settings?.IsPrintProvisionalInvoice) {
+      printOrderPdf(orderId, onDone)
+      return
+    }
+    if (isTableMode) {
+      printersOrDefault(orderPrinters).forEach(p =>
+        printDatas(p.PrinterUrl, 'orders/print-order', p.PrinterName, { orderId }))
+    } else {
+      printData(settings?.PrinterUrl, 'orders/print-order', settings?.BillPrinterName, { orderId })
+    }
+    onDone?.()
+  }
+
+  /** "In tạm" (temporary receipt) — restaurant-only, always the shop's default printer. */
+  const printTempReceipt = (orderId: number, onDone?: () => void) => {
+    if (settings?.IsPrintProvisionalInvoice) {
+      printOrderPdf(orderId, onDone)
+      return
+    }
+    printData(settings?.PrinterUrl, 'tables/print-order', settings?.BillPrinterName, { orderId })
+    onDone?.()
+  }
+
+  /** "Lưu & Thoát" auto-print and "In tem" — one ticket per assigned/default printer. */
+  const printKitchenTicket = (api: string, orderPrinters?: PrinterSetting[]) => {
+    if (!tableGuid) return
+    printersOrDefault(orderPrinters).forEach(p =>
+      printDatas(p.PrinterUrl, api, p.PrinterName, { guid: tableGuid }))
+  }
+
+  /** Explicit "In bếp" — per-printer item breakdown from `tables/get-order-kitchen`. */
+  const printKitchen = async () => {
+    if (!tableGuid) return
+    try {
+      const groups = await fetchOrderKitchen({ tableGuid, deviceGuid: getDeviceGuid() }).unwrap()
+      groups.forEach(g => {
+        if (!g.Printer?.PrinterUrl) return
+        printDatas(g.Printer.PrinterUrl, 'tables/print-kitchen', g.Printer.PrinterName, {
+          guid: tableGuid, items: g.Items,
+        })
+      })
+    } catch {
+      toast.error('Không thể lấy dữ liệu in bếp')
     }
   }
 
@@ -694,37 +787,40 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
         const res = await saveTableOrder({ order: withTable(order), isUpdate: !!bookingId }).unwrap()
         const savedId = res?.OrderId ?? bookingId
         toast.success('Đã lưu đơn hàng')
+        setCart([])
+        const finish = () => onBack?.()
 
-        if (action === 'print-temp' && savedId) await printOrderPdf(savedId)
-        if (action === 'print-kitchen' || action === 'print-label') {
-          toast.info('Đã lưu. In bếp/tem cần máy in cục bộ (chưa nối ở bản web).')
-        }
-
-        // "In bếp" keeps the order open so more items can be sent; the rest close.
-        if (action !== 'print-kitchen') {
-          setCart([])
-          onBack?.()
+        // "Lưu & Thoát" auto-fires a kitchen ticket, same as a plain save in Angular.
+        if (action === 'save-exit') { printKitchenTicket('tables/print-kitchen', res?.Printers); finish(); return }
+        // "In bếp" keeps the order open so more items can be sent.
+        if (action === 'print-kitchen') { await printKitchen(); return }
+        if (action === 'print-label') { printKitchenTicket('tables/print-kitchen-label', res?.Printers); finish(); return }
+        if (action === 'print-temp') {
+          // A provisional-invoice PDF opens a sheet on this same screen — only
+          // leave once the user closes it, or the sheet never gets to render.
+          if (savedId) printTempReceipt(savedId, finish)
+          else finish()
+          return
         }
       } catch { toast.error('Không thể lưu đơn hàng') }
       return
     }
 
     try {
-      // "Thanh toán và in" is not a separate flow — it is the exact same
-      // completeOrder call as "Thanh toán", with IsPrint:true already set on
-      // `order` above (line ~677). The server is what prints (via the shop's
-      // configured printer); fetching a PDF back here duplicated the print
-      // and could fail independently of the payment succeeding.
-      await completeOrder(isTableMode ? withTable(order) : order).unwrap()
+      const res = await completeOrder(isTableMode ? withTable(order) : order).unwrap()
       toast.success('Thanh toán thành công!')
       setCart([])
-      // In the restaurant flow the caller sends us back to the floor plan and
-      // refetches the tables; only the standalone POS jumps to the order list.
-      if (isTableMode) onBack?.()
-      else {
-        navigate(withDomainPath('/actives/order-manager'))
-        onBack?.()
+      const finish = () => {
+        // In the restaurant flow the caller sends us back to the floor plan and
+        // refetches the tables; only the standalone POS jumps to the order list.
+        if (isTableMode) onBack?.()
+        else {
+          navigate(withDomainPath('/actives/order-manager'))
+          onBack?.()
+        }
       }
+      if (action === 'print' && res?.Id) printBill(res.Id, res.Printers, finish)
+      else finish()
     } catch { toast.error('Không thể thanh toán đơn hàng') }
   }
 
@@ -766,6 +862,23 @@ function SalesTab({ tableLabel, bookingId, tableId, onBack }: SalesTabProps) {
       <div className="flex-[2] min-w-0 h-full">
         <ProductPanel onAdd={addToCart} />
       </div>
+
+      <Sheet open={!!pdfPreviewUrl} onOpenChange={open => { if (!open) closePdfPreview() }}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
+          <SheetHeader className="flex-none flex-row items-center justify-between gap-2 border-b px-4 py-3 space-y-0">
+            <SheetTitle>Hoá đơn</SheetTitle>
+            <Button size="sm" className="mr-6" onClick={printPdfPreview}>
+              <Printer className="h-3.5 w-3.5 mr-1.5" /> In hoá đơn
+            </Button>
+          </SheetHeader>
+          <div className="flex-1 min-h-0 bg-muted/40 p-2">
+            {pdfPreviewUrl && (
+              <iframe ref={pdfFrameRef} src={pdfPreviewUrl} title="Hoá đơn"
+                className="w-full h-full rounded border bg-white" />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
@@ -1403,9 +1516,9 @@ function SellInvoiceTab({
 
 // ─── Main POS page ────────────────────────────────────────────────────────────
 
-interface PosOrderPageProps { tableLabel?: string; bookingId?: number; tableId?: number; onBack?: () => void }
+interface PosOrderPageProps { tableLabel?: string; bookingId?: number; tableId?: number; tableGuid?: string; onBack?: () => void }
 
-export default function PosOrderPage({ tableLabel, bookingId, tableId, onBack }: PosOrderPageProps = {}) {
+export default function PosOrderPage({ tableLabel, bookingId, tableId, tableGuid, onBack }: PosOrderPageProps = {}) {
   const [searchParams] = useSearchParams()
   const orderId = searchParams.get('orderId')
 
@@ -1415,6 +1528,7 @@ export default function PosOrderPage({ tableLabel, bookingId, tableId, onBack }:
         tableLabel={tableLabel}
         bookingId={bookingId ?? (orderId ? Number(orderId) : undefined)}
         tableId={tableId}
+        tableGuid={tableGuid}
         onBack={onBack}
       />
     </div>

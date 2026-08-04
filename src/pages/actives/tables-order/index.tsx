@@ -174,6 +174,7 @@ export default function TablesOrderPage() {
         tableLabel={activeTable.Name}
         bookingId={activeTable.OrderId}
         tableId={activeTable.Id}
+        tableGuid={activeTable.Guid}
         // Back to the floor plan with fresh table state (a paid table frees up).
         onBack={() => { setActiveTable(null); refetch() }}
       />

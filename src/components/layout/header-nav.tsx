@@ -99,7 +99,7 @@ function NavDropdownItem({ item, isActive }: { item: NavItem; isActive: boolean 
 
       {open && (
         <div className="absolute top-full left-0 z-50 pt-1">
-          <div className="min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-lg py-1 overflow-hidden">
+          <div className="min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-lg py-1">
             {(item.children ?? []).map(child => (
               <DropdownChildItem
                 key={child.title}

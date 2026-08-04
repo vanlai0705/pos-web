@@ -48,6 +48,7 @@ import {
   TPosNotificationListResponse,
   TPosFilterNotificationResponse,
   TPosOrder,
+  TPosKitchenPrintGroup,
   TPosOrderFilterParams,
   TReportData,
   TPosBooking,
@@ -624,17 +625,30 @@ export const userApiSlice = createApi({
     }),
 
     /** Create/update the order sitting on a table (restaurant flow). */
-    saveTableOrder: builder.mutation<{ OrderId?: number }, { order: TPosOrder; isUpdate: boolean }>({
+    saveTableOrder: builder.mutation<{ OrderId?: number; Printers?: TPosOrder["Printers"] }, { order: TPosOrder; isUpdate: boolean }>({
       query: ({ order, isUpdate }) => ({
         url: isUpdate ? "tables/update-order" : "tables/create-order",
         method: isUpdate ? "PUT" : "POST",
         body: order,
       }),
-      transformResponse: (res: TPosResponse<{ OrderId?: number }>) => res.Data ?? {},
+      transformResponse: (res: TPosResponse<{ OrderId?: number; Printers?: TPosOrder["Printers"] }>) => res.Data ?? {},
     }),
 
     deleteTableOrder: builder.mutation<void, number>({
       query: (tableId) => ({ url: `tables/delete-order?tableId=${tableId}`, method: "DELETE" }),
+    }),
+
+    /**
+     * Per-printer breakdown of what still needs a kitchen ticket for this
+     * table — the explicit "In bếp" button (as opposed to the plain-save
+     * auto-print, which just replays the save response's `Printers`).
+     */
+    getOrderKitchen: builder.query<TPosKitchenPrintGroup[], { tableGuid: string; deviceGuid: string }>({
+      query: ({ tableGuid, deviceGuid }) => ({
+        url: `tables/get-order-kitchen?tableGuid=${tableGuid}&deviceGuid=${deviceGuid}`,
+        method: "GET",
+      }),
+      transformResponse: (res: TPosResponse<TPosKitchenPrintGroup[]>) => res.Data ?? [],
     }),
 
     getProductGroups: builder.query<TPosProductGroup[], void>({
@@ -1193,6 +1207,7 @@ export const {
   useLazyGetTableOrderDetailQuery,
   useSaveTableOrderMutation,
   useDeleteTableOrderMutation,
+  useLazyGetOrderKitchenQuery,
   useGetProductGroupsQuery,
   useSelectShopMutation,
   useFilterProductGroupsQuery,
