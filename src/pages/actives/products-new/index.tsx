@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   FileDown,
@@ -21,13 +21,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { LookupSelect } from '@/components/pos/lookup-select'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { ProductDialog } from './product-dialog'
 import {
   useFilterActiveProductsQuery,
   useGenericDownloadMutation,
@@ -38,9 +37,8 @@ import {
   useUpdateProductGroupStatusMutation,
 } from '@/store/slice/users/api/api'
 import type { TPosActiveProduct, TPosProductGroupFull } from '@/store/slice/users/types/pos-types'
-import { cn, query, downloadBlob } from '@/utils'
+import { query, downloadBlob } from '@/utils'
 import { getImageUrl } from '@/utils/common'
-import { buildModelFormData } from '@/utils/multipart'
 import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 
 const PAGE_SIZE = 15
@@ -56,18 +54,6 @@ function imgUrl(url?: string | null) {
   return getImageUrl(url ?? undefined) ?? null
 }
 
-function emptyProduct(groupId?: number): TPosActiveProduct {
-  return {
-    Name: '',
-    ProductGroup: groupId ? { Id: groupId } : undefined,
-    Price: 0,
-    PriceInput: 0,
-    ImportPrice: 0,
-    Quantity: 0,
-    Images: [],
-  }
-}
-
 export default function ProductsNewPage() {
   const { guid } = useParams()
   const [keyword, setKeyword] = useState('')
@@ -78,14 +64,12 @@ export default function ProductsNewPage() {
   const [groupSearch, setGroupSearch] = useState('')
 
   const [productModal, setProductModal] = useState(false)
-  const [productForm, setProductForm] = useState<TPosActiveProduct>(emptyProduct())
-  const [productImageFile, setProductImageFile] = useState<File | null>(null)
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
 
   const [groupModal, setGroupModal] = useState(false)
   const [groupForm, setGroupForm] = useState<TPosProductGroupFull>({ Name: '' })
 
   const [importOpen, setImportOpen] = useState(false)
-  const productImageInputRef = useRef<HTMLInputElement>(null)
 
   const { data, isLoading, refetch } = useFilterActiveProductsQuery({
     PageIndex: page - 1,
@@ -98,7 +82,7 @@ export default function ProductsNewPage() {
   const [updateProductStatus] = useUpdateActiveProductStatusMutation()
   const [saveGroup, { isLoading: savingGroup }] = useSaveProductGroupMutation()
   const [updateGroupStatus] = useUpdateProductGroupStatusMutation()
-  const [request, { isLoading: savingProduct }] = useGenericPostMutation()
+  const [request] = useGenericPostMutation()
   const [downloadFile] = useGenericDownloadMutation()
 
   const items = data?.Items ?? []
@@ -114,60 +98,20 @@ export default function ProductsNewPage() {
   }, [data])
 
   const openAddProduct = () => {
-    setProductForm(emptyProduct(groupId || undefined))
-    setProductImageFile(null)
+    setEditingProductId(null)
     setProductModal(true)
   }
 
-  const openEditProductById = useCallback(async (id?: number) => {
+  const openEditProductById = (id?: number) => {
     if (!id) return
-    try {
-      const response = await request({ url: `products/detail${query({ id })}`, method: 'GET' }).unwrap()
-      setProductForm({ ...emptyProduct(), ...(response?.Data || {}) })
-      setProductImageFile(null)
-      setProductModal(true)
-    } catch {
-      toast.error('Không lấy được chi tiết mặt hàng')
-    }
-  }, [request])
+    setEditingProductId(id)
+    setProductModal(true)
+  }
 
   useEffect(() => {
     if (!guid) return
     openEditProductById(Number(guid))
-  }, [guid, openEditProductById])
-
-  const saveProduct = async () => {
-    if (!productForm.Name?.trim()) {
-      toast.error('Vui lòng nhập tên mặt hàng')
-      return
-    }
-
-    const images = productForm.Images?.filter((image: any) => image.Id > 0) || []
-    const payload = {
-      ...productForm,
-      ProductGroup: productForm.ProductGroup?.Id ? productForm.ProductGroup : null,
-      Unit: productForm.Unit?.Name ? productForm.Unit : null,
-      Images: images,
-      PriceInput: productForm.PriceInput ?? productForm.ImportPrice ?? 0,
-      ImportPrice: productForm.ImportPrice ?? productForm.PriceInput ?? 0,
-      isRecipe: (productForm as any).isRecipe ?? (productForm as any).IsRecipe ?? false,
-      IsRecipe: (productForm as any).IsRecipe ?? (productForm as any).isRecipe ?? false,
-      Shops: (productForm as any).Shops || [],
-    }
-
-    try {
-      await request({
-        url: productForm.Id ? 'products/update' : 'products/create',
-        method: 'POST',
-        body: buildModelFormData(payload, productImageFile ? [productImageFile] : []),
-      }).unwrap()
-      toast.success(productForm.Id ? 'Cập nhật mặt hàng thành công' : 'Thêm mặt hàng thành công')
-      setProductModal(false)
-      refetch()
-    } catch {
-      toast.error('Không thể lưu mặt hàng')
-    }
-  }
+  }, [guid])
 
   const toggleProductStatus = async (product: TPosActiveProduct) => {
     if (!product.Id) return
@@ -504,15 +448,11 @@ export default function ProductsNewPage() {
 
       <ProductDialog
         open={productModal}
-        form={productForm}
-        setForm={setProductForm}
+        productId={editingProductId}
+        defaultGroupId={groupId || undefined}
         groups={groups}
-        imageFile={productImageFile}
-        setImageFile={setProductImageFile}
-        imageInputRef={productImageInputRef}
-        saving={savingProduct}
         onClose={() => setProductModal(false)}
-        onSave={saveProduct}
+        onSaved={refetch}
       />
 
       <Dialog open={groupModal} onOpenChange={setGroupModal}>
@@ -542,116 +482,3 @@ export default function ProductsNewPage() {
   )
 }
 
-function ProductDialog({
-  open,
-  form,
-  setForm,
-  groups,
-  imageFile,
-  setImageFile,
-  imageInputRef,
-  saving,
-  onClose,
-  onSave,
-}: {
-  open: boolean
-  form: TPosActiveProduct
-  setForm: React.Dispatch<React.SetStateAction<TPosActiveProduct>>
-  groups: Array<{ Id?: number; Name?: string }>
-  imageFile: File | null
-  setImageFile: (file: File | null) => void
-  imageInputRef: React.RefObject<HTMLInputElement>
-  saving: boolean
-  onClose: () => void
-  onSave: () => void
-}) {
-  const set = (patch: Partial<TPosActiveProduct>) => setForm(current => ({ ...current, ...patch }))
-  const previewImage = imageFile ? URL.createObjectURL(imageFile) : imgUrl(form.Images?.[0]?.Url || form.Image?.Url)
-
-  return (
-    <Dialog open={open} onOpenChange={value => !value && onClose()}>
-      <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
-        <DialogHeader><DialogTitle>{form.Id ? 'Chỉnh sửa mặt hàng' : 'Thêm mặt hàng'}</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div className="flex items-start gap-4">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-slate-50">
-              {previewImage ? <img src={previewImage} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="h-8 w-8 text-slate-300" />}
-            </div>
-            <div className="flex-1 space-y-2">
-              <Label>Hình ảnh</Label>
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={event => setImageFile(event.target.files?.[0] || null)}
-              />
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => imageInputRef.current?.click()}>Chọn ảnh</Button>
-                <Button type="button" variant="ghost" onClick={() => setImageFile(null)}>Xóa ảnh mới</Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Mã hàng">
-              <Input value={form.ProductCode || form.Code || ''} onChange={event => set({ ProductCode: event.target.value, Code: event.target.value })} placeholder="Tự động" />
-            </Field>
-            <Field label="Mã vạch">
-              <Input value={form.Barcode || ''} onChange={event => set({ Barcode: event.target.value })} />
-            </Field>
-            <Field label="Tên mặt hàng" required className="sm:col-span-2">
-              <Input value={form.Name || ''} onChange={event => set({ Name: event.target.value })} />
-            </Field>
-            <Field label="Nhóm mặt hàng">
-              <select
-                value={form.ProductGroup?.Id || ''}
-                onChange={event => {
-                  const id = Number(event.target.value)
-                  const group = groups.find(item => item.Id === id)
-                  set({ ProductGroup: group ? { Id: group.Id, Name: group.Name } : undefined })
-                }}
-                className="h-9 w-full rounded-md border bg-white px-3 text-sm"
-              >
-                <option value="">Không có</option>
-                {groups.map(group => <option key={group.Id} value={group.Id}>{group.Name}</option>)}
-              </select>
-            </Field>
-            <Field label="Đơn vị tính">
-              {/* Must be a real unit from the catalog (Id required), not free
-                  text — the server links products to units by Id. */}
-              <LookupSelect endpoint="units/filter-simple" placeholder="Chọn đơn vị tính"
-                value={form.Unit as { Id?: number; Name?: string } | null}
-                onChange={v => set({ Unit: v ? { Id: v.Id, Name: v.Name ?? '', Image: (v as any).Image } : undefined })} />
-            </Field>
-            <Field label="Giá bán">
-              <NumberInput value={form.Price ?? 0} onChange={v => set({ Price: v })} />
-            </Field>
-            <Field label="Giá nhập">
-              <NumberInput value={form.PriceInput ?? form.ImportPrice ?? 0} onChange={v => set({ PriceInput: v, ImportPrice: v })} />
-            </Field>
-            <Field label="Tồn">
-              <NumberInput value={form.Quantity ?? 0} onChange={v => set({ Quantity: v })} />
-            </Field>
-            <Field label="Ghi chú" className="sm:col-span-2">
-              <Textarea rows={3} value={form.Note || ''} onChange={event => set({ Note: event.target.value })} />
-            </Field>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button onClick={onSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function Field({ label, required, children, className }: { label: string; required?: boolean; children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn('space-y-1.5', className)}>
-      <Label>{label}{required ? <span className="ml-0.5 text-destructive">*</span> : null}</Label>
-      {children}
-    </div>
-  )
-}

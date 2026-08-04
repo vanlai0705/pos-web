@@ -1115,7 +1115,12 @@ function InternalOrderPanel({
         <ShoppingCart className="h-4 w-4 text-white/90" />
         <span className="flex-1 text-sm font-bold text-white">{tableLabel ? 'Đặt bàn' : 'Đơn bán hàng'}</span>
         {tableLabel && <span className="bg-orange-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">{tableLabel}</span>}
-        {cart.length > 0 && <button onClick={onClear} className="text-[11px] text-white/70 hover:text-white font-medium transition-colors">Xoá tất cả</button>}
+        {cart.length > 0 && (
+          <button onClick={onClear}
+            className="flex items-center gap-1 rounded-full bg-rose-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-rose-600">
+            <Trash2 className="h-3 w-3" /> Xoá tất cả
+          </button>
+        )}
       </div>
 
       {/* Panel tab bar */}
@@ -1388,11 +1393,7 @@ function InternalOrderPanel({
         ) : (
           <>
           {/* Action buttons - row 1 */}
-          <div className="grid grid-cols-4 gap-1.5">
-            <button onClick={() => onBack?.()}
-              className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-all">
-              <X className="h-3.5 w-3.5" /> Thoát
-            </button>
+          <div className="grid grid-cols-3 gap-1.5">
             <button onClick={() => onSave('temp')} disabled={saving || cart.length === 0}
               className="flex items-center justify-center gap-1 rounded-lg border border-sky-400 px-2 py-2.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-all disabled:opacity-40">
               <Save className="h-3.5 w-3.5" /> Lưu tạm
@@ -1408,16 +1409,16 @@ function InternalOrderPanel({
           </div>
           {/* Action buttons - row 2 */}
           <div className="grid grid-cols-3 gap-1.5">
-            <button onClick={() => onSave('booking')} disabled={saving || cart.length === 0}
+            <button onClick={() => onSave('booking')} disabled={saving}
               className="flex items-center justify-center gap-1 rounded-lg border border-orange-400 px-2 py-2.5 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all disabled:opacity-40">
               <BookOpen className="h-3.5 w-3.5" /> Đặt hàng
             </button>
-            <button onClick={() => onSave('quotation')} disabled={saving || cart.length === 0}
+            <button onClick={() => onSave('quotation')} disabled={saving}
               className="flex items-center justify-center gap-1 rounded-lg border border-violet-400 px-2 py-2.5 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all disabled:opacity-40">
               <FileText className="h-3.5 w-3.5" /> Báo giá
             </button>
-            <button disabled={cart.length === 0}
-              className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-all disabled:opacity-40">
+            <button
+              className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-all">
               <RefreshCw className="h-3.5 w-3.5" /> Mở lại
             </button>
           </div>

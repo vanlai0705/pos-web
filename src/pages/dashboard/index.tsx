@@ -368,7 +368,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="min-w-0 flex-1 space-y-1.5">
                   {groupRevenue.map((g, i) => (
-                    <div key={g.name} className="flex items-center justify-between gap-2 text-xs">
+                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
                       <span className="flex min-w-0 items-center gap-1.5 truncate">
                         <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
                         <span className="truncate text-muted-foreground">{g.name}</span>

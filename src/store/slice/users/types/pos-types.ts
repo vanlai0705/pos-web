@@ -18,6 +18,7 @@ export interface TPosShop {
   LongName: string;
   ExpirationAt: string;
   Image?: TPosImage;
+  IsDefault?: boolean;
 }
 
 export interface TPosPermissionFunction {
@@ -684,13 +685,54 @@ export interface TPosActiveProduct {
   Price?: number
   PriceInput?: number
   ImportPrice?: number
-  /** Per-item tax percent (used when IsTaxPerItemAllowed) */
-  Tax?: number
+  /** Per-item tax percent (used when IsTaxPerItemAllowed) — `null` means "Không có thuế" (no tax). */
+  Tax?: number | null
   Quantity?: number
   Note?: string
   Image?: TPosItemImage
   Images?: TPosItemImage[]
   Status?: TPosItemStatus
+  /** "Định lượng" — this product is a recipe assembled from other products. Backend is inconsistent about casing; both are sent on save. */
+  IsRecipe?: boolean
+  isRecipe?: boolean
+  /** Populated by the product detail dialog's Shops tab only when set there; otherwise sent as `[]` on save. */
+  Shops?: Array<{ Id?: number; Name?: string }>
+}
+
+export interface TPosProductType {
+  Id?: number
+  Name?: string
+  Code?: string
+  [key: string]: unknown
+}
+
+/** products/get-product-price — one row per price level (Bán lẻ/Bán buôn/…), S/M/L columns. */
+export interface TPosProductPriceRow {
+  PriceLevel?: { Id?: number; Name?: string }
+  Price?: number
+  PriceSmall?: number
+  PriceMedium?: number
+  PriceLarge?: number
+}
+
+/** The ingredient product snapshot embedded in a recipe row. */
+export interface TPosProductRecipeIngredient {
+  Id?: number
+  Barcode?: string
+  ProductCode?: string
+  Name?: string
+  Price?: number
+  Images?: TPosItemImage[]
+  Unit?: { Id?: number; Name?: string }
+}
+
+/** product-recipes/get-list — one row per ingredient in a recipe product's BOM. */
+export interface TPosProductRecipeRow {
+  Id?: number
+  ProductRecipe?: TPosProductRecipeIngredient
+  QuantitySmall?: number
+  QuantityMedium?: number
+  QuantityLarge?: number
 }
 
 // ─── Actives: Statistics ─────────────────────────────────────────────────────

@@ -54,6 +54,8 @@ import {
   TPosBooking,
   TPosQuotation,
   TPosActiveProduct,
+  TPosProductPriceRow,
+  TPosProductRecipeRow,
   TPosRevenueStatResponse,
   TPosRevenueSummaryResponse,
   TPosCustomer,
@@ -921,6 +923,56 @@ export const userApiSlice = createApi({
       }),
     }),
 
+    saveActiveProduct: builder.mutation<TPosActiveProduct, { model: TPosActiveProduct; files: File[] }>({
+      query: ({ model, files }) => ({
+        url: model.Id ? 'products/update' : 'products/create',
+        method: 'POST',
+        body: buildModelFormData(model, files),
+      }),
+      transformResponse: (res: TPosResponse<TPosActiveProduct>) => res.Data,
+    }),
+
+    /** Price tab — one row per price level (Bán lẻ/Bán buôn/…), Nhỏ/Vừa/Lớn columns. */
+    getProductPrice: builder.query<TPosProductPriceRow[], number>({
+      query: (productId) => ({ url: `products/get-product-price?productId=${productId}` }),
+      transformResponse: (res: TPosResponse<TPosProductPriceRow[]>) => res.Data ?? [],
+    }),
+    updateProductPrice: builder.mutation<void, { productId: number; priceList: TPosProductPriceRow[] }>({
+      query: ({ productId, priceList }) => ({
+        url: `products/update-product-price?productId=${productId}`,
+        method: 'POST',
+        body: priceList,
+      }),
+    }),
+
+    /** Định lượng tab — the BOM/ingredient list for a recipe product. */
+    getProductRecipes: builder.query<TPosProductRecipeRow[], number>({
+      query: (productId) => ({ url: `product-recipes/get-list?productId=${productId}` }),
+      transformResponse: (res: TPosResponse<TPosProductRecipeRow[]>) => res.Data ?? [],
+    }),
+    createProductRecipe: builder.mutation<void, { productId: number; body: unknown }>({
+      query: ({ productId, body }) => ({
+        url: `product-recipes/create?productId=${productId}`,
+        method: 'POST',
+        body: buildModelFormData(body, []),
+      }),
+    }),
+    deleteProductRecipe: builder.mutation<void, { productId: number; id: number }>({
+      query: ({ productId, id }) => ({
+        url: `product-recipes/delete?productId=${productId}&id=${id}`,
+        method: 'DELETE',
+      }),
+    }),
+
+    /** Cửa hàng tab — lists every shop; the checkbox toggles that shop's own IsDefault flag (matches Angular's actual, product-agnostic behavior). */
+    filterShopsAll: builder.query<TPosShop[], void>({
+      query: () => ({ url: `shop/filter${query({ PageIndex: 0, PageSize: 1000 })}` }),
+      transformResponse: (res: TPosResponse<TPosFilterData<TPosShop>>) => res.Data?.Items ?? [],
+    }),
+    updateShop: builder.mutation<void, TPosShop>({
+      query: (shop) => ({ url: 'shop/update', method: 'POST', body: buildModelFormData(shop, []) }),
+    }),
+
     // ─── Actives: Statistics ────────────────────────────────────────────────
 
     filterProductStatistics: builder.query<TPosProductStatistic, { PageIndex?: number; PageSize?: number; DateFrom?: string; DateTo?: string; ProductGroupId?: number; ShopId?: number }>({
@@ -1264,6 +1316,14 @@ export const {
   useLazyFilterActiveProductsQuery,
   useGetActiveProductDetailQuery,
   useUpdateActiveProductStatusMutation,
+  useSaveActiveProductMutation,
+  useGetProductPriceQuery,
+  useUpdateProductPriceMutation,
+  useGetProductRecipesQuery,
+  useCreateProductRecipeMutation,
+  useDeleteProductRecipeMutation,
+  useFilterShopsAllQuery,
+  useUpdateShopMutation,
   // Actives: Statistics
   useFilterProductStatisticsQuery,
   useFilterRevenueStatisticsQuery,
