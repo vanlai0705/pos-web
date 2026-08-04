@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, CalendarDays, Download, FileSpreadsheet, Save, Upload, Warehouse } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import * as XLSX from 'xlsx'
 
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
+import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
+import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 import {
   useFilterWarehousesQuery,
   useGenericDownloadMutation,
   useGenericPostMutation,
   useLazyFilterReportQuery,
 } from '@/store/slice/users/api/api'
-import { cn } from '@/utils'
+import { cn, downloadBlob } from '@/utils'
 
 type EntityKey = 'Customer' | 'Supplier'
 
@@ -47,6 +48,20 @@ function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function toDateInputValue(value: string) {
+  return `${value}`.split('T')[0]
+}
+
+/**
+ * Once a "ngày chốt" (closing date) has been recorded for this entity, the
+ * server always echoes it back on `Sumary.Date` — the date field then locks
+ * to that value so a stray edit can't silently overwrite a different day's
+ * opening balance. Mirrors Angular's syncDateFromSummary exactly.
+ */
+function summaryDateOf(data: any): string | undefined {
+  return data?.Sumary?.Date || data?.Summary?.Date
+}
+
 function parseNumber(value: string) {
   if (!value) return 0
   return Number(`${value}`.replace(/,/g, '').replace(/\s/g, '')) || 0
@@ -58,58 +73,6 @@ function formatNumber(value?: number | null) {
 
 function formatMoney(value?: number | null) {
   return Number(value || 0).toLocaleString('vi-VN')
-}
-
-function readExcelFile(file: File, extra: Record<string, any>) {
-  return new Promise<Record<string, any>>((resolve, reject) => {
-    const reader = new FileReader()
-
-    reader.onload = event => {
-      try {
-        const data = new Uint8Array(event.target?.result as ArrayBuffer)
-        const workbook = XLSX.read(data, { type: 'array' })
-        const sheetName = workbook.SheetNames[0]
-        const worksheet = workbook.Sheets[sheetName]
-        const rows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1, defval: '' })
-        const headers = (rows[0] || []).map((name, index) => ({
-          id: index,
-          name: `${name || `Column ${index + 1}`}`,
-          value: index,
-        }))
-        const excelMappedItems = rows.slice(1).flatMap((row, rowIndex) =>
-          headers.map(header => ({
-            id: rowIndex,
-            name: header.name,
-            value: row[header.value] ?? '',
-          })),
-        )
-
-        resolve({
-          fileName: file.name,
-          excelHeader: headers,
-          excelMappedItems,
-          excelMapperItems: excelMappedItems,
-          ...extra,
-        })
-      } catch (error) {
-        reject(error)
-      }
-    }
-
-    reader.onerror = reject
-    reader.readAsArrayBuffer(file)
-  })
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
 }
 
 function toPascalImage(image: any) {
@@ -257,8 +220,8 @@ function toPascalStock(stock: any, stockId?: number) {
 
 function inputClassName(value?: number) {
   return cn(
-    'h-8 w-full rounded-md border border-transparent bg-transparent px-2 text-right font-semibold tabular-nums outline-none transition focus:border-blue-200 focus:bg-white focus:ring-2 focus:ring-blue-100',
-    Number(value || 0) < 0 && 'text-red-600',
+    'h-8 w-full rounded-md border border-transparent bg-transparent px-2 text-right font-semibold tabular-nums text-foreground outline-none transition focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/20',
+    Number(value || 0) < 0 && 'text-red-600 dark:text-red-400',
   )
 }
 
@@ -267,6 +230,7 @@ export function OpeningBalanceEntityPage({
   entityLabel,
   entityKey,
   filterUrl,
+  headerUrl,
   importUrl,
   updateUrl,
   exportUrl,
@@ -275,17 +239,19 @@ export function OpeningBalanceEntityPage({
   entityLabel: string
   entityKey: EntityKey
   filterUrl: string
+  headerUrl: string
   importUrl: string
   updateUrl: string
   exportUrl: string
 }) {
   const navigate = useNavigate()
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const [fetchRows, { isFetching }] = useLazyFilterReportQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
 
   const [date, setDate] = useState(today())
+  const [isDateLocked, setIsDateLocked] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
@@ -304,6 +270,10 @@ export function OpeningBalanceEntityPage({
           Date: date,
         },
       }).unwrap()
+
+      const summaryDate = summaryDateOf(data)
+      setIsDateLocked(!!summaryDate)
+      if (summaryDate) setDate(toDateInputValue(summaryDate))
 
       const items = data?.Items ?? []
       setRows(items.map(toBalanceRow))
@@ -337,22 +307,6 @@ export function OpeningBalanceEntityPage({
       if (rowIndex !== index) return row
       return { ...row, AmountText: mode === 'focus' ? (row.Amount ? `${row.Amount}` : '') : formatNumber(row.Amount) }
     }))
-  }
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    try {
-      const payload = await readExcelFile(file, { date })
-      await request({ url: importUrl, method: 'POST', body: payload }).unwrap()
-      toast.success('Nhập Excel thành công')
-      loadRows()
-    } catch {
-      toast.error('Không đọc được file Excel')
-    } finally {
-      event.target.value = ''
-    }
   }
 
   const exportExcel = async () => {
@@ -404,7 +358,7 @@ export function OpeningBalanceEntityPage({
       meta: { className: 'w-48' },
       cell: ({ row }) => {
         const entity = getEntity(row.original, entityKey)
-        return <span className="font-mono text-xs text-slate-500">{entity.CustomerCode || entity.SupplierCode || entity.Code || '-'}</span>
+        return <CodeTag value={entity.CustomerCode || entity.SupplierCode || entity.Code} />
       },
     },
     {
@@ -412,13 +366,13 @@ export function OpeningBalanceEntityPage({
       header: entityLabel,
       cell: ({ row }) => {
         const entity = getEntity(row.original, entityKey)
-        return <span className="font-semibold text-slate-800">{entity.CompanyName || entity.Name || '-'}</span>
+        return <span className="font-semibold text-foreground">{entity.CompanyName || entity.Name || '-'}</span>
       },
     },
     {
       id: 'address',
       header: 'Địa chỉ',
-      cell: ({ row }) => <span className="line-clamp-1 text-slate-600">{getEntity(row.original, entityKey).Address || '-'}</span>,
+      cell: ({ row }) => <span className="line-clamp-1 text-muted-foreground">{getEntity(row.original, entityKey).Address || '-'}</span>,
     },
     {
       id: 'phone',
@@ -432,7 +386,7 @@ export function OpeningBalanceEntityPage({
     {
       id: 'amount',
       header: 'Số tiền',
-      meta: { headClassName: 'w-44 text-right bg-amber-50 text-amber-700', cellClassName: 'w-44 bg-amber-50/40' },
+      meta: { headClassName: 'w-44 text-right bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300', cellClassName: 'w-44 bg-amber-50/40 dark:bg-amber-950/20' },
       cell: ({ row }) => (
         <Input
           value={row.original.AmountText}
@@ -454,8 +408,8 @@ export function OpeningBalanceEntityPage({
               <FileSpreadsheet className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="text-sm font-bold text-slate-900">{title}</h1>
-              <p className="text-xs text-slate-500">Tổng giá trị: <b className="text-red-600">{formatMoney(totalAmount)}</b></p>
+              <h1 className="text-sm font-bold text-foreground">{title}</h1>
+              <p className="text-xs text-muted-foreground">Tổng giá trị: <b className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</b></p>
             </div>
           </div>
         )}
@@ -463,15 +417,18 @@ export function OpeningBalanceEntityPage({
         searchPlaceholder="Tìm kiếm..."
         onSearchChange={setSearchInput}
         filters={(
-          <label className="flex h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm">
+          <label className={cn(
+            'flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm',
+            isDateLocked && 'opacity-70',
+          )} title={isDateLocked ? 'Đã chốt công nợ ở ngày này — không thể đổi' : undefined}>
             <CalendarDays className="h-4 w-4 text-sky-600" />
-            <Input type="date" value={date} onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0" />
+            <Input type="date" value={date} disabled={isDateLocked}
+              onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed" />
           </label>
         )}
         actions={(
           <>
-            <input ref={importInputRef} type="file" hidden accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={handleImport} />
-            <ToolbarButton tone="neutral" onClick={() => importInputRef.current?.click()}>
+            <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" />
               Nhập
             </ToolbarButton>
@@ -481,6 +438,14 @@ export function OpeningBalanceEntityPage({
             </ToolbarButton>
           </>
         )}
+      />
+
+      <ExcelImportDialog
+        open={importOpen} onOpenChange={setImportOpen}
+        headerUrl={headerUrl}
+        dataUrl="opening-balances/get-excel-data"
+        importUrl={importUrl}
+        onImported={loadRows}
       />
 
       <div className="min-h-0 flex-1">
@@ -497,9 +462,9 @@ export function OpeningBalanceEntityPage({
         />
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-4 py-3 shadow-sm">
-        <div className="text-sm font-semibold text-slate-600">
-          Tổng giá trị: <span className="text-red-600">{formatMoney(totalAmount)}</span>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+        <div className="text-sm font-semibold text-muted-foreground">
+          Tổng giá trị: <span className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</span>
         </div>
         <div className="flex items-center gap-2">
           <ToolbarButton tone="primary" disabled={saving} onClick={saveData}>
@@ -518,13 +483,14 @@ export function OpeningBalanceEntityPage({
 
 export function OpeningInventoryPageContent() {
   const navigate = useNavigate()
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const [fetchRows, { isFetching }] = useLazyFilterReportQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
   const { data: stockData } = useFilterWarehousesQuery({ PageIndex: 0, PageSize: 100, StatusId: 0 })
 
   const [date, setDate] = useState(today())
+  const [isDateLocked, setIsDateLocked] = useState(false)
   const [stockId, setStockId] = useState<number | undefined>()
   const [searchInput, setSearchInput] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -548,6 +514,10 @@ export function OpeningInventoryPageContent() {
           StockId: stockId,
         },
       }).unwrap()
+
+      const summaryDate = summaryDateOf(data)
+      setIsDateLocked(!!summaryDate)
+      if (summaryDate) setDate(toDateInputValue(summaryDate))
 
       const items = data?.Items ?? []
       setRows(items.map(toInventoryRow))
@@ -592,22 +562,6 @@ export function OpeningInventoryPageContent() {
       const textKey = key === 'Quantity' ? 'QuantityText' : 'UnitPriceText'
       return { ...row, [textKey]: mode === 'focus' ? (row[key] ? `${row[key]}` : '') : formatNumber(row[key]) }
     }))
-  }
-
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    try {
-      const payload = await readExcelFile(file, { date, stockId })
-      await request({ url: 'opening-balances/import-excel-inventory', method: 'POST', body: payload }).unwrap()
-      toast.success('Nhập Excel thành công')
-      loadRows()
-    } catch {
-      toast.error('Không đọc được file Excel')
-    } finally {
-      event.target.value = ''
-    }
   }
 
   const exportExcel = async () => {
@@ -657,12 +611,12 @@ export function OpeningInventoryPageContent() {
       id: 'code',
       header: 'Mã hàng',
       meta: { className: 'w-40' },
-      cell: ({ row }) => <span className="font-mono text-xs font-semibold">{row.original.Product?.ProductCode || row.original.Product?.Barcode || row.original.Product?.Code || '-'}</span>,
+      cell: ({ row }) => <CodeTag value={row.original.Product?.ProductCode || row.original.Product?.Barcode || row.original.Product?.Code} />,
     },
     {
       id: 'name',
       header: 'Tên hàng',
-      cell: ({ row }) => <span className="font-semibold text-slate-800">{row.original.Product?.Name || '-'}</span>,
+      cell: ({ row }) => <span className="font-semibold text-foreground">{row.original.Product?.Name || '-'}</span>,
     },
     {
       id: 'unit',
@@ -679,7 +633,7 @@ export function OpeningInventoryPageContent() {
     {
       id: 'quantity',
       header: 'SL tồn',
-      meta: { headClassName: 'w-36 text-right bg-amber-50 text-amber-700', cellClassName: 'w-36 bg-amber-50/40' },
+      meta: { headClassName: 'w-36 text-right bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300', cellClassName: 'w-36 bg-amber-50/40 dark:bg-amber-950/20' },
       cell: ({ row }) => (
         <Input
           value={row.original.QuantityText}
@@ -693,7 +647,7 @@ export function OpeningInventoryPageContent() {
     {
       id: 'unitPrice',
       header: 'Giá vốn',
-      meta: { headClassName: 'w-40 text-right bg-amber-50 text-amber-700', cellClassName: 'w-40 bg-amber-50/40' },
+      meta: { headClassName: 'w-40 text-right bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300', cellClassName: 'w-40 bg-amber-50/40 dark:bg-amber-950/20' },
       cell: ({ row }) => (
         <Input
           value={row.original.UnitPriceText}
@@ -708,7 +662,7 @@ export function OpeningInventoryPageContent() {
       id: 'amount',
       header: 'Giá trị',
       meta: { className: 'w-44 text-right' },
-      cell: ({ row }) => <span className="font-semibold tabular-nums text-emerald-700">{formatMoney(row.original.Amount)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.Amount} />,
     },
   ], [page, pageSize, selectedStock?.Name])
 
@@ -721,11 +675,11 @@ export function OpeningInventoryPageContent() {
               <Warehouse className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="text-sm font-bold text-slate-900">Cập nhật tồn kho ban đầu</h1>
-              <p className="text-xs text-slate-500">
-                SL: <b className="text-sky-700">{formatMoney(totalQuantity)}</b>
+              <h1 className="text-sm font-bold text-foreground">Cập nhật tồn kho ban đầu</h1>
+              <p className="text-xs text-muted-foreground">
+                SL: <b className="text-sky-700 dark:text-sky-400">{formatMoney(totalQuantity)}</b>
                 <span className="mx-2">|</span>
-                Giá trị: <b className="text-red-600">{formatMoney(totalAmount)}</b>
+                Giá trị: <b className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</b>
               </p>
             </div>
           </div>
@@ -735,14 +689,18 @@ export function OpeningInventoryPageContent() {
         onSearchChange={setSearchInput}
         filters={(
           <div className="flex flex-wrap items-center gap-2">
-            <label className="flex h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm">
+            <label className={cn(
+              'flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm',
+              isDateLocked && 'opacity-70',
+            )} title={isDateLocked ? 'Đã chốt tồn kho ở ngày này — không thể đổi' : undefined}>
               <CalendarDays className="h-4 w-4 text-sky-600" />
-              <Input type="date" value={date} onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0" />
+              <Input type="date" value={date} disabled={isDateLocked}
+                onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed" />
             </label>
             <select
               value={stockId ?? ''}
               onChange={event => { setStockId(event.target.value ? Number(event.target.value) : undefined); setPage(1) }}
-              className="h-10 min-w-[180px] rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+              className="h-10 min-w-[180px] rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm outline-none focus:border-primary/30 focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Tất cả kho</option>
               {stocks.map(stock => (
@@ -753,8 +711,7 @@ export function OpeningInventoryPageContent() {
         )}
         actions={(
           <>
-            <input ref={importInputRef} type="file" hidden accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" onChange={handleImport} />
-            <ToolbarButton tone="neutral" onClick={() => importInputRef.current?.click()}>
+            <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" />
               Nhập
             </ToolbarButton>
@@ -764,6 +721,14 @@ export function OpeningInventoryPageContent() {
             </ToolbarButton>
           </>
         )}
+      />
+
+      <ExcelImportDialog
+        open={importOpen} onOpenChange={setImportOpen}
+        headerUrl="opening-balances/get-excel-header-inventory"
+        dataUrl="opening-balances/get-excel-data"
+        importUrl="opening-balances/import-excel-inventory"
+        onImported={loadRows}
       />
 
       <div className="min-h-0 flex-1">
@@ -780,11 +745,11 @@ export function OpeningInventoryPageContent() {
         />
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-4 py-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-5 text-sm font-semibold text-slate-600">
-          <span>Tổng mặt hàng: <b className="text-sky-700">{formatMoney(rows.length)}</b></span>
-          <span>Tổng số lượng: <b className="text-sky-700">{formatMoney(totalQuantity)}</b></span>
-          <span>Tổng giá trị: <b className="text-red-600">{formatMoney(totalAmount)}</b></span>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-5 text-sm font-semibold text-muted-foreground">
+          <span>Tổng mặt hàng: <b className="text-sky-700 dark:text-sky-400">{formatMoney(rows.length)}</b></span>
+          <span>Tổng số lượng: <b className="text-sky-700 dark:text-sky-400">{formatMoney(totalQuantity)}</b></span>
+          <span>Tổng giá trị: <b className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</b></span>
         </div>
         <div className="flex items-center gap-2">
           <ToolbarButton tone="primary" disabled={saving} onClick={saveData}>

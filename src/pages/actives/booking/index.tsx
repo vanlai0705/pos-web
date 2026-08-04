@@ -1,86 +1,24 @@
 import { useState } from 'react'
 import { CalendarCheck, Plus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import {
   useFilterBookingsQuery,
-  useSaveBookingMutation,
   useUpdateBookingStatusMutation,
-  useLazyGetBookingDetailQuery,
 } from '@/store/slice/users/api/api'
 import type { TPosBooking } from '@/store/slice/users/types/pos-types'
+import { StockDocumentDialog } from '@/components/pos/stock-document-dialog'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, StatusBadge, fmtCurrency, fmtDate, useListFilter } from '../shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, StatusBadge, fmtDate, useListFilter } from '../shared'
+import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 
-const EMPTY: TPosBooking = {}
 
-function BookingDetail({ form, onChange }: { form: TPosBooking; onChange: (f: TPosBooking) => void }) {
-  const set = (patch: Partial<TPosBooking>) => onChange({ ...form, ...patch })
-  const items = form.OrderItems ?? []
-  return (
-    <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Số phiếu</Label>
-          <Input value={form.Code ?? ''} onChange={e => set({ Code: e.target.value })} placeholder="Tự động" />
-        </div>
-        <div className="space-y-1">
-          <Label>Ngày đặt</Label>
-          <Input type="date" value={form.Date?.slice(0, 10) ?? ''} onChange={e => set({ Date: e.target.value })} />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label>Ngày giao</Label>
-          <Input type="date" value={form.DeliveryDate?.slice(0, 10) ?? ''} onChange={e => set({ DeliveryDate: e.target.value })} />
-        </div>
-        <div className="space-y-1">
-          <Label>Khách hàng</Label>
-          <Input value={form.Customer?.Name ?? ''} onChange={e => set({ Customer: { ...form.Customer, Name: e.target.value } })} placeholder="Tên khách hàng" />
-        </div>
-      </div>
-      <div className="space-y-1">
-        <Label>Ghi chú</Label>
-        <Input value={form.Note ?? ''} onChange={e => set({ Note: e.target.value })} placeholder="Ghi chú" />
-      </div>
-      {items.length > 0 && (
-        <div className="rounded-lg border overflow-hidden">
-          <table className="w-full text-xs">
-            <thead className="bg-muted/40 border-b">
-              <tr>
-                {['Tên hàng', 'SL', 'Đơn giá', 'Thành tiền'].map(h => (
-                  <th key={h} className="px-2 py-2 text-left font-medium text-muted-foreground">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {items.map((item, idx) => (
-                <tr key={idx}>
-                  <td className="px-2 py-1.5">{item.ProductName}</td>
-                  <td className="px-2 py-1.5 tabular-nums">{item.Quantity}</td>
-                  <td className="px-2 py-1.5 tabular-nums">{item.Price?.toLocaleString('vi-VN')}</td>
-                  <td className="px-2 py-1.5 tabular-nums">{item.Total?.toLocaleString('vi-VN')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-3 py-2 border-t text-right text-sm font-semibold">
-            Tổng: {fmtCurrency(form.Total ?? form.SubTotal)}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 export default function BookingPage() {
   const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState<TPosBooking>(EMPTY)
+  const [editId, setEditId] = useState<number | undefined>()
 
   const { data, isLoading, refetch } = useFilterBookingsQuery({
     PageIndex: page - 1,
@@ -90,30 +28,13 @@ export default function BookingPage() {
     DateTo: dateTo,
     StatusId: statusId,
   })
-  const [getDetail] = useLazyGetBookingDetailQuery()
-  const [save, { isLoading: saving }] = useSaveBookingMutation()
   const [updateStatus] = useUpdateBookingStatusMutation()
 
   const items = data?.Items ?? []
   const total = data?.TotalItemCount ?? 0
 
-  const openAdd = () => { setForm(EMPTY); setModal(true) }
-  const openEdit = async (id: number) => {
-    try {
-      const detail = await getDetail(id).unwrap()
-      setForm(detail)
-      setModal(true)
-    } catch { toast.error('Không thể tải đơn đặt hàng') }
-  }
-
-  const handleSave = async () => {
-    try {
-      await save(form).unwrap()
-      toast.success(form.Id ? 'Đã cập nhật đơn đặt' : 'Đã tạo đơn đặt')
-      setModal(false)
-      refetch()
-    } catch { toast.error('Không thể lưu đơn đặt hàng') }
-  }
+  const openAdd = () => { setEditId(undefined); setModal(true) }
+  const openEdit = (id: number) => { setEditId(id); setModal(true) }
 
   const handleToggleStatus = async (id: number, currentStatusId?: number) => {
     const newStatusId = currentStatusId === 1 ? 2 : 1
@@ -133,12 +54,13 @@ export default function BookingPage() {
       id: 'code',
       header: 'Số phiếu',
       cell: ({ row }) => (
-        <span
-          className="font-medium text-primary cursor-pointer hover:underline"
+        <button
+          type="button"
+          className="cursor-pointer"
           onClick={() => row.original.Id && openEdit(row.original.Id)}
         >
-          {row.original.Code ?? '—'}
-        </span>
+          <VoucherTag value={row.original.Code} />
+        </button>
       ),
     },
     {
@@ -165,7 +87,7 @@ export default function BookingPage() {
       id: 'total',
       header: 'Tiền hàng',
       cell: ({ row }) => (
-        <span className="tabular-nums">{fmtCurrency(row.original.Total ?? row.original.SubTotal)}</span>
+        <MoneyTag value={row.original.Total ?? row.original.SubTotal} />
       ),
     },
     {
@@ -229,18 +151,14 @@ export default function BookingPage() {
         emptyText="Không có đơn đặt hàng nào"
       />
 
-      <Dialog open={modal} onOpenChange={setModal}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{form.Id ? `Đơn đặt hàng #${form.Code}` : 'Tạo đơn đặt hàng'}</DialogTitle>
-          </DialogHeader>
-          <BookingDetail form={form} onChange={setForm} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModal(false)}>Huỷ</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StockDocumentDialog
+        open={modal} onOpenChange={setModal}
+        title="Tạo đơn đặt hàng"
+        endpoints={{ detail: 'bookings/detail', create: 'bookings/create', update: 'bookings/update' }}
+        options={{ customer: true }}
+        editId={editId}
+        onSaved={refetch}
+      />
     </div>
   )
 }

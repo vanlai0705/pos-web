@@ -21,7 +21,8 @@ import {
   useGenericDownloadMutation,
   useGenericPostMutation,
 } from '@/store/slice/users/api/api'
-import { cn, query } from '@/utils'
+import { cn, query, downloadBlob } from '@/utils'
+import { buildModelFormData } from '@/utils/multipart'
 
 const PAGE_SIZE = 10
 
@@ -77,23 +78,6 @@ interface BatchRow {
 
 const emptyAreaForm = (): AreaForm => ({ Name: '', IsActive: true, StockId: 0, UserIds: [], Note: '' })
 const emptyTableForm = (): TableForm => ({ Name: '', PricingMode: 1, AreaId: 0, Note: '' })
-
-function buildMultipart(model: Record<string, unknown>) {
-  const form = new FormData()
-  form.append('model', new Blob([JSON.stringify(model)], { type: 'application/json' }))
-  return form
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  URL.revokeObjectURL(url)
-  link.remove()
-}
 
 export default function TablesManagePage() {
   const [areas, setAreas] = useState<Area[]>([])
@@ -250,7 +234,7 @@ export default function TablesManagePage() {
       await request({
         url: isUpdate ? 'area/update' : 'area/create',
         method: isUpdate ? 'PUT' : 'POST',
-        body: buildMultipart(payload),
+        body: buildModelFormData(payload),
       }).unwrap()
       toast.success(isUpdate ? 'Cập nhật khu vực thành công' : 'Tạo khu vực thành công')
       setAreaModal(false)
@@ -326,7 +310,7 @@ export default function TablesManagePage() {
       await request({
         url: isUpdate ? 'tables/update' : 'tables/create',
         method: isUpdate ? 'PUT' : 'POST',
-        body: buildMultipart(payload),
+        body: buildModelFormData(payload),
       }).unwrap()
       toast.success(isUpdate ? 'Cập nhật bàn thành công' : 'Tạo bàn thành công')
       setTableModal(false)

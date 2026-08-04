@@ -99,7 +99,7 @@ function convertChildren(items: TPosMenuItem[]): import('@/constants/data').TNav
     .map(c => {
       const sub = c.Childrens?.length > 0 ? convertChildren(c.Childrens) : undefined
       return {
-        title: c.ShortName || c.Name,
+        title: c.Name || c.ShortName,
         href: resolveMenuUrl(c),
         icon: posIconToKey(c.Icon) as any,
         role: [],
@@ -124,7 +124,7 @@ export function posMenuToNavItems(items: TPosMenuItem[]): NavItem[] {
       const children = convertChildren(item.Childrens || [])
 
       return {
-        title: item.ShortName || item.Name,
+        title: item.Name || item.ShortName,
         href: resolveMenuUrl(item),
         icon: posIconToKey(item.Icon) as any,
         children: children.length > 0 ? children : undefined,

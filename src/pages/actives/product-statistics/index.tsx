@@ -4,8 +4,9 @@ import { useFilterProductStatisticsQuery, useGetProductGroupsSimpleQuery } from 
 import type { TPosProductStatisticItem } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {
-  ListPageHeader, DateRangeFilter, SummaryCard, fmtCurrency, useListFilter,
+  ListPageHeader, DateRangeFilter, SummaryCard, useListFilter,
 } from '../shared'
+import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 
 export default function ProductStatisticsPage() {
   const { page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
@@ -16,7 +17,7 @@ export default function ProductStatisticsPage() {
     PageSize: pageSize,
     DateFrom: dateFrom,
     DateTo: dateTo,
-    GroupId: groupId || undefined,
+    ProductGroupId: groupId || undefined,
   })
 
   const { data: groups = [] } = useGetProductGroupsSimpleQuery()
@@ -34,7 +35,7 @@ export default function ProductStatisticsPage() {
     {
       id: 'productCode',
       header: 'Mã hàng',
-      cell: ({ row }) => row.original.Product?.ProductCode ?? '—',
+      cell: ({ row }) => <CodeTag value={row.original.Product?.ProductCode} />,
     },
     {
       id: 'productName',
@@ -56,28 +57,28 @@ export default function ProductStatisticsPage() {
     {
       id: 'price',
       header: 'Đơn giá',
-      cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.Price)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.Price} />,
     },
     {
       id: 'priceInput',
       header: 'Giá vốn',
-      cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.PriceInput)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.PriceInput} />,
     },
     {
       id: 'amount',
       header: 'Thành tiền bán',
-      cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.Amount)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.Amount} />,
     },
     {
       id: 'amountInput',
       header: 'Thành tiền nhập',
-      cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.AmountInput)}</span>,
+      cell: ({ row }) => <MoneyTag value={row.original.AmountInput} />,
     },
     {
       id: 'profit',
       header: 'Lãi',
       cell: ({ row }) => (
-        <span className="tabular-nums text-green-600 dark:text-green-400">{fmtCurrency(row.original.Profit)}</span>
+        <MoneyTag value={row.original.Profit} />
       ),
     },
     {

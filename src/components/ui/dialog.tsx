@@ -76,6 +76,54 @@ const DialogFooter = ({
 );
 DialogFooter.displayName = 'DialogFooter';
 
+const FormDialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogContent>
+>(({ className, ...props }, ref) => (
+  <DialogContent
+    ref={ref}
+    className={cn(
+      'max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0',
+      className
+    )}
+    {...props}
+  />
+));
+FormDialogContent.displayName = 'FormDialogContent';
+
+const FormDialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <DialogHeader
+    className={cn('shrink-0 border-b bg-muted/30 px-5 py-4', className)}
+    {...props}
+  />
+);
+FormDialogHeader.displayName = 'FormDialogHeader';
+
+const FormDialogBody = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn('min-h-0 overflow-y-auto px-5 py-4', className)}
+    {...props}
+  />
+);
+FormDialogBody.displayName = 'FormDialogBody';
+
+const FormDialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <DialogFooter
+    className={cn('shrink-0 border-t bg-muted/30 px-5 py-4', className)}
+    {...props}
+  />
+);
+FormDialogFooter.displayName = 'FormDialogFooter';
+
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
@@ -105,6 +153,6 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {
   Dialog, DialogClose,
-  DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger
+  DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger,
+  FormDialogBody, FormDialogContent, FormDialogFooter, FormDialogHeader
 };
-

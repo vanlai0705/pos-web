@@ -4,7 +4,7 @@ import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import {
   fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
   StatCards, ReportDateFilter, ReportTabs,
-  TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn,
+  TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
   CustomerFilter, ShopFilter, ProductGroupFilter,
 } from '../shared'
 
@@ -194,6 +194,17 @@ export default function ReportOrderPage() {
   const [customerId, setCustomerId] = useState<number | null>(null)
   const [productGroupId, setProductGroupId] = useState<number | null>(null)
   const [shopId, setShopId] = useState<number | null>(null)
+  const { exportExcel, exporting } = useReportExcel()
+
+  /** Each tab exports its own dataset with the filters currently applied. */
+  const handleExport = () =>
+    tab === 0
+      ? exportExcel('excels/export-order',
+        { DateFrom: dateFrom, DateTo: dateTo, CustomerId: customerId, ShopId: shopId },
+        'bao-cao-ban-hang.xlsx')
+      : exportExcel('excels/export-order-item',
+        { DateFrom: dateFrom, DateTo: dateTo, ProductGroupId: productGroupId, ShopId: shopId },
+        'tong-hop-mat-hang-ban.xlsx')
 
   return (
     <div className="flex flex-col h-full gap-0">
@@ -218,7 +229,7 @@ export default function ReportOrderPage() {
             }
             <ShopFilter value={shopId} onChange={setShopId} />
             <ReportDateFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
-            <ExcelBtn onClick={() => {}} />
+            <ExcelBtn onClick={handleExport} loading={exporting} />
           </div>
         </div>
       </div>

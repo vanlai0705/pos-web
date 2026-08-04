@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Receipt, Plus, RefreshCw } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, fmtCurrency, fm
 import { InvoiceDetailPanel, StatusChip } from '../shared'
 
 export default function SalesInvoicePage() {
+  const navigate = useNavigate()
   const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [statusId, setStatusId] = useState<number | ''>('')
   const [selected, setSelected] = useState<TPosOrder | null>(null)
@@ -82,7 +84,7 @@ export default function SalesInvoicePage() {
         <Button size="sm" variant="outline" className="h-8" onClick={() => refetch()}>
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>
-        <Button size="sm" className="h-8" onClick={() => toast.info('Tính năng tạo hoá đơn đang phát triển')}>
+        <Button size="sm" className="h-8" onClick={() => navigate('/actives/order')}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Tạo HĐ
         </Button>
       </ListPageHeader>

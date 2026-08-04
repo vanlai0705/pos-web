@@ -1,6 +1,6 @@
 export * from "./company";
 
-const API_ORIGIN = "https://api.posmobile.vn";
+export const API_ORIGIN = "https://api.posmobile.vn";
 
 /**
  * .env* is gitignored, so a deploy can easily end up without these.

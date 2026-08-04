@@ -1,9 +1,22 @@
 import { useState } from 'react'
-import { Users } from 'lucide-react'
+import { Users, MoreHorizontal, Info, Banknote } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, fmtCurrency, PAGE_SIZE, defaultDateFrom, defaultDateTo, SummaryCard } from '@/pages/actives/shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
 import type { TPosDebtItem } from '@/store/slice/users/types/pos-types'
+import { MoneyTag } from '@/components/ui/data-tag'
+import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
+import { LiabilityDetailDialog } from '@/components/pos/liability-detail-dialog'
+import {
+  ReceiptPaymentDialog, RECEIPT_PAYMENT_TYPE, RECEIPT_PAYMENT_FOR, OBJECT_TYPE,
+  type ReceiptPayment,
+} from '@/components/pos/receipt-payment-dialog'
+
+const RECEIPT_ENDPOINTS = { detail: 'receipt/detail', create: 'receipt/create', update: 'receipt/update' }
 
 export default function LiabilityCustomerPage() {
   const [keyword, setKeyword] = useState('')
@@ -11,39 +24,79 @@ export default function LiabilityCustomerPage() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [dateFrom, setDateFrom] = useState(defaultDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
+  const [customerGroup, setCustomerGroup] = useState<LookupItem | null>(null)
+  // Angular defaults to showing every customer, not just ones with a debt.
+  const [showAll, setShowAll] = useState(true)
 
-  const { data, isLoading } = useFilterReportQuery({
+  const [detailFor, setDetailFor] = useState<number | null>(null)
+  const [payFor, setPayFor] = useState<Partial<ReceiptPayment> | null>(null)
+
+  const { data, isLoading, refetch } = useFilterReportQuery({
     path: 'liabilities/filter-customer',
-    params: { Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo, PageIndex: page - 1, PageSize: pageSize },
+    params: {
+      Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo,
+      CustomerGroupId: customerGroup?.Id || undefined, IsShowAll: showAll,
+      PageIndex: page - 1, PageSize: pageSize,
+    },
   })
 
   const items = (data?.Items ?? []) as TPosDebtItem[]
   const total = data?.TotalItemCount ?? 0
-  const s = data?.Sumary ?? {}
+
+  const openPay = (row: TPosDebtItem) => {
+    const c = row.Customer
+    setPayFor({
+      ReceiptPaymentType: RECEIPT_PAYMENT_FOR.LIABILITY_CUSTOMER,
+      ObjectType: OBJECT_TYPE.Customer,
+      Customer: c ?? null,
+      ObjectName: c?.Name ?? row.ObjectName ?? '',
+      Address: c?.Address ?? '',
+      Amount: row.Total ?? 0,
+    })
+  }
 
   const columns: ColumnDef<TPosDebtItem>[] = [
     { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
+    { id: 'code', header: 'Mã khách', cell: ({ row }) => <span className="text-xs">{row.original.Customer?.CustomerCode ?? '—'}</span> },
     {
       id: 'customer', header: 'Khách hàng',
       cell: ({ row }) => {
         const c = row.original.Customer
-        const name = c?.Name ?? row.original.ObjectName ?? '—'
-        return (
-          <div>
-            <p className="font-medium">{name}</p>
-            {c?.Phone && <p className="text-xs text-muted-foreground">{c.Phone}</p>}
-          </div>
-        )
+        return <span className="font-medium">{c?.Name ?? row.original.ObjectName ?? '—'}</span>
       },
     },
-    { id: 'beginning', header: 'Nợ đầu kỳ', cell: ({ row }) => <span className="tabular-nums">{fmtCurrency(row.original.BeginningDebt)}</span> },
-    { id: 'inDebt', header: 'Phát sinh nợ', cell: ({ row }) => <span className="tabular-nums text-rose-700">{fmtCurrency(row.original.InDebt)}</span> },
-    { id: 'outDebt', header: 'Đã trả', cell: ({ row }) => <span className="tabular-nums text-emerald-700">{fmtCurrency(row.original.OutDebt)}</span> },
+    { id: 'group', header: 'Nhóm', cell: ({ row }) => <span className="text-xs">{row.original.Customer?.CustomerGroup?.Name ?? '—'}</span> },
+    { id: 'address', header: 'Địa chỉ', cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.Customer?.Address ?? '—'}</span> },
+    { id: 'phone', header: 'Điện thoại', cell: ({ row }) => <span className="text-xs">{row.original.Customer?.Phone ?? '—'}</span> },
     {
-      id: 'ending', header: 'Nợ cuối kỳ',
+      id: 'total', header: 'Còn nợ',
+      cell: ({ row }) => (
+        <span className={row.original.Total != null && row.original.Total < 0 ? 'text-red-600' : ''}>
+          <MoneyTag value={row.original.Total} />
+        </span>
+      ),
+    },
+    {
+      id: 'actions', header: '',
       cell: ({ row }) => {
-        const v = row.original.EndingDebt
-        return <span className={`tabular-nums font-semibold ${(v ?? 0) > 0 ? 'text-rose-700' : 'text-foreground'}`}>{fmtCurrency(v)}</span>
+        const r = row.original
+        const id = r.Customer?.Id
+        if (!id) return null
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setDetailFor(id)}>
+                <Info className="h-3.5 w-3.5 mr-2" /> Chi tiết công nợ
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openPay(r)}>
+                <Banknote className="h-3.5 w-3.5 mr-2" /> Thanh toán
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
       },
     },
   ]
@@ -52,15 +105,14 @@ export default function LiabilityCustomerPage() {
     <div className="space-y-4">
       <ListPageHeader title="Công nợ khách hàng" icon={Users}>
         <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder="Tìm khách hàng..." />
+        <LookupSelect className="w-44" endpoint="customergroups/filter-simple" placeholder="Tất cả nhóm"
+          value={customerGroup} onChange={v => { setCustomerGroup(v); setPage(1) }} />
+        <label className="flex h-8 cursor-pointer select-none items-center gap-1.5 text-xs text-muted-foreground">
+          <input type="checkbox" checked={showAll} onChange={e => { setShowAll(e.target.checked); setPage(1) }} />
+          Hiển thị tất cả
+        </label>
         <DateRangeFilter from={dateFrom} to={dateTo} onFrom={v => { setDateFrom(v); setPage(1) }} onTo={v => { setDateTo(v); setPage(1) }} />
       </ListPageHeader>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <SummaryCard label="Nợ đầu kỳ" value={s.BeginningDebt} currency />
-        <SummaryCard label="Phát sinh nợ" value={s.InDebt} currency />
-        <SummaryCard label="Đã trả" value={s.OutDebt} currency />
-        <SummaryCard label="Nợ cuối kỳ" value={s.EndingDebt} currency />
-      </div>
 
       <DataTable
         columns={columns}
@@ -71,6 +123,23 @@ export default function LiabilityCustomerPage() {
         pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         emptyText="Không có công nợ khách hàng"
+      />
+
+      <LiabilityDetailDialog
+        open={detailFor != null}
+        onOpenChange={o => { if (!o) setDetailFor(null) }}
+        endpoint="liabilities/filter-liabilities-customer"
+        customerId={detailFor ?? undefined}
+      />
+
+      <ReceiptPaymentDialog
+        open={!!payFor}
+        onOpenChange={o => { if (!o) setPayFor(null) }}
+        type={RECEIPT_PAYMENT_TYPE.RECEIPT}
+        endpoints={RECEIPT_ENDPOINTS}
+        initial={payFor ?? undefined}
+        disableObjectType
+        onSaved={() => { setPayFor(null); refetch() }}
       />
     </div>
   )

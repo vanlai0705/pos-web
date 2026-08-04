@@ -1,0 +1,366 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Search, Trash2, Package } from 'lucide-react'
+import { toast } from 'sonner'
+import { buildModelFormData } from '@/utils/multipart'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
+import {
+  useFilterActiveProductsQuery,
+  useLazyGenericGetQuery,
+  useGenericPostMutation,
+} from '@/store/slice/users/api/api'
+import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
+import { getImageUrl } from '@/utils/common'
+import dayjs from 'dayjs'
+
+export interface StockDocLine {
+  Product?: TPosActiveProduct
+  Quantity?: number
+  /** Stock-check only: what the system believes vs what was counted */
+  QuantitySystem?: number
+  QuantityReal?: number
+  Price?: number
+  PriceInput?: number
+  Note?: string
+}
+
+export interface StockDoc {
+  Id?: number
+  Name?: string
+  Date?: string
+  StockIn?: LookupItem | null
+  StockOut?: LookupItem | null
+  Supplier?: LookupItem | null
+  Customer?: LookupItem | null
+  User?: LookupItem | null
+  Note?: string
+  Items?: StockDocLine[]
+  CreatorUser?: { FullName?: string }
+}
+
+export interface StockDocEndpoints {
+  detail: string
+  create: string
+  update: string
+}
+
+export interface StockDocOptions {
+  stockIn?: boolean
+  stockOut?: boolean
+  supplier?: boolean
+  customer?: boolean
+  /** Count sheet: replaces price columns with system/real quantities */
+  stockCheck?: boolean
+}
+
+interface Props {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  endpoints: StockDocEndpoints
+  options: StockDocOptions
+  /** Id to load for editing; omit to create */
+  editId?: number
+  onSaved: () => void
+}
+
+export function emptyStockDoc(): StockDoc {
+  return { Date: dayjs().format('YYYY-MM-DD'), Note: '', Items: [] }
+}
+
+function lineQty(l: StockDocLine, isCheck: boolean) {
+  // A count sheet's effective quantity is the difference it will post.
+  if (isCheck) return (l.QuantityReal ?? 0) - (l.QuantitySystem ?? 0)
+  return l.Quantity ?? 0
+}
+
+function lineTotal(l: StockDocLine) {
+  return (l.Quantity ?? 0) * (l.Price ?? 0)
+}
+
+function errMsg(e: any) {
+  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || 'Không thể xử lý yêu cầu'
+}
+
+/**
+ * Create/edit dialog shared by the four stock documents (nhập, xuất, chuyển,
+ * kiểm kê). They differ only in which party/stock lookups they show and whether
+ * lines carry prices or counted quantities, so those come in as options.
+ */
+export function StockDocumentDialog({
+  open, onOpenChange, title, endpoints, options, editId, onSaved,
+}: Props) {
+  const isCheck = !!options.stockCheck
+  const [form, setForm] = useState<StockDoc>(emptyStockDoc())
+  const [keyword, setKeyword] = useState('')
+
+  const [fetchDetail] = useLazyGenericGetQuery()
+  const [fetchInventory] = useLazyGenericGetQuery()
+  const [request, { isLoading: saving }] = useGenericPostMutation()
+
+  const { data: productData, isFetching: loadingProducts } = useFilterActiveProductsQuery(
+    { PageIndex: 0, PageSize: 40, Keyword: keyword || undefined },
+    { skip: !open },
+  )
+  const products = productData?.Items ?? []
+
+  // Load the document when editing; reset to a blank one when creating.
+  useEffect(() => {
+    if (!open) return
+    if (!editId) { setForm(emptyStockDoc()); return }
+    fetchDetail({ url: endpoints.detail, params: { id: editId } })
+      .unwrap()
+      .then(res => {
+        const d = (res?.Data ?? {}) as StockDoc
+        setForm({
+          ...emptyStockDoc(), ...d,
+          Date: d.Date ? dayjs(d.Date).format('YYYY-MM-DD') : emptyStockDoc().Date,
+          Items: d.Items ?? [],
+        })
+      })
+      .catch(e => toast.error(errMsg(e)))
+  }, [open, editId, endpoints.detail, fetchDetail])
+
+  const setLine = useCallback((idx: number, patch: Partial<StockDocLine>) => {
+    setForm(f => {
+      const items = [...(f.Items ?? [])]
+      items[idx] = { ...items[idx], ...patch }
+      return { ...f, Items: items }
+    })
+  }, [])
+
+  const removeLine = (idx: number) =>
+    setForm(f => ({ ...f, Items: (f.Items ?? []).filter((_, i) => i !== idx) }))
+
+  const addProduct = async (p: TPosActiveProduct) => {
+    const existing = (form.Items ?? []).findIndex(l => l.Product?.Id === p.Id)
+    if (existing >= 0) {
+      const cur = form.Items![existing]
+      setLine(existing, isCheck
+        ? { QuantityReal: (cur.QuantityReal ?? 0) + 1 }
+        : { Quantity: (cur.Quantity ?? 0) + 1 })
+      return
+    }
+
+    if (isCheck) {
+      // The count sheet starts each line at the system quantity, like Angular.
+      let system = 0
+      try {
+        const res = await fetchInventory({ url: 'inventory/get-inventory', params: { productId: p.Id } }).unwrap()
+        system = Number(res?.Data?.[0]?.Quantity ?? 0)
+      } catch { system = 0 }
+      setForm(f => ({
+        ...f,
+        Items: [...(f.Items ?? []), { Product: p, QuantitySystem: system, QuantityReal: system }],
+      }))
+      return
+    }
+
+    // Receiving defaults the price to the product's import price.
+    const price = Number(p.PriceInput ?? p.ImportPrice ?? 0)
+    setForm(f => ({
+      ...f,
+      Items: [...(f.Items ?? []), { Product: p, Quantity: 1, Price: price, PriceInput: price }],
+    }))
+  }
+
+  const subTotal = useMemo(
+    () => (form.Items ?? []).reduce((s, l) => s + lineTotal(l), 0),
+    [form.Items],
+  )
+
+  const handleSave = async () => {
+    if (!(form.Items ?? []).length) { toast.error('Vui lòng chọn mặt hàng'); return }
+    if (options.stockIn && !form.StockIn?.Id) { toast.error('Vui lòng chọn kho nhập'); return }
+    if (options.stockOut && !form.StockOut?.Id) { toast.error('Vui lòng chọn kho xuất'); return }
+    try {
+      await request({
+        url: form.Id ? endpoints.update : endpoints.create,
+        method: 'POST',
+        body: buildModelFormData(form),
+      }).unwrap()
+      toast.success(form.Id ? 'Cập nhật thành công' : 'Tạo phiếu thành công')
+      onOpenChange(false)
+      onSaved()
+    } catch (e) { toast.error(errMsg(e)) }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl">
+        <DialogHeader><DialogTitle>{form.Id ? `Sửa ${title.toLowerCase()}` : title}</DialogTitle></DialogHeader>
+
+        <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+          <div className="space-y-3">
+            {/* Header fields — mirrors view-order-edit */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Ngày</Label>
+                <Input type="date" value={form.Date ?? ''} onChange={e => setForm(f => ({ ...f, Date: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>Số phiếu</Label>
+                <Input value={form.Name ?? ''} disabled placeholder="Tự động" />
+              </div>
+              {options.stockOut && (
+                <div className="space-y-1">
+                  <Label>Kho xuất</Label>
+                  <LookupSelect endpoint="stock/filter-simple" placeholder="Chọn kho xuất"
+                    value={form.StockOut} onChange={v => setForm(f => ({ ...f, StockOut: v }))} />
+                </div>
+              )}
+              {options.stockIn && (
+                <div className="space-y-1">
+                  <Label>Kho nhập</Label>
+                  <LookupSelect endpoint="stock/filter-simple" placeholder="Chọn kho nhập"
+                    value={form.StockIn} onChange={v => setForm(f => ({ ...f, StockIn: v }))} />
+                </div>
+              )}
+              {options.supplier && (
+                <div className="space-y-1">
+                  <Label>Nhà cung cấp</Label>
+                  <LookupSelect endpoint="suppliers/filter-simple" placeholder="Chọn nhà cung cấp"
+                    value={form.Supplier} onChange={v => setForm(f => ({ ...f, Supplier: v }))} />
+                </div>
+              )}
+              {options.customer && (
+                <div className="space-y-1">
+                  <Label>Khách hàng</Label>
+                  <LookupSelect endpoint="customers/filter-simple" placeholder="Chọn khách hàng"
+                    value={form.Customer} onChange={v => setForm(f => ({ ...f, Customer: v }))} />
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label>Nhân viên</Label>
+                <LookupSelect endpoint="users/filter-simple" placeholder="Chọn nhân viên"
+                  value={form.User} onChange={v => setForm(f => ({ ...f, User: v }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>Ghi chú</Label>
+                <Input value={form.Note ?? ''} onChange={e => setForm(f => ({ ...f, Note: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Line items */}
+            <div className="rounded-lg border overflow-hidden">
+              <div className="max-h-72 overflow-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-muted/60 backdrop-blur">
+                    <tr>
+                      {['#', 'Mặt hàng', ...(isCheck ? ['SL hệ thống', 'SL thực tế', 'Chênh lệch'] : ['SL', 'Đơn giá', 'Thành tiền']), ''].map(h => (
+                        <th key={h} className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {(form.Items ?? []).length === 0 && (
+                      <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Chưa có mặt hàng</td></tr>
+                    )}
+                    {(form.Items ?? []).map((l, i) => (
+                      <tr key={l.Product?.Id ?? i} className="hover:bg-muted/20">
+                        <td className="px-2 py-1.5 text-muted-foreground">{i + 1}</td>
+                        <td className="px-2 py-1.5">
+                          <div className="font-medium">{l.Product?.Name}</div>
+                          <div className="text-[10px] text-muted-foreground">{l.Product?.Unit?.Name}</div>
+                        </td>
+                        {isCheck ? (
+                          <>
+                            <td className="px-2 py-1.5">
+                              <NumberInput className="h-7 w-24 text-xs" value={l.QuantitySystem ?? 0}
+                                onChange={v => setLine(i, { QuantitySystem: v })} />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <NumberInput className="h-7 w-24 text-xs" value={l.QuantityReal ?? 0}
+                                onChange={v => setLine(i, { QuantityReal: v })} />
+                            </td>
+                            <td className={`px-2 py-1.5 tabular-nums font-semibold ${
+                              lineQty(l, true) > 0 ? 'text-emerald-600' : lineQty(l, true) < 0 ? 'text-rose-600' : ''}`}>
+                              {lineQty(l, true).toLocaleString('vi-VN')}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-2 py-1.5">
+                              <NumberInput min={0} className="h-7 w-20 text-xs" value={l.Quantity ?? 0}
+                                onChange={v => setLine(i, { Quantity: v })} />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <NumberInput min={0} className="h-7 w-28 text-xs" value={l.Price ?? 0}
+                                onChange={v => setLine(i, { Price: v })} />
+                            </td>
+                            <td className="px-2 py-1.5 tabular-nums font-semibold">{lineTotal(l).toLocaleString('vi-VN')}</td>
+                          </>
+                        )}
+                        <td className="px-2 py-1.5">
+                          <button type="button" onClick={() => removeLine(i)}
+                            className="text-muted-foreground/50 hover:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {!isCheck && (
+                <div className="flex justify-between border-t bg-muted/30 px-3 py-2 text-sm">
+                  <span className="font-medium">Tổng cộng</span>
+                  <span className="font-bold tabular-nums text-primary">{subTotal.toLocaleString('vi-VN')}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Product picker — replaces view-product-search */}
+          <div className="rounded-lg border p-2 space-y-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input className="h-9 pl-8" placeholder="Tìm mặt hàng, mã vạch..."
+                value={keyword} onChange={e => setKeyword(e.target.value)} />
+            </div>
+            <div className="max-h-[420px] space-y-1 overflow-y-auto">
+              {loadingProducts && <div className="px-2 py-3 text-xs text-muted-foreground">Đang tải...</div>}
+              {!loadingProducts && products.length === 0 && (
+                <div className="px-2 py-3 text-xs text-muted-foreground">Không tìm thấy mặt hàng</div>
+              )}
+              {products.map(p => {
+                const img = getImageUrl(p.Image?.Url ?? p.Images?.[0]?.Url ?? undefined)
+                return (
+                  <button key={p.Id} type="button" onClick={() => addProduct(p)}
+                    className="flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/40">
+                    {img
+                      ? <img src={img} alt="" className="h-8 w-8 rounded object-cover" />
+                      : <div className="flex h-8 w-8 items-center justify-center rounded bg-muted"><Package className="h-4 w-4 text-muted-foreground/60" /></div>}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-medium">{p.Name}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {p.ProductCode ?? p.Code} · Tồn {p.Quantity?.toLocaleString('vi-VN') ?? 0}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
+                      {(p.Price ?? 0).toLocaleString('vi-VN')}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="items-center justify-between sm:justify-between">
+          <span className="text-xs italic text-muted-foreground">
+            {form.CreatorUser?.FullName ? `Tạo bởi: ${form.CreatorUser.FullName}` : ''}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

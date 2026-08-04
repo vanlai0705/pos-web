@@ -582,7 +582,8 @@ export interface TPosOrder {
   Status?: TPosItemStatus
   Items?: TPosOrderItem[]
   PromotionItems?: TPosOrderItem[]
-  Printers?: unknown[]
+  /** Printer(s) the server assigned this order to — drives local-bridge print dispatch. */
+  Printers?: { PrinterIp?: string; PrinterPort?: number; PrinterName?: string; PrinterUrl?: string }[]
   /** Sum of line Amount (tax included) */
   SubTotalItems?: number
   /** Sum of line Total (pre-tax) */
@@ -616,9 +617,14 @@ export interface TPosOrder {
   Code?: string
   Stock?: { Id?: number; Name?: string }
   FundType?: { Id?: number; Name?: string } | null
-  OrderItems?: TPosOrderItem[]
   IsInvoice?: boolean
   CustomerDebt?: boolean
+}
+
+/** tables/get-order-kitchen — one group of items per printer they route to. */
+export interface TPosKitchenPrintGroup {
+  Items?: { ProductName?: string }[]
+  Printer?: { PrinterIp?: string; PrinterPort?: number; PrinterName?: string; PrinterUrl?: string }
 }
 
 export interface TPosOrderFilterParams {
@@ -644,7 +650,7 @@ export interface TPosBooking {
   Total?: number
   Status?: TPosItemStatus
   Note?: string
-  OrderItems?: TPosOrderItem[]
+  Items?: TPosOrderItem[]
 }
 
 // ─── Actives: Quotations ─────────────────────────────────────────────────────
@@ -661,7 +667,7 @@ export interface TPosQuotation {
   Total?: number
   Status?: TPosItemStatus
   Note?: string
-  OrderItems?: TPosOrderItem[]
+  Items?: TPosOrderItem[]
 }
 
 // ─── Actives: Products ───────────────────────────────────────────────────────
@@ -879,17 +885,29 @@ export interface TPosStockCheck {
 
 // ─── Currencies: Phiếu thu/chi ───────────────────────────────────────────────
 
+/** CashBalanceModel — a distinct, ledger-shaped report row (not a voucher). */
+export interface TPosCashBalanceItem {
+  Name?: string
+  Date?: string
+  Detail?: string
+  Receipt?: number
+  Payment?: number
+  Balance?: number
+}
+
 export interface TPosCurrencyVoucher {
   Id?: number
   Name?: string
   Date?: string
+  Type?: number
   ObjectName?: string
   Address?: string
   OriginDocument?: string
   ReceiptPaymentReason?: { Id?: number; Name?: string }
-  Receipt?: number
-  Payment?: number
-  Balance?: number
+  /** ReceiptPaymentModel — the single money field is Amount, not Receipt/Payment */
+  Amount?: number
+  IsTransfer?: boolean
+  Shop?: { Id?: number; Name?: string }
   Detail?: string
   Status?: TPosItemStatus
   Note?: string
@@ -897,32 +915,95 @@ export interface TPosCurrencyVoucher {
 
 // ─── Liabilities ──────────────────────────────────────────────────────────────
 
+/**
+ * LiabilitiesCustomerModel / LiabilitiesSupplierModel — the only figure the
+ * server returns per row is the current outstanding `Total`. There is no
+ * beginning/in/out breakdown; that only exists per-voucher in the detail
+ * dialog (see TPosLiabilityVoucher below).
+ */
 export interface TPosDebtItem {
-  Id?: number
-  Customer?: { Id?: number; Name?: string; Phone?: string }
-  Supplier?: { Id?: number; Name?: string; Phone?: string }
+  Customer?: {
+    Id?: number; Name?: string; Phone?: string; Address?: string; Email?: string
+    CustomerCode?: string; TaxCode?: string; CustomerGroup?: { Id?: number; Name?: string }
+  }
+  Supplier?: {
+    Id?: number; Name?: string; Phone?: string; Address?: string; Email?: string
+    SupplierCode?: string; TaxNumber?: string; SupplierGroup?: { Id?: number; Name?: string }
+  }
   ObjectName?: string
-  BeginningDebt?: number
-  InDebt?: number
-  OutDebt?: number
-  EndingDebt?: number
+  Total?: number
+}
+
+/** LiabilitiesDetailModel — one row in the "Chi tiết công nợ" dialog. */
+export interface TPosLiabilityVoucher {
   Date?: string
+  Name?: string
+  Detail?: string
+  Total?: number
+  Payment?: number
 }
 
 // ─── HR: Nhân viên ────────────────────────────────────────────────────────────
 
+/** Employment details — the server nests these under the member's `UserInfo`. */
+export interface TPosMemberUserInfo {
+  Address?: string
+  Note?: string
+  /** Index into `salary/get-salary-types` */
+  SalaryType?: number
+  Salary?: number
+  IsMonday?: boolean
+  IsTuesday?: boolean
+  IsWednesday?: boolean
+  IsThursday?: boolean
+  IsFriday?: boolean
+  IsSaturday?: boolean
+  IsSunday?: boolean
+}
+
 export interface TPosMember {
   Id?: number
-  Code?: string
+  /** Family name — the UI splits the full name into Surname + Name */
+  Surname?: string
   Name?: string
+  FullName?: string
   Phone?: string
   Email?: string
-  Position?: string
-  Department?: string
-  BaseSalary?: number
+  /** Shops this member may work in */
+  Shops?: Array<{ Id?: number; Name?: string; LongName?: string; Image?: TPosItemImage }>
+  UserInfo?: TPosMemberUserInfo
+  Image?: TPosItemImage | null
+  UserGroups?: TPosAccountUserGroup[]
   Status?: TPosItemStatus
-  JoinDate?: string
-  Note?: string
+}
+
+/** One row of the account ↔ permission-group join. */
+export interface TPosAccountUserGroup {
+  Id?: number
+  UserGroupId?: number
+  Actived?: boolean
+  UserGroup?: { Id?: number; Name?: string }
+}
+
+/** Login account for a member — `user-infos/*`, separate from the member record. */
+export interface TPosUserAccount {
+  Id?: number
+  UserName?: string
+  PasswordSalt?: string
+  /** Client-side only; hashed into PasswordSalt before sending */
+  Password?: string
+  ConfirmPassword?: string
+  Member?: { Id?: number } | null
+  UserGroups?: TPosAccountUserGroup[]
+  Name?: string
+  Surname?: string
+  FullName?: string
+}
+
+export interface TPosSalaryType {
+  Value?: number
+  Name?: string
+  Detail?: string
 }
 
 // ─── HR: Bảng lương ───────────────────────────────────────────────────────────
@@ -945,8 +1026,10 @@ export interface TPosSalaryRecord {
 export interface TPosShift {
   Id?: number
   Name?: string
-  StartTime?: string
-  EndTime?: string
+  Image?: TPosItemImage
+  /** Percent of a full day's wage this shift is worth (defaults to 100). */
+  SalaryPercent?: number
+  Parent?: { Id?: number; Name?: string } | null
   Status?: TPosItemStatus
   Note?: string
 }

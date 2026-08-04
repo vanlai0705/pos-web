@@ -3,9 +3,9 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ComposedChart,
   Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -74,7 +74,17 @@ const CHART_TYPES = [
   { key: 2, labelKey: "dashboard.year" },
 ]
 
-const SERIES_COLORS = ["#38bdf8", "#22c55e", "#ef4444", "#f59e0b", "#8b5cf6"]
+// Validated categorical order (blue, green, magenta, yellow, aqua) — passes
+// CVD + normal-vision separation in both themes on the adjacent-pair (line
+// chart) check. Defined as theme-aware CSS vars in globals.css so the exact
+// step swaps with light/dark, same mechanism as --border/--popover below.
+const SERIES_COLORS = [
+  "hsl(var(--series-1))",
+  "hsl(var(--series-2))",
+  "hsl(var(--series-3))",
+  "hsl(var(--series-4))",
+  "hsl(var(--series-5))",
+]
 
 export default function DashboardPage() {
   const { t } = useTranslation()
@@ -153,12 +163,12 @@ export default function DashboardPage() {
 
       <Tabs defaultValue="chart" className="space-y-3">
         <Card className="overflow-hidden">
-          <div className="flex flex-col gap-3 border-b bg-white p-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 border-b bg-card p-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">{t("nav.dashboard")}</h2>
+              <h2 className="text-base font-semibold text-foreground">{t("nav.dashboard")}</h2>
               <p className="text-xs text-muted-foreground">{t("dashboard.monthlyActivity")}</p>
             </div>
-            <TabsList className="grid h-auto w-full grid-cols-2 rounded-lg bg-slate-100 p-1 md:w-auto md:grid-cols-4">
+            <TabsList className="grid h-auto w-full grid-cols-2 rounded-lg bg-muted p-1 md:w-auto md:grid-cols-4">
               <TabsTrigger value="chart" className="gap-2 rounded-md px-3 py-2 text-xs">
                 <BarChart3 className="h-4 w-4" />
                 {t("dashboard.profitChart")}
@@ -208,8 +218,19 @@ export default function DashboardPage() {
                 <Skeleton className="h-[300px] w-full" />
               ) : statChartData.length ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={statChartData} margin={{ top: 8, right: 20, bottom: 0, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <ComposedChart data={statChartData} margin={{ top: 8, right: 20, bottom: 0, left: 0 }}>
+                    <defs>
+                      {statSeriesKeys.map((key, index) => {
+                        const color = SERIES_COLORS[index % SERIES_COLORS.length]
+                        return (
+                          <linearGradient key={key} id={`profit-fill-${index}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={color} stopOpacity={0.18} />
+                            <stop offset="100%" stopColor={color} stopOpacity={0} />
+                          </linearGradient>
+                        )
+                      })}
+                    </defs>
+                    <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
                     <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis tickFormatter={value => formatShort(Number(value))} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={64} />
                     <Tooltip
@@ -218,9 +239,12 @@ export default function DashboardPage() {
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     {statSeriesKeys.map((key, index) => (
-                      <Line key={key} dataKey={key} type="monotone" stroke={SERIES_COLORS[index % SERIES_COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                      <Area key={key} dataKey={key} type="monotone" stroke="none" fill={`url(#profit-fill-${index})`} legendType="none" isAnimationActive={false} />
                     ))}
-                  </LineChart>
+                    {statSeriesKeys.map((key, index) => (
+                      <Line key={key} dataKey={key} type="monotone" stroke={SERIES_COLORS[index % SERIES_COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--card))" }} />
+                    ))}
+                  </ComposedChart>
                 </ResponsiveContainer>
               ) : (
                 <EmptyState height="h-[300px]" />

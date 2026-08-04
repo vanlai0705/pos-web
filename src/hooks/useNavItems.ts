@@ -20,11 +20,11 @@ export function useNavItems(): NavItem[] {
     if (posMenu.length === 0) return translateNavItems(navItems, t)
 
     const dashboard: NavItem = {
-      title: 'Tổng quan',
+      title: t('menu.dashboard'),
       href: '/dashboard',
       icon: 'dashboard',
     }
 
-    return translateNavItems([dashboard, ...posMenuToNavItems(posMenu)], t)
+    return [dashboard, ...posMenuToNavItems(posMenu)]
   }, [posMenu, t, i18n.resolvedLanguage])
 }

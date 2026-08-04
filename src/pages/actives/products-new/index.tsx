@@ -21,9 +21,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { LookupSelect } from '@/components/pos/lookup-select'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
+import { StatusBadge } from '@/components/ui/status-badge'
 import {
   useFilterActiveProductsQuery,
   useGenericDownloadMutation,
@@ -34,8 +38,10 @@ import {
   useUpdateProductGroupStatusMutation,
 } from '@/store/slice/users/api/api'
 import type { TPosActiveProduct, TPosProductGroupFull } from '@/store/slice/users/types/pos-types'
-import { cn, query } from '@/utils'
+import { cn, query, downloadBlob } from '@/utils'
 import { getImageUrl } from '@/utils/common'
+import { buildModelFormData } from '@/utils/multipart'
+import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 
 const PAGE_SIZE = 15
 const STATUS_ACTIVE = 0
@@ -48,24 +54,6 @@ interface ProductGroupNode extends TreeSidebarNode {
 
 function imgUrl(url?: string | null) {
   return getImageUrl(url ?? undefined) ?? null
-}
-
-function buildMultipart(model: Record<string, unknown>, files: File[] = []) {
-  const form = new FormData()
-  form.append('model', new Blob([JSON.stringify(model)], { type: 'application/json' }))
-  files.forEach(file => form.append(file.name, file))
-  return form
-}
-
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  URL.revokeObjectURL(url)
-  link.remove()
 }
 
 function emptyProduct(groupId?: number): TPosActiveProduct {
@@ -96,7 +84,7 @@ export default function ProductsNewPage() {
   const [groupModal, setGroupModal] = useState(false)
   const [groupForm, setGroupForm] = useState<TPosProductGroupFull>({ Name: '' })
 
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const productImageInputRef = useRef<HTMLInputElement>(null)
 
   const { data, isLoading, refetch } = useFilterActiveProductsQuery({
@@ -171,7 +159,7 @@ export default function ProductsNewPage() {
       await request({
         url: productForm.Id ? 'products/update' : 'products/create',
         method: 'POST',
-        body: buildMultipart(payload, productImageFile ? [productImageFile] : []),
+        body: buildModelFormData(payload, productImageFile ? [productImageFile] : []),
       }).unwrap()
       toast.success(productForm.Id ? 'Cập nhật mặt hàng thành công' : 'Thêm mặt hàng thành công')
       setProductModal(false)
@@ -258,19 +246,6 @@ export default function ProductsNewPage() {
       refetchGroups()
     } catch {
       toast.error('Không thể xóa nhóm mặt hàng')
-    }
-  }
-
-  const importExcel = async (file?: File) => {
-    if (!file) return
-    const form = new FormData()
-    form.append(file.name, file)
-    try {
-      await request({ url: 'products/import-excel', method: 'POST', body: form }).unwrap()
-      toast.success('Nhập Excel thành công')
-      refetch()
-    } catch {
-      toast.error('Không thể nhập Excel')
     }
   }
 
@@ -362,8 +337,8 @@ export default function ProductsNewPage() {
     {
       id: 'code',
       header: 'Mã hàng',
-      meta: { cellClassName: 'font-medium text-emerald-700 whitespace-nowrap' },
-      cell: ({ row }) => row.original.ProductCode || row.original.Code || '-',
+      meta: { cellClassName: 'whitespace-nowrap' },
+      cell: ({ row }) => <CodeTag value={row.original.ProductCode || row.original.Code} />,
     },
     {
       id: 'name',
@@ -393,13 +368,13 @@ export default function ProductsNewPage() {
       id: 'price',
       header: 'Giá bán',
       meta: { className: 'text-right', cellClassName: 'text-right font-medium text-indigo-600' },
-      cell: ({ row }) => (row.original.Price || 0).toLocaleString('vi-VN'),
+      cell: ({ row }) => <MoneyTag value={row.original.Price || 0} />,
     },
     {
       id: 'inputPrice',
       header: 'Giá nhập',
       meta: { className: 'text-right', cellClassName: 'text-right' },
-      cell: ({ row }) => (row.original.PriceInput ?? row.original.ImportPrice ?? 0).toLocaleString('vi-VN'),
+      cell: ({ row }) => <MoneyTag value={row.original.PriceInput ?? row.original.ImportPrice ?? 0} />,
     },
     {
       id: 'quantity',
@@ -411,14 +386,7 @@ export default function ProductsNewPage() {
       id: 'status',
       header: 'TT',
       meta: { className: 'w-24 text-center' },
-      cell: ({ row }) => (
-        <span className={cn(
-          'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
-          row.original.Status?.Id === STATUS_ACTIVE ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
-        )}>
-          {row.original.Status?.Name || (row.original.Status?.Id === STATUS_ACTIVE ? 'Hoạt động' : 'Khóa')}
-        </span>
-      ),
+      cell: ({ row }) => <StatusBadge status={row.original.Status} />,
     },
     {
       id: 'actions',
@@ -504,17 +472,7 @@ export default function ProductsNewPage() {
             )}
             actions={(
               <>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  className="hidden"
-                  accept=".xlsx,.xls"
-                  onChange={event => {
-                    importExcel(event.target.files?.[0])
-                    event.target.value = ''
-                  }}
-                />
-                <ToolbarButton tone="neutral" onClick={() => importInputRef.current?.click()}>
+                <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
                   <Upload className="h-4 w-4" />
                   Nhập
                 </ToolbarButton>
@@ -572,6 +530,14 @@ export default function ProductsNewPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ExcelImportDialog
+        open={importOpen} onOpenChange={setImportOpen}
+        headerUrl="products/get-excel-header"
+        dataUrl="products/get-excel-data"
+        importUrl="products/import-excel"
+        onImported={refetch}
+      />
     </div>
   )
 }
@@ -652,16 +618,20 @@ function ProductDialog({
               </select>
             </Field>
             <Field label="Đơn vị tính">
-              <Input value={form.Unit?.Name || ''} onChange={event => set({ Unit: { ...form.Unit, Name: event.target.value } as any })} />
+              {/* Must be a real unit from the catalog (Id required), not free
+                  text — the server links products to units by Id. */}
+              <LookupSelect endpoint="units/filter-simple" placeholder="Chọn đơn vị tính"
+                value={form.Unit as { Id?: number; Name?: string } | null}
+                onChange={v => set({ Unit: v ? { Id: v.Id, Name: v.Name ?? '', Image: (v as any).Image } : undefined })} />
             </Field>
             <Field label="Giá bán">
-              <Input type="number" value={form.Price ?? ''} onChange={event => set({ Price: Number(event.target.value) })} />
+              <NumberInput value={form.Price ?? 0} onChange={v => set({ Price: v })} />
             </Field>
             <Field label="Giá nhập">
-              <Input type="number" value={form.PriceInput ?? form.ImportPrice ?? ''} onChange={event => set({ PriceInput: Number(event.target.value), ImportPrice: Number(event.target.value) })} />
+              <NumberInput value={form.PriceInput ?? form.ImportPrice ?? 0} onChange={v => set({ PriceInput: v, ImportPrice: v })} />
             </Field>
             <Field label="Tồn">
-              <Input type="number" value={form.Quantity ?? ''} onChange={event => set({ Quantity: Number(event.target.value) })} />
+              <NumberInput value={form.Quantity ?? 0} onChange={v => set({ Quantity: v })} />
             </Field>
             <Field label="Ghi chú" className="sm:col-span-2">
               <Textarea rows={3} value={form.Note || ''} onChange={event => set({ Note: event.target.value })} />

@@ -4,7 +4,7 @@ import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import {
   fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
   StatCards, ReportDateFilter, ReportTabs,
-  TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn,
+  TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
 } from '../shared'
 
 const TABS = ['Báo cáo đặt hàng', 'Tổng hợp mặt hàng đặt']
@@ -140,6 +140,13 @@ export default function ReportBookingPage() {
   const range = currentMonthRange()
   const [dateFrom, setDateFrom] = useState(range.from)
   const [dateTo, setDateTo] = useState(range.to)
+  const { exportExcel, exporting } = useReportExcel()
+
+  /** Each tab exports its own dataset with the filters currently applied. */
+  const handleExport = () =>
+    tab === 0
+      ? exportExcel('excels/export-booking', { DateFrom: dateFrom, DateTo: dateTo }, 'bao-cao-dat-hang.xlsx')
+      : exportExcel('excels/export-booking-item', { DateFrom: dateFrom, DateTo: dateTo }, 'tong-hop-mat-hang-dat.xlsx')
 
   return (
     <div className="flex flex-col h-full gap-0">
@@ -158,7 +165,7 @@ export default function ReportBookingPage() {
           <ReportTabs tabs={TABS} active={tab} onSelect={setTab} />
           <div className="flex items-center gap-2 flex-wrap">
             <ReportDateFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
-            <ExcelBtn onClick={() => {}} />
+            <ExcelBtn onClick={handleExport} loading={exporting} />
           </div>
         </div>
       </div>

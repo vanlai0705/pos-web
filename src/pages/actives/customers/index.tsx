@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FileDown, Image as ImageIcon, MoreHorizontal, Plus, Search, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
@@ -14,10 +14,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { CodeTag } from '@/components/ui/data-tag'
 import {
   useFilterCustomersQuery,
   useGenericDownloadMutation,
@@ -30,7 +34,7 @@ import {
   useUpdateCustomerStatusMutation,
 } from '@/store/slice/users/api/api'
 import type { TPosCustomer, TPosCustomerGroup } from '@/store/slice/users/types/pos-types'
-import { cn, query } from '@/utils'
+import { cn, query, downloadBlob } from '@/utils'
 import { getImageUrl } from '@/utils/common'
 
 const PAGE_SIZE = 15
@@ -55,17 +59,6 @@ function emptyCustomer(groupId?: number): TPosCustomer {
   }
 }
 
-function downloadBlob(blob: Blob, fileName: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  URL.revokeObjectURL(url)
-  link.remove()
-}
-
 function formatDate(value?: string) {
   if (!value) return '-'
   const date = new Date(value)
@@ -86,7 +79,7 @@ export default function CustomersPage() {
   const [groupModal, setGroupModal] = useState(false)
   const [groupForm, setGroupForm] = useState<TPosCustomerGroup>({ Name: '' })
 
-  const importInputRef = useRef<HTMLInputElement>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   const { data, isLoading, refetch } = useFilterCustomersQuery({
     PageIndex: page - 1,
@@ -230,19 +223,6 @@ export default function CustomersPage() {
     }
   }
 
-  const importExcel = async (file?: File) => {
-    if (!file) return
-    const form = new FormData()
-    form.append(file.name, file)
-    try {
-      await request({ url: 'customers/import-excel', method: 'POST', body: form }).unwrap()
-      toast.success('Nhập Excel thành công')
-      refetch()
-    } catch {
-      toast.error('Không thể nhập Excel')
-    }
-  }
-
   const exportExcel = async () => {
     try {
       const blob = await downloadFile({
@@ -271,8 +251,8 @@ export default function CustomersPage() {
     {
       id: 'code',
       header: 'Mã',
-      meta: { cellClassName: 'font-medium text-emerald-700 whitespace-nowrap' },
-      cell: ({ row }) => row.original.CustomerCode || row.original.Code || '-',
+      meta: { cellClassName: 'whitespace-nowrap' },
+      cell: ({ row }) => <CodeTag value={row.original.CustomerCode || row.original.Code} />,
     },
     {
       id: 'name',
@@ -417,17 +397,7 @@ export default function CustomersPage() {
             )}
             actions={(
               <>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  className="hidden"
-                  accept=".xlsx,.xls"
-                  onChange={event => {
-                    importExcel(event.target.files?.[0])
-                    event.target.value = ''
-                  }}
-                />
-                <ToolbarButton tone="neutral" onClick={() => importInputRef.current?.click()}>
+                <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
                   <Upload className="h-4 w-4" />
                   Nhập
                 </ToolbarButton>
@@ -479,10 +449,10 @@ export default function CustomersPage() {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Chiết khấu (%)">
-                <Input type="number" value={groupForm.DiscountPercent ?? ''} onChange={event => setGroupForm(current => ({ ...current, DiscountPercent: Number(event.target.value) }))} />
+                <NumberInput value={groupForm.DiscountPercent ?? 0} onChange={v => setGroupForm(current => ({ ...current, DiscountPercent: v }))} />
               </Field>
               <Field label="Điểm">
-                <Input type="number" value={groupForm.Point ?? ''} onChange={event => setGroupForm(current => ({ ...current, Point: Number(event.target.value) }))} />
+                <NumberInput value={groupForm.Point ?? 0} onChange={v => setGroupForm(current => ({ ...current, Point: v }))} />
               </Field>
             </div>
             <Field label="Ghi chú">
@@ -495,6 +465,14 @@ export default function CustomersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ExcelImportDialog
+        open={importOpen} onOpenChange={setImportOpen}
+        headerUrl="customers/get-excel-header"
+        dataUrl="customers/get-excel-data"
+        importUrl="customers/import-excel"
+        onImported={refetch}
+      />
     </div>
   )
 }
@@ -637,18 +615,6 @@ function Avatar({ image, size = 'md' }: { image?: string | null; size?: 'sm' | '
       size === 'sm' ? 'h-6 w-6' : 'h-9 w-9',
     )}>
       {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : <ImageIcon className={cn('text-slate-300', size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4')} />}
-    </span>
-  )
-}
-
-function StatusBadge({ status }: { status?: { Id?: number; Name?: string } }) {
-  const active = status?.Id === STATUS_ACTIVE
-  return (
-    <span className={cn(
-      'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
-      active ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
-    )}>
-      {status?.Name || (active ? 'Hoạt động' : 'Tạm khóa')}
     </span>
   )
 }

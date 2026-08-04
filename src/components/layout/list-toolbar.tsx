@@ -9,9 +9,9 @@ import { translateKnownText } from '@/i18n/nav-title-map'
 type ToolbarButtonTone = 'primary' | 'neutral' | 'danger'
 
 const toneClass: Record<ToolbarButtonTone, string> = {
-  primary: 'border-blue-600 bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:text-white',
-  neutral: 'border-slate-200 bg-white text-slate-800 shadow-sm hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700',
-  danger: 'border-red-200 bg-red-50 text-red-600 shadow-sm hover:bg-red-100 hover:text-red-700 disabled:border-red-100 disabled:bg-red-50 disabled:text-red-300',
+  primary: 'border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:text-primary-foreground',
+  neutral: 'border-border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground',
+  danger: 'border-destructive/25 bg-destructive/10 text-destructive shadow-sm hover:bg-destructive/15 hover:text-destructive disabled:border-destructive/10 disabled:bg-destructive/5 disabled:text-destructive/40',
 }
 
 export function ToolbarButton({
@@ -50,7 +50,7 @@ export function ListToolbar({
 }) {
   const { t } = useTranslation()
   return (
-    <div className={cn('flex shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-white p-3 shadow-sm', className)}>
+    <div className={cn('flex shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-card p-3 text-card-foreground shadow-sm', className)}>
       {left ? <div className="flex shrink-0 items-center gap-2">{left}</div> : null}
       <div className="flex min-w-[280px] flex-1 flex-wrap items-center justify-end gap-2">
         {onSearchChange ? (
@@ -60,7 +60,7 @@ export function ListToolbar({
               value={searchValue || ''}
               onChange={event => onSearchChange(event.target.value)}
               placeholder={translateKnownText(searchPlaceholder, t) ?? t('common.search')}
-              className="h-10 rounded-md border-slate-200 bg-white pl-9 shadow-sm"
+              className="h-10 rounded-md border-input bg-background pl-9 text-foreground shadow-sm placeholder:text-muted-foreground"
             />
           </div>
         ) : null}

@@ -1,4 +1,5 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
+import { buildModelFormData } from "@/utils/multipart";
 
 import {
   TChangePasswordRequest,
@@ -26,6 +27,9 @@ import {
   TPosSettingGeneral,
   TPosSettingOrder,
   TPosFundType,
+  TPosMember,
+  TPosUserAccount,
+  TPosSalaryType,
   TPosSettingProduct,
   TPosSettingStock,
   TPosSettingNotification,
@@ -44,6 +48,7 @@ import {
   TPosNotificationListResponse,
   TPosFilterNotificationResponse,
   TPosOrder,
+  TPosKitchenPrintGroup,
   TPosOrderFilterParams,
   TReportData,
   TPosBooking,
@@ -196,7 +201,7 @@ export const userApiSlice = createApi({
 
     getUsers: builder.query<TUsersListResponse, TUsersRequest>({
       query: (payload: TUsersRequest) => ({
-        url: `users/list${query(payload)}`,
+        url: `users/filter${query(payload)}`,
         method: "GET",
       }),
       transformResponse: (response: any) =>
@@ -468,7 +473,7 @@ export const userApiSlice = createApi({
 
     /** Payment methods, each with its linked bank/wallet accounts. */
     getPaymentTypes: builder.query<TPosFundType[], void>({
-      query: () => ({ url: "fundType/get-payment-type", method: "GET" }),
+      query: () => ({ url: "fundtype/get-payment-type", method: "GET" }),
       transformResponse: (res: TPosResponse<TPosFundType[]>) => res.Data ?? [],
     }),
 
@@ -620,17 +625,30 @@ export const userApiSlice = createApi({
     }),
 
     /** Create/update the order sitting on a table (restaurant flow). */
-    saveTableOrder: builder.mutation<{ OrderId?: number }, { order: TPosOrder; isUpdate: boolean }>({
+    saveTableOrder: builder.mutation<{ OrderId?: number; Printers?: TPosOrder["Printers"] }, { order: TPosOrder; isUpdate: boolean }>({
       query: ({ order, isUpdate }) => ({
         url: isUpdate ? "tables/update-order" : "tables/create-order",
         method: isUpdate ? "PUT" : "POST",
         body: order,
       }),
-      transformResponse: (res: TPosResponse<{ OrderId?: number }>) => res.Data ?? {},
+      transformResponse: (res: TPosResponse<{ OrderId?: number; Printers?: TPosOrder["Printers"] }>) => res.Data ?? {},
     }),
 
     deleteTableOrder: builder.mutation<void, number>({
       query: (tableId) => ({ url: `tables/delete-order?tableId=${tableId}`, method: "DELETE" }),
+    }),
+
+    /**
+     * Per-printer breakdown of what still needs a kitchen ticket for this
+     * table — the explicit "In bếp" button (as opposed to the plain-save
+     * auto-print, which just replays the save response's `Printers`).
+     */
+    getOrderKitchen: builder.query<TPosKitchenPrintGroup[], { tableGuid: string; deviceGuid: string }>({
+      query: ({ tableGuid, deviceGuid }) => ({
+        url: `tables/get-order-kitchen?tableGuid=${tableGuid}&deviceGuid=${deviceGuid}`,
+        method: "GET",
+      }),
+      transformResponse: (res: TPosResponse<TPosKitchenPrintGroup[]>) => res.Data ?? [],
     }),
 
     getProductGroups: builder.query<TPosProductGroup[], void>({
@@ -773,7 +791,9 @@ export const userApiSlice = createApi({
     }),
 
     getOrderDetail: builder.query<TPosOrder, number>({
-      query: (id) => ({ url: `orders/detail?id=${id}` }),
+      // orders/detail takes `orderId`, not `id` — every other */detail endpoint
+      // uses `id`, this one is the exception (matches Angular's order-manager).
+      query: (id) => ({ url: `orders/detail?orderId=${id}` }),
       transformResponse: (res: TPosResponse<TPosOrder>) => res.Data,
     }),
 
@@ -839,7 +859,7 @@ export const userApiSlice = createApi({
       query: (data) => ({
         url: data.Id ? 'bookings/update' : 'bookings/create',
         method: 'POST',
-        body: { model: data },
+        body: buildModelFormData(data),
       }),
     }),
 
@@ -868,7 +888,7 @@ export const userApiSlice = createApi({
       query: (data) => ({
         url: data.Id ? 'quotations/update' : 'quotations/create',
         method: 'POST',
-        body: { model: data },
+        body: buildModelFormData(data),
       }),
     }),
 
@@ -882,7 +902,7 @@ export const userApiSlice = createApi({
 
     // ─── Actives: Products ──────────────────────────────────────────────────
 
-    filterActiveProducts: builder.query<TPosFilterData<TPosActiveProduct>, TPosFilterParams & { GroupId?: number }>({
+    filterActiveProducts: builder.query<TPosFilterData<TPosActiveProduct>, TPosFilterParams & { ProductGroupId?: number }>({
       query: (p) => ({ url: `products/filter${query({ PageIndex: 0, PageSize: 15, ...p })}` }),
       transformResponse: (res: TPosResponse<TPosFilterData<TPosActiveProduct>>) =>
         res.Data ?? { Items: [], TotalItemCount: 0 },
@@ -903,7 +923,7 @@ export const userApiSlice = createApi({
 
     // ─── Actives: Statistics ────────────────────────────────────────────────
 
-    filterProductStatistics: builder.query<TPosProductStatistic, { PageIndex?: number; PageSize?: number; DateFrom?: string; DateTo?: string; GroupId?: number; ShopId?: number }>({
+    filterProductStatistics: builder.query<TPosProductStatistic, { PageIndex?: number; PageSize?: number; DateFrom?: string; DateTo?: string; ProductGroupId?: number; ShopId?: number }>({
       query: (p) => ({ url: `statistic/filter-product-statistic${query({ PageIndex: 0, PageSize: 20, ...p })}` }),
       transformResponse: (res: TPosResponse<TPosProductStatistic>) =>
         res.Data ?? { Items: [], TotalItemCount: 0, Sumary: { Quantity: 0, Amount: 0, AmountInput: 0, Profit: 0 } },
@@ -962,7 +982,7 @@ export const userApiSlice = createApi({
       }),
     }),
 
-    filterRoyalCustomers: builder.query<TPosFilterData<TPosCustomer>, TPosFilterParams & { GroupId?: number }>({
+    filterRoyalCustomers: builder.query<TPosFilterData<TPosCustomer>, TPosFilterParams & { CustomerGroupId?: number }>({
       query: (p) => ({ url: `customers/filter-royal${query({ PageIndex: 0, PageSize: 15, ...p })}` }),
       transformResponse: (res: TPosResponse<TPosFilterData<TPosCustomer>>) =>
         res.Data ?? { Items: [], TotalItemCount: 0 },
@@ -993,7 +1013,7 @@ export const userApiSlice = createApi({
         res.Data ?? { Items: [], TotalItemCount: 0, Sumary: null },
     }),
     saveWarehouse: builder.mutation<void, Record<string, any>>({
-      query: (data) => ({ url: data.Id ? 'stock/update' : 'stock/create', method: 'POST', body: data }),
+      query: (data) => ({ url: data.Id ? 'stock/update' : 'stock/create', method: 'POST', body: buildModelFormData(data) }),
     }),
     updateWarehouseStatus: builder.mutation<void, { id: number; statusId: number }>({
       query: ({ id, statusId }) => ({ url: `stock/update-status?id=${id}&statusId=${statusId}`, method: 'POST', body: {} }),
@@ -1001,24 +1021,24 @@ export const userApiSlice = createApi({
 
     // ─── Stocks: Create mutations ─────────────────────────────────────────────
     createStockInput: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'stockinputs/create', method: 'POST', body }),
+      query: (body) => ({ url: 'stockinputs/create', method: 'POST', body: buildModelFormData(body) }),
     }),
     createStockOutput: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'stockoutputs/create', method: 'POST', body }),
+      query: (body) => ({ url: 'stockoutputs/create', method: 'POST', body: buildModelFormData(body) }),
     }),
     createStockTransfer: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'stocktransfers/create', method: 'POST', body }),
+      query: (body) => ({ url: 'stocktransfers/create', method: 'POST', body: buildModelFormData(body) }),
     }),
     createStockCheck: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'stockchecks/create', method: 'POST', body }),
+      query: (body) => ({ url: 'stockchecks/create', method: 'POST', body: buildModelFormData(body) }),
     }),
 
     // ─── Currencies: Create mutations ─────────────────────────────────────────
     createReceipt: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'Receipt/create', method: 'POST', body }),
+      query: (body) => ({ url: 'receipt/create', method: 'POST', body: buildModelFormData(body) }),
     }),
     createPayment: builder.mutation<void, Record<string, any>>({
-      query: (body) => ({ url: 'Payment/create', method: 'POST', body }),
+      query: (body) => ({ url: 'payment/create', method: 'POST', body: buildModelFormData(body) }),
     }),
 
     // ─── HR: Filter queries ───────────────────────────────────────────────────
@@ -1038,16 +1058,66 @@ export const userApiSlice = createApi({
         res.Data ?? { Items: [], TotalItemCount: 0, Sumary: null },
     }),
     saveShift: builder.mutation<void, Record<string, any>>({
-      query: (data) => ({ url: data.Id ? 'shift/update' : 'shift/create', method: 'POST', body: data }),
+      query: (data) => ({ url: data.Id ? 'shift/update' : 'shift/create', method: 'POST', body: buildModelFormData(data) }),
     }),
     updateShiftStatus: builder.mutation<void, { id: number; statusId: number }>({
       query: ({ id, statusId }) => ({ url: `shift/update-status?id=${id}&statusId=${statusId}`, method: 'POST', body: {} }),
     }),
-    saveMember: builder.mutation<void, Record<string, any>>({
-      query: (data) => ({ url: data.Id ? 'users/update' : 'users/create', method: 'POST', body: data }),
+    /** Full member record — the list rows omit UserInfo/Shops/Image. */
+    getMemberDetail: builder.query<TPosMember | null, number>({
+      query: (id) => ({ url: `users/detail?id=${id}` }),
+      transformResponse: (res: TPosResponse<TPosMember>) => res.Data ?? null,
     }),
+
+    /**
+     * users/create|update takes multipart: the model as a JSON blob plus any
+     * avatar file, same as Angular's `postMultipart`.
+     */
+    saveMember: builder.mutation<TPosMember, { model: TPosMember; file?: File | null }>({
+      query: ({ model, file }) => {
+        const form = new FormData()
+        form.append('model', new Blob([JSON.stringify(model)], { type: 'application/json' }))
+        if (file) form.append(file.name, file)
+        return { url: model.Id ? 'users/update' : 'users/create', method: 'POST', body: form }
+      },
+      transformResponse: (res: TPosResponse<TPosMember>) => res.Data,
+    }),
+
     updateMemberStatus: builder.mutation<void, { id: number; statusId: number }>({
       query: ({ id, statusId }) => ({ url: `users/update-status?id=${id}&statusId=${statusId}`, method: 'POST', body: {} }),
+    }),
+
+    /** Login account attached to a member (may not exist yet). */
+    getAccountByMember: builder.query<TPosUserAccount | null, number>({
+      query: (id) => ({ url: `user-infos/detail-by-user?id=${id}` }),
+      transformResponse: (res: TPosResponse<TPosUserAccount>) => res.Data ?? null,
+    }),
+
+    saveAccount: builder.mutation<TPosUserAccount, TPosUserAccount>({
+      query: (data) => {
+        const form = new FormData()
+        form.append('model', new Blob([JSON.stringify(data)], { type: 'application/json' }))
+        // Swagger exposes no user-infos/create — the account row already
+        // exists once the member is saved, so this is always an update.
+        return { url: 'user-infos/update', method: 'POST', body: form }
+      },
+      transformResponse: (res: TPosResponse<TPosUserAccount>) => res.Data,
+    }),
+
+    getShopsSimple: builder.query<TPosShop[], void>({
+      query: () => ({ url: `shop/filter-simple${query({ PageIndex: 0, PageSize: 1000 })}` }),
+      transformResponse: (res: TPosResponse<TPosFilterData<TPosShop>>) => res.Data?.Items ?? [],
+    }),
+
+    getUserGroups: builder.query<Array<{ Id?: number; Name?: string }>, void>({
+      query: () => ({ url: `usergroup/filter${query({ PageIndex: 0, PageSize: 1000 })}` }),
+      transformResponse: (res: TPosResponse<TPosFilterData<{ Id?: number; Name?: string }>>) =>
+        res.Data?.Items ?? [],
+    }),
+
+    getSalaryTypes: builder.query<TPosSalaryType[], void>({
+      query: () => ({ url: 'salary/get-salary-types' }),
+      transformResponse: (res: TPosResponse<TPosSalaryType[]>) => res.Data ?? [],
     }),
 
     // ─── Reports ─────────────────────────────────────────────────────────────
@@ -1137,6 +1207,7 @@ export const {
   useLazyGetTableOrderDetailQuery,
   useSaveTableOrderMutation,
   useDeleteTableOrderMutation,
+  useLazyGetOrderKitchenQuery,
   useGetProductGroupsQuery,
   useSelectShopMutation,
   useFilterProductGroupsQuery,
@@ -1228,6 +1299,12 @@ export const {
   useSaveShiftMutation,
   useUpdateShiftStatusMutation,
   useSaveMemberMutation,
+  useLazyGetMemberDetailQuery,
+  useLazyGetAccountByMemberQuery,
+  useSaveAccountMutation,
+  useGetShopsSimpleQuery,
+  useGetUserGroupsQuery,
+  useGetSalaryTypesQuery,
   useUpdateMemberStatusMutation,
   // Reports
   useFilterReportQuery,

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { FileSpreadsheet, ChevronDown, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { query, downloadBlob } from '@/utils'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import dayjs from 'dayjs'
@@ -8,6 +10,7 @@ import {
   useLazyFilterCustomersQuery,
   useGetUserShopSettingQuery,
   useGetProductGroupsSimpleQuery,
+  useGenericDownloadMutation,
 } from '@/store/slice/users/api/api'
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
@@ -176,13 +179,34 @@ export function ReportPagination({ page, total, pageSize, onPage, onPageSizeChan
 
 // ─── Excel export button ──────────────────────────────────────────────────────
 
-export function ExcelBtn({ onClick }: { onClick: () => void }) {
+export function ExcelBtn({ onClick, loading }: { onClick: () => void; loading?: boolean }) {
   return (
-    <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={onClick}>
+    <Button size="sm" variant="outline" disabled={loading}
+      className="h-8 text-xs gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={onClick}>
       <FileSpreadsheet className="h-3.5 w-3.5" />
-      Xuất Excel
+      {loading ? 'Đang xuất...' : 'Xuất Excel'}
     </Button>
   )
+}
+
+/**
+ * Every report tab exports through `excels/export-*`, which streams an .xlsx
+ * built from the same filter params the tab is already showing.
+ */
+export function useReportExcel() {
+  const [download, { isLoading: exporting }] = useGenericDownloadMutation()
+
+  const exportExcel = async (endpoint: string, params: Record<string, unknown>, fileName: string) => {
+    try {
+      const blob = await download({ url: `${endpoint}${query(params)}` }).unwrap()
+      downloadBlob(blob, fileName)
+      toast.success('Xuất Excel thành công')
+    } catch {
+      toast.error('Không thể xuất Excel')
+    }
+  }
+
+  return { exportExcel, exporting }
 }
 
 // ─── Loading skeleton rows ────────────────────────────────────────────────────

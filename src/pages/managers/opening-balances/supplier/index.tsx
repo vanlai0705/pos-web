@@ -7,6 +7,7 @@ export default function OpeningBalancesSupplierPage() {
       entityLabel="Nhà cung cấp"
       entityKey="Supplier"
       filterUrl="opening-balances/filter-supplier"
+      headerUrl="opening-balances/get-excel-header-supplier"
       importUrl="opening-balances/import-excel-supplier"
       updateUrl="opening-balances/update-supplier"
       exportUrl="opening-balances/export-excel-supplier"

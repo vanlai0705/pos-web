@@ -40,3 +40,4 @@ coverage/
 # Optional: Local SSL certs
 *.pem
 *.key
+.vercel

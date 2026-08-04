@@ -9,10 +9,11 @@ import {
   useCancelOrderMutation,
 } from '@/store/slice/users/api/api'
 import type { TPosOrder } from '@/store/slice/users/types/pos-types'
-import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, StatusBadge, fmtCurrency, fmtDateTime, useListFilter } from '../shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, StatusBadge, fmtDateTime, useListFilter } from '../shared'
+import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 
 function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () => void }) {
-  const items = order.OrderItems ?? []
+  const items = order.Items ?? []
   const subTotal = items.reduce((s, i) => s + (i.Total ?? 0), 0)
 
   return (
@@ -90,17 +91,17 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
       <div className="border-t px-4 py-3 space-y-1.5 text-sm bg-muted/10">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Tiền hàng</span>
-          <span className="tabular-nums">{fmtCurrency(order.SubTotal ?? subTotal)}</span>
+          <MoneyTag value={order.SubTotal ?? subTotal} />
         </div>
         {(order.Discount ?? 0) > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Giảm giá</span>
-            <span className="tabular-nums text-orange-500">- {fmtCurrency(order.Discount)}</span>
+            <MoneyTag value={order.Discount} />
           </div>
         )}
         <div className="flex justify-between font-semibold text-base border-t pt-1.5">
           <span>Tổng cộng</span>
-          <span className="tabular-nums text-primary">{fmtCurrency(order.Total ?? order.SubTotal ?? subTotal)}</span>
+          <MoneyTag value={order.Total ?? order.SubTotal ?? subTotal} />
         </div>
       </div>
 
@@ -194,11 +195,11 @@ export default function OrderManagerPage() {
                         className={`cursor-pointer transition-colors hover:bg-accent/50 ${selected?.Id === item.Id ? 'bg-primary/8 border-l-2 border-l-primary' : ''}`}
                       >
                         <td className="px-3 py-2.5 text-muted-foreground">{(page - 1) * pageSize + idx + 1}</td>
-                        <td className="px-3 py-2.5 font-medium">{item.Name ?? item.Code ?? '—'}</td>
+                        <td className="px-3 py-2.5"><VoucherTag value={item.Name ?? item.Code} /></td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-xs">{fmtDateTime(item.Date)}</td>
                         <td className="px-3 py-2.5">{item.Customer?.Name ?? '—'}</td>
                         <td className="px-3 py-2.5">{item.User?.Name ?? '—'}</td>
-                        <td className="px-3 py-2.5 tabular-nums">{fmtCurrency(item.Total ?? item.SubTotal)}</td>
+                        <td className="px-3 py-2.5"><MoneyTag value={item.Total ?? item.SubTotal} /></td>
                         <td className="px-3 py-2.5"><StatusBadge status={item.Status} /></td>
                       </tr>
                     ))

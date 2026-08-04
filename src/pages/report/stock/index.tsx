@@ -4,7 +4,7 @@ import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import {
   fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
   StatCards, ReportDateFilter, ReportTabs,
-  TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn,
+  TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
 } from '../shared'
 
 const TABS = ['Nhập kho', 'Xuất kho', 'Kiểm kho', 'Chuyển kho', 'Tồn kho']
@@ -317,6 +317,23 @@ export default function ReportStockPage() {
   const range = currentMonthRange()
   const [dateFrom, setDateFrom] = useState(range.from)
   const [dateTo, setDateTo] = useState(range.to)
+  const { exportExcel, exporting } = useReportExcel()
+
+  /**
+   * One export endpoint per stock-document tab. Tồn kho has none — pos_web
+   * offers no Excel export there either — so the button is hidden on that tab.
+   */
+  const EXPORTS = [
+    { url: 'excels/export-stock-in', file: 'nhap-kho.xlsx' },
+    { url: 'excels/export-stock-out', file: 'xuat-kho.xlsx' },
+    { url: 'excels/export-stock-check', file: 'kiem-kho.xlsx' },
+    { url: 'excels/export-stock-transfer', file: 'chuyen-kho.xlsx' },
+  ]
+
+  const handleExport = () => {
+    const target = EXPORTS[tab]
+    if (target) exportExcel(target.url, { DateFrom: dateFrom, DateTo: dateTo }, target.file)
+  }
 
   return (
     <div className="flex flex-col h-full gap-0">
@@ -335,7 +352,7 @@ export default function ReportStockPage() {
           <ReportTabs tabs={TABS} active={tab} onSelect={setTab} />
           <div className="flex items-center gap-2 flex-wrap">
             <ReportDateFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
-            <ExcelBtn onClick={() => {}} />
+            {EXPORTS[tab] && <ExcelBtn onClick={handleExport} loading={exporting} />}
           </div>
         </div>
       </div>

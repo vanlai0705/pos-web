@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { UtensilsCrossed, Plus, RefreshCw, Clock } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -95,6 +96,7 @@ function AreaTabs({ areas, selected, onSelect }: {
 const TABLES_PER_AREA = 12
 
 export default function RestaurantInvoicePage() {
+  const navigate = useNavigate()
   const { dateFrom } = useListFilter()
   const [selectedArea, setSelectedArea] = useState<number | null>(null)
   const [selected, setSelected] = useState<TPosBooking | null>(null)
@@ -113,7 +115,9 @@ export default function RestaurantInvoicePage() {
 
   const handleTableClick = async (booking?: TPosBooking) => {
     if (!booking) {
-      toast.info('Tính năng tạo đơn nhà hàng đang phát triển')
+      // An empty slot has no order to show — send the user to the real floor
+      // plan, which is where a table order actually gets opened.
+      navigate('/actives/tables-order')
       return
     }
     if (!booking.Id) return
@@ -151,7 +155,7 @@ export default function RestaurantInvoicePage() {
         <Button size="sm" variant="outline" className="h-8" onClick={() => refetch()}>
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>
-        <Button size="sm" className="h-8" onClick={() => toast.info('Tính năng tạo đơn mới đang phát triển')}>
+        <Button size="sm" className="h-8" onClick={() => navigate('/actives/tables-order')}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Tạo đơn
         </Button>
       </ListPageHeader>
