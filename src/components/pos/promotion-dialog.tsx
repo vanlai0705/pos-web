@@ -343,11 +343,11 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
                           {(type === PROMOTION_TYPE.DiscountByQuantity
                             || type === PROMOTION_TYPE.ProductSamePrice
                             || type === PROMOTION_TYPE.Buy1Get1) && (
-                            <td className="px-2 py-1 min-w-[180px]">
-                              <LookupSelect<TProduct> endpoint="products/filter-simple" placeholder="Chọn mặt hàng"
-                                value={item.Product} onChange={v => patchItem(key, { Product: v })} />
-                            </td>
-                          )}
+                              <td className="px-2 py-1 min-w-[180px]">
+                                <LookupSelect<TProduct> endpoint="products/filter-simple" placeholder="Chọn mặt hàng"
+                                  value={item.Product} onChange={v => patchItem(key, { Product: v })} />
+                              </td>
+                            )}
                           {type === PROMOTION_TYPE.Buy1Get1 && (
                             <td className="px-2 py-1 text-center text-xs">{item.Product?.Unit?.Name ?? '—'}</td>
                           )}
