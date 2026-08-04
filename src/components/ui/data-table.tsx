@@ -1,10 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import { ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react'
 import { Skeleton } from './skeleton'
 import { DataPagination } from './data-pagination'
 import { cn } from '@/utils'
@@ -54,11 +56,17 @@ export function DataTable<TData>({
     () => loading ? (Array(pageSize).fill({}) as TData[]) : data,
     [loading, data, pageSize],
   )
+  // Sorts only the rows already on this page — the table is server-paginated
+  // and the API has no OrderBy param, so a global sort isn't possible here.
+  const [sorting, setSorting] = useState<SortingState>([])
 
   const table = useReactTable({
     data: tableData,
     columns,
+    state: { sorting },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   })
 
   return (
@@ -70,6 +78,12 @@ export function DataTable<TData>({
               <tr key={hg.id}>
                 {hg.headers.map(header => {
                   const m = header.column.columnDef.meta as ColMeta | undefined
+                  const label = header.isPlaceholder
+                    ? null
+                    : typeof header.column.columnDef.header === 'string'
+                      ? translateKnownText(header.column.columnDef.header, t)
+                      : flexRender(header.column.columnDef.header, header.getContext())
+                  const sorted = header.column.getIsSorted()
                   return (
                     <th
                       key={header.id}
@@ -78,11 +92,18 @@ export function DataTable<TData>({
                         m?.headClassName ?? m?.className,
                       )}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : typeof header.column.columnDef.header === 'string'
-                          ? translateKnownText(header.column.columnDef.header, t)
-                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      {!header.isPlaceholder && header.column.getCanSort() ? (
+                        <button
+                          type="button"
+                          onClick={header.column.getToggleSortingHandler()}
+                          className="flex items-center gap-1 hover:text-foreground transition-colors"
+                        >
+                          <span>{label}</span>
+                          {sorted === 'asc' ? <ArrowUp className="h-3 w-3" />
+                            : sorted === 'desc' ? <ArrowDown className="h-3 w-3" />
+                            : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                        </button>
+                      ) : label}
                     </th>
                   )
                 })}

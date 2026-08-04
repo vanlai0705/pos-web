@@ -257,6 +257,7 @@ export default function CustomersPage() {
     {
       id: 'name',
       header: 'Tên',
+      accessorFn: row => row.Name ?? '',
       cell: ({ row }) => {
         const customer = row.original
         return (
@@ -293,6 +294,7 @@ export default function CustomersPage() {
     {
       id: 'phone',
       header: 'Điện thoại',
+      accessorFn: row => row.Phone ?? '',
       cell: ({ row }) => row.original.Phone || '-',
     },
     {
