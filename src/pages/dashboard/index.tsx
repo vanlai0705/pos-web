@@ -1,57 +1,65 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
-  ComposedChart,
-  Legend,
-  Line,
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts"
-import { BarChart3, Package, ReceiptText, Users } from "lucide-react"
-import { useTranslation } from "react-i18next"
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Package,
+  ReceiptText,
+  TrendingUp,
+  UserPlus,
+  Wallet,
+} from "lucide-react"
 
 import {
-  useGetCustomerActivityQuery,
-  useGetOrderActivityQuery,
+  useFilterOrdersQuery,
+  useFilterRevenueStatisticsQuery,
+  useGetProductGroupsSimpleQuery,
   useGetProductStatisticQuery,
   useGetSimpleChartQuery,
-  useGetStatisticChartQuery,
 } from "@/store/slice/users/api/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/utils"
 
 function pad(n: number) {
   return String(n).padStart(2, "0")
 }
 
-function toInputDate(date: Date) {
+/** `+07:00` date-range params every chart/statistic endpoint here expects. */
+function toRangeParam(date: Date, end = false) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${end ? "23:59:59" : "00:00:00"}+07:00`
+}
+
+/** orders/filter-order is the odd one out — plain YYYY-MM-DD, no time/offset. */
+function toDateOnly(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-function toApiDate(value: string, isEnd = false) {
-  return `${value}T${isEnd ? "23:59:59" : "00:00:00"}+07:00`
+function dayKey(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-function formatDisplayDate(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`
-}
-
-function formatDateTime(value?: string) {
-  if (!value) return ""
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} | ${pad(date.getHours())}:${pad(date.getMinutes())}`
+function addDays(date: Date, delta: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + delta)
+  return next
 }
 
 function formatNumber(value = 0) {
-  return value.toLocaleString("vi-VN")
+  return Math.round(value).toLocaleString("vi-VN")
 }
 
 function formatShort(value = 0) {
@@ -61,23 +69,14 @@ function formatShort(value = 0) {
   return formatNumber(value)
 }
 
-const SIMPLE_CHARTS = [
-  { type: 0, color: "#2563eb" },
-  { type: 1, color: "#059669" },
-  { type: 3, color: "#d97706" },
-  { type: 2, color: "#7c3aed" },
-]
+/** `null` means "no basis for comparison" (both days are zero) — hide the badge rather than claim 0%. */
+function pctDelta(curr: number, prev: number): number | null {
+  if (prev === 0) return curr === 0 ? null : 100
+  return ((curr - prev) / prev) * 100
+}
 
-const CHART_TYPES = [
-  { key: 0, labelKey: "dashboard.day" },
-  { key: 1, labelKey: "dashboard.month" },
-  { key: 2, labelKey: "dashboard.year" },
-]
-
-// Validated categorical order (blue, green, magenta, yellow, aqua) — passes
-// CVD + normal-vision separation in both themes on the adjacent-pair (line
-// chart) check. Defined as theme-aware CSS vars in globals.css so the exact
-// step swaps with light/dark, same mechanism as --border/--popover below.
+// Same validated categorical palette as the old dashboard's profit chart —
+// theme-aware CSS vars so the exact hues swap with light/dark.
 const SERIES_COLORS = [
   "hsl(var(--series-1))",
   "hsl(var(--series-2))",
@@ -87,411 +86,350 @@ const SERIES_COLORS = [
 ]
 
 export default function DashboardPage() {
-  const { t } = useTranslation()
-  const now = new Date()
-  const [simpleFrom, setSimpleFrom] = useState(toInputDate(new Date(now.getFullYear(), 0, 1)))
-  const [simpleTo, setSimpleTo] = useState(toInputDate(new Date(now.getFullYear(), 11, 31)))
-  const [activityFrom, setActivityFrom] = useState(toInputDate(now))
-  const [activityTo, setActivityTo] = useState(toInputDate(now))
-  const [chartType, setChartType] = useState(0)
+  const today = new Date()
+  const yesterday = addDays(today, -1)
+  const todayFrom = toRangeParam(today, false)
+  const todayTo = toRangeParam(today, true)
+  const yestFrom = toRangeParam(yesterday, false)
+  const yestTo = toRangeParam(yesterday, true)
+  const weekStart = addDays(today, -6)
+  const prevWeekStart = addDays(today, -13)
+  const prevWeekEnd = addDays(today, -7)
 
-  const simpleRange = useMemo(
-    () => ({ DateFrom: toApiDate(simpleFrom), DateTo: toApiDate(simpleTo, true) }),
-    [simpleFrom, simpleTo]
-  )
-  const activityRange = useMemo(
-    () => ({ dateFrom: toApiDate(activityFrom), dateTo: toApiDate(activityTo, true) }),
-    [activityFrom, activityTo]
-  )
+  // ── Row 1: today's KPIs, each compared to yesterday ──────────────────────
+  const { data: salesToday, isFetching: salesTodayLoading } = useGetSimpleChartQuery({ type: 0, DateFrom: todayFrom, DateTo: todayTo })
+  const { data: salesYesterday } = useGetSimpleChartQuery({ type: 0, DateFrom: yestFrom, DateTo: yestTo })
+  const { data: ordersToday, isFetching: ordersTodayLoading } = useGetSimpleChartQuery({ type: 1, DateFrom: todayFrom, DateTo: todayTo })
+  const { data: ordersYesterday } = useGetSimpleChartQuery({ type: 1, DateFrom: yestFrom, DateTo: yestTo })
+  const { data: customersToday, isFetching: customersTodayLoading } = useGetSimpleChartQuery({ type: 2, DateFrom: todayFrom, DateTo: todayTo })
+  const { data: customersYesterday } = useGetSimpleChartQuery({ type: 2, DateFrom: yestFrom, DateTo: yestTo })
 
-  const { data: statChart, isFetching: statLoading } = useGetStatisticChartQuery({
-    Type: chartType,
-    Month: now.getMonth() + 1,
-    Year: now.getFullYear(),
-    YearFrom: now.getFullYear() - 10,
-    YearTo: now.getFullYear(),
+  const { data: productStatToday, isFetching: productStatTodayLoading } = useGetProductStatisticQuery({ PageIndex: 0, PageSize: 500, dateFrom: todayFrom, dateTo: todayTo })
+  const { data: productStatYesterday } = useGetProductStatisticQuery({ PageIndex: 0, PageSize: 500, dateFrom: yestFrom, dateTo: yestTo })
+
+  const todayItems = productStatToday?.Items ?? []
+  const yesterdayItems = productStatYesterday?.Items ?? []
+  const profitToday = todayItems.reduce((s, i) => s + (i.Profit ?? 0), 0)
+  const profitYesterday = yesterdayItems.reduce((s, i) => s + (i.Profit ?? 0), 0)
+  const qtyToday = todayItems.reduce((s, i) => s + (i.Quantity ?? 0), 0)
+  const qtyYesterday = yesterdayItems.reduce((s, i) => s + (i.Quantity ?? 0), 0)
+
+  // ── Row 2: 7-day trend + today-by-hour both come from one order list —
+  // each order already carries its own timestamp, so both charts are just
+  // different ways of bucketing the same rows. ─────────────────────────────
+  const { data: revenueWeek, isFetching: weekLoading } = useFilterRevenueStatisticsQuery({
+    PageIndex: 0, PageSize: 1000, DateFrom: toRangeParam(weekStart, false), DateTo: todayTo,
   })
-
-  const { data: customers, isFetching: customersLoading } = useGetCustomerActivityQuery({ PageSize: 10, PageIndex: 0 })
-  const { data: orders, isFetching: ordersLoading } = useGetOrderActivityQuery({
-    PageSize: 10,
-    PageIndex: 0,
-    ...activityRange,
+  const { data: revenuePrevWeek } = useFilterRevenueStatisticsQuery({
+    PageIndex: 0, PageSize: 1000, DateFrom: toRangeParam(prevWeekStart, false), DateTo: toRangeParam(prevWeekEnd, true),
   })
-  const { data: products, isFetching: productsLoading } = useGetProductStatisticQuery({
-    PageSize: 10,
-    PageIndex: 0,
-    ...activityRange,
-  })
+  const weekItems = revenueWeek?.Items ?? []
+  const weekTotal = weekItems.reduce((s, i) => s + (i.Total ?? 0), 0)
+  const prevWeekTotal = (revenuePrevWeek?.Items ?? []).reduce((s, i) => s + (i.Total ?? 0), 0)
 
-  const statChartData = useMemo(() => {
-    if (!statChart?.Titles?.length || !statChart?.ChartItems?.length) return []
-    return statChart.Titles.map((label, index) => {
-      const row: Record<string, string | number> = { label }
-      statChart.ChartItems.forEach(item => {
-        row[item.Label] = item.Values[index] ?? 0
-      })
-      return row
+  const last7Days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart.getTime()])
+  const dailyTrend = useMemo(() => {
+    const totals = new Map<string, number>()
+    weekItems.forEach(item => {
+      if (!item.Date) return
+      const key = dayKey(new Date(item.Date))
+      totals.set(key, (totals.get(key) ?? 0) + (item.Total ?? 0))
     })
-  }, [statChart])
+    return last7Days.map(d => ({ label: `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`, value: totals.get(dayKey(d)) ?? 0 }))
+  }, [weekItems, last7Days])
 
-  const statSeriesKeys = statChart?.ChartItems?.map(item => item.Label) ?? []
+  const todayKeyStr = dayKey(today)
+  const hourlyToday = useMemo(() => {
+    const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}h`, value: 0 }))
+    weekItems.forEach(item => {
+      if (!item.Date) return
+      const d = new Date(item.Date)
+      if (dayKey(d) !== todayKeyStr) return
+      buckets[d.getHours()].value += item.Total ?? 0
+    })
+    return buckets
+  }, [weekItems, todayKeyStr])
+
+  // "Tình hình đơn hàng" — whatever statuses actually occur today, not a
+  // fixed Hoàn thành/Đang xử lý/Đã hủy/Trả hàng set the backend may not have.
+  const { data: ordersTodayList, isFetching: statusLoading } = useFilterOrdersQuery({ PageIndex: 0, PageSize: 200, DateFrom: toDateOnly(today), DateTo: toDateOnly(today) })
+  const statusBreakdown = useMemo(() => {
+    const counts = new Map<string, number>()
+    ;(ordersTodayList?.Items ?? []).forEach(o => {
+      const name = o.Status?.Name || "Không rõ"
+      counts.set(name, (counts.get(name) ?? 0) + 1)
+    })
+    return [...counts.entries()].map(([name, count]) => ({ name, count }))
+  }, [ordersTodayList])
+  const statusTotal = statusBreakdown.reduce((s, i) => s + i.count, 0)
+
+  // ── Row 3: top products + revenue by group, both derived from today's
+  // per-product statistic rows (already fetched above for the KPI cards). ──
+  const topProducts = useMemo(
+    () => [...todayItems].sort((a, b) => (b.Amount ?? 0) - (a.Amount ?? 0)).slice(0, 5),
+    [todayItems],
+  )
+  const maxTopAmount = topProducts[0]?.Amount ?? 0
+
+  const { data: productGroups = [] } = useGetProductGroupsSimpleQuery()
+  const groupRevenue = useMemo(() => {
+    const totals = new Map<number | "none", number>()
+    todayItems.forEach(item => {
+      const gid = item.Product?.ProductGroup?.Id ?? "none"
+      totals.set(gid, (totals.get(gid) ?? 0) + (item.Amount ?? 0))
+    })
+    const rows = [...totals.entries()]
+      .map(([gid, amount]) => ({
+        name: gid === "none" ? "Khác" : productGroups.find(g => g.Id === gid)?.Name || "Khác",
+        amount,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+    return rows.slice(0, 5)
+  }, [todayItems, productGroups])
+  const groupRevenueTotal = groupRevenue.reduce((s, i) => s + i.amount, 0)
 
   return (
     <div className="animate-fadeIn space-y-4 pb-6">
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <CardTitle className="text-lg">{t("dashboard.monthlyActivity")}</CardTitle>
-              <div className="mt-1 text-sm text-muted-foreground">
-                <div>{t("common.from")} {formatDisplayDate(simpleFrom)}</div>
-                <div>{t("common.to")} {formatDisplayDate(simpleTo)}</div>
-              </div>
-            </div>
-            <DateRangeInputs from={simpleFrom} to={simpleTo} onFromChange={setSimpleFrom} onToChange={setSimpleTo} />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {SIMPLE_CHARTS.map(item => (
-              <SimpleChartCard key={item.type} type={item.type} color={item.color} range={simpleRange} />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Row 1 — today's KPIs */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <KpiCard
+          icon={Wallet} tone="blue" label="Doanh thu hôm nay"
+          loading={salesTodayLoading} value={formatNumber(salesToday?.TotalCount ?? 0) + "đ"}
+          delta={pctDelta(salesToday?.TotalCount ?? 0, salesYesterday?.TotalCount ?? 0)}
+        />
+        <KpiCard
+          icon={TrendingUp} tone="emerald" label="Lợi nhuận hôm nay"
+          loading={productStatTodayLoading} value={formatNumber(profitToday) + "đ"}
+          delta={pctDelta(profitToday, profitYesterday)}
+        />
+        <KpiCard
+          icon={ReceiptText} tone="amber" label="Hoá đơn hôm nay"
+          loading={ordersTodayLoading} value={formatNumber(ordersToday?.TotalCount ?? 0)}
+          delta={pctDelta(ordersToday?.TotalCount ?? 0, ordersYesterday?.TotalCount ?? 0)}
+        />
+        <KpiCard
+          icon={UserPlus} tone="violet" label="Khách hàng mới"
+          loading={customersTodayLoading} value={formatNumber(customersToday?.TotalCount ?? 0)}
+          delta={pctDelta(customersToday?.TotalCount ?? 0, customersYesterday?.TotalCount ?? 0)}
+        />
+        <KpiCard
+          icon={Package} tone="cyan" label="Sản phẩm đã bán"
+          loading={productStatTodayLoading} value={formatNumber(qtyToday)}
+          delta={pctDelta(qtyToday, qtyYesterday)}
+        />
+      </div>
 
-      <Tabs defaultValue="chart" className="space-y-3">
-        <Card className="overflow-hidden">
-          <div className="flex flex-col gap-3 border-b bg-card p-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">{t("nav.dashboard")}</h2>
-              <p className="text-xs text-muted-foreground">{t("dashboard.monthlyActivity")}</p>
+      {/* Row 2 — trends */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Doanh thu 7 ngày qua</CardTitle>
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-bold tabular-nums text-foreground">{formatNumber(weekTotal)}đ</span>
+              <DeltaBadge value={pctDelta(weekTotal, prevWeekTotal)} suffix="so với kỳ trước" />
             </div>
-            <TabsList className="grid h-auto w-full grid-cols-2 rounded-lg bg-muted p-1 md:w-auto md:grid-cols-4">
-              <TabsTrigger value="chart" className="gap-2 rounded-md px-3 py-2 text-xs">
-                <BarChart3 className="h-4 w-4" />
-                {t("dashboard.profitChart")}
-              </TabsTrigger>
-              <TabsTrigger value="customers" className="gap-2 rounded-md px-3 py-2 text-xs">
-                <Users className="h-4 w-4" />
-                {t("common.customer")}
-              </TabsTrigger>
-              <TabsTrigger value="orders" className="gap-2 rounded-md px-3 py-2 text-xs">
-                <ReceiptText className="h-4 w-4" />
-                {t("dashboard.salesActivity")}
-              </TabsTrigger>
-              <TabsTrigger value="products" className="gap-2 rounded-md px-3 py-2 text-xs">
-                <Package className="h-4 w-4" />
-                {t("dashboard.productActivity")}
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {weekLoading ? <Skeleton className="h-[180px] w-full" /> : (
+              <ResponsiveContainer width="100%" height={180}>
+                <AreaChart data={dailyTrend} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id="week-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={SERIES_COLORS[0]} stopOpacity={0.25} />
+                      <stop offset="100%" stopColor={SERIES_COLORS[0]} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tickFormatter={v => formatShort(Number(v))} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={40} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={v => [formatNumber(Number(v)) + "đ", "Doanh thu"]} />
+                  <Area dataKey="value" type="monotone" stroke={SERIES_COLORS[0]} strokeWidth={2} fill="url(#week-fill)" dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
 
-          <TabsContent value="chart" className="m-0">
-            <CardHeader>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-                  {t("dashboard.profitChart")}
-                </CardTitle>
-                <div className="flex w-fit items-center rounded-xl border bg-muted/40 p-1">
-                  {CHART_TYPES.map(type => (
-                    <button
-                      key={type.key}
-                      type="button"
-                      onClick={() => setChartType(type.key)}
-                      className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-all ${
-                        chartType === type.key
-                          ? "bg-background text-primary shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {t(type.labelKey)}
-                    </button>
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Doanh thu theo giờ hôm nay</CardTitle>
+            <span className="text-xl font-bold tabular-nums text-foreground">{formatNumber(hourlyToday.reduce((s, h) => s + h.value, 0))}đ</span>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {weekLoading ? <Skeleton className="h-[180px] w-full" /> : (
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={hourlyToday} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="hour" interval={3} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tickFormatter={v => formatShort(Number(v))} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={40} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={v => [formatNumber(Number(v)) + "đ", "Doanh thu"]} />
+                  <Bar dataKey="value" fill={SERIES_COLORS[0]} radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-semibold">Tình hình đơn hàng</CardTitle>
+            <span className="text-xs text-muted-foreground">hôm nay</span>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {statusLoading ? <Skeleton className="h-[180px] w-full" /> : statusTotal === 0 ? (
+              <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">Chưa có đơn hàng nào</div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="relative h-[140px] w-[140px] shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={statusBreakdown} dataKey="count" nameKey="name" innerRadius={42} outerRadius={62} paddingAngle={2} strokeWidth={0}>
+                        {statusBreakdown.map((_, i) => <Cell key={i} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyle} formatter={(v, n) => [formatNumber(Number(v)), n]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-lg font-bold text-foreground">{statusTotal}</span>
+                    <span className="text-[10px] text-muted-foreground">Tổng phiếu</span>
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  {statusBreakdown.map((s, i) => (
+                    <div key={s.name} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="flex min-w-0 items-center gap-1.5 truncate">
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
+                        <span className="truncate text-muted-foreground">{s.name}</span>
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                        {s.count} ({Math.round((s.count / statusTotal) * 100)}%)
+                      </span>
+                    </div>
                   ))}
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              {statLoading ? (
-                <Skeleton className="h-[300px] w-full" />
-              ) : statChartData.length ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <ComposedChart data={statChartData} margin={{ top: 8, right: 20, bottom: 0, left: 0 }}>
-                    <defs>
-                      {statSeriesKeys.map((key, index) => {
-                        const color = SERIES_COLORS[index % SERIES_COLORS.length]
-                        return (
-                          <linearGradient key={key} id={`profit-fill-${index}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={color} stopOpacity={0.18} />
-                            <stop offset="100%" stopColor={color} stopOpacity={0} />
-                          </linearGradient>
-                        )
-                      })}
-                    </defs>
-                    <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis tickFormatter={value => formatShort(Number(value))} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={64} />
-                    <Tooltip
-                      contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                      formatter={value => [formatNumber(Number(value)), ""]}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    {statSeriesKeys.map((key, index) => (
-                      <Area key={key} dataKey={key} type="monotone" stroke="none" fill={`url(#profit-fill-${index})`} legendType="none" isAnimationActive={false} />
-                    ))}
-                    {statSeriesKeys.map((key, index) => (
-                      <Line key={key} dataKey={key} type="monotone" stroke={SERIES_COLORS[index % SERIES_COLORS.length]} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--card))" }} />
-                    ))}
-                  </ComposedChart>
-                </ResponsiveContainer>
-              ) : (
-                <EmptyState height="h-[300px]" />
-              )}
-            </CardContent>
-          </TabsContent>
-
-          <TabsContent value="customers" className="m-0">
-            <div className="p-4">
-              <CustomerActivityTable loading={customersLoading} data={customers} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="orders" className="m-0">
-            <div className="space-y-3 p-4">
-              <ActivitySectionHeader title={t("dashboard.salesActivity")} from={activityFrom} to={activityTo} onFromChange={setActivityFrom} onToChange={setActivityTo} />
-              <OrderActivityTable loading={ordersLoading} data={orders} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="products" className="m-0">
-            <div className="space-y-3 p-4">
-              <ActivitySectionHeader title={t("dashboard.productActivity")} from={activityFrom} to={activityTo} onFromChange={setActivityFrom} onToChange={setActivityTo} />
-              <ProductActivityTable loading={productsLoading} data={products} />
-            </div>
-          </TabsContent>
+            )}
+          </CardContent>
         </Card>
-      </Tabs>
-    </div>
-  )
-}
-
-function SimpleChartCard({ type, color, range }: { type: number; color: string; range: { DateFrom: string; DateTo: string } }) {
-  const { data, isFetching } = useGetSimpleChartQuery({ type, ...range })
-  const chartItems = data?.ChartItems ?? []
-
-  return (
-    <div className="overflow-hidden rounded-lg bg-blue-600 text-white shadow">
-      <div className="p-6 pb-0">
-        {isFetching ? <Skeleton className="h-8 w-24 bg-white/25" /> : <h4 className="text-2xl font-bold">{formatNumber(data?.TotalCount ?? 0)}</h4>}
-        <p className="text-sm font-medium text-blue-100">{data?.Title || "..."}</p>
       </div>
-      <div className="h-[70px] px-3">
-        {!isFetching && chartItems.length ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartItems} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
-              <Area dataKey="Value" type="monotone" stroke={color} strokeWidth={2} fill="rgba(255,255,255,0.22)" dot={false} isAnimationActive={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        ) : null}
+
+      {/* Row 3 — breakdowns */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Top sản phẩm bán chạy hôm nay</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5 pt-0">
+            {productStatTodayLoading ? (
+              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
+            ) : topProducts.length === 0 ? (
+              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">Chưa bán sản phẩm nào</div>
+            ) : topProducts.map((item, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-medium text-foreground">{item.Product?.Name}</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{formatNumber(item.Amount)}đ</span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${maxTopAmount ? Math.max(4, (item.Amount / maxTopAmount) * 100) : 0}%` }} />
+                    </div>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">Đã bán {formatNumber(item.Quantity)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Doanh thu theo nhóm hàng hôm nay</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {productStatTodayLoading ? <Skeleton className="h-[160px] w-full" /> : groupRevenueTotal === 0 ? (
+              <div className="flex h-[160px] items-center justify-center text-sm text-muted-foreground">Chưa có dữ liệu</div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="relative h-[150px] w-[150px] shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={groupRevenue} dataKey="amount" nameKey="name" innerRadius={48} outerRadius={68} paddingAngle={2} strokeWidth={0}>
+                        {groupRevenue.map((_, i) => <Cell key={i} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyle} formatter={v => [formatNumber(Number(v)) + "đ", ""]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-base font-bold text-foreground">{formatShort(groupRevenueTotal)}</span>
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  {groupRevenue.map((g, i) => (
+                    <div key={g.name} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="flex min-w-0 items-center gap-1.5 truncate">
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: SERIES_COLORS[i % SERIES_COLORS.length] }} />
+                        <span className="truncate text-muted-foreground">{g.name}</span>
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                        {Math.round((g.amount / groupRevenueTotal) * 100)}% · {formatShort(g.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
 }
 
-function DateRangeInputs({ from, to, onFromChange, onToChange }: { from: string; to: string; onFromChange: (value: string) => void; onToChange: (value: string) => void }) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <input type="date" value={from} onChange={event => onFromChange(event.target.value)} className="h-10 rounded-lg border bg-background px-3 text-sm" />
-      <input type="date" value={to} onChange={event => onToChange(event.target.value)} className="h-10 rounded-lg border bg-background px-3 text-sm" />
-    </div>
-  )
-}
+const tooltipStyle = { background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }
 
-function ActivitySectionHeader({ title, from, to, onFromChange, onToChange }: { title: string; from: string; to: string; onFromChange: (value: string) => void; onToChange: (value: string) => void }) {
-  const { t } = useTranslation()
+const KPI_TONES = {
+  blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  cyan: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+} as const
+
+function KpiCard({ icon: Icon, tone, label, value, delta, loading }: {
+  icon: React.ElementType
+  tone: keyof typeof KPI_TONES
+  label: string
+  value: string
+  delta: number | null
+  loading?: boolean
+}) {
   return (
     <Card>
-      <CardHeader className="pb-4">
-        <div className="grid grid-cols-1 items-center gap-4 md:grid-cols-5">
-          <div className="md:col-span-3">
-            <CardTitle className="text-lg">{title}</CardTitle>
-            <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
-              <span>{t("common.from")}: {formatDisplayDate(from)}</span>
-              <span>{t("common.to")}: {formatDisplayDate(to)}</span>
-            </div>
+      <CardContent className="space-y-2 p-3.5">
+        <div className="flex items-center gap-2">
+          <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", KPI_TONES[tone])}>
+            <Icon className="h-3.5 w-3.5" />
           </div>
-          <div className="md:col-span-2">
-            <DateRangeInputs from={from} to={to} onFromChange={onFromChange} onToChange={onToChange} />
-          </div>
+          <span className="truncate text-xs text-muted-foreground">{label}</span>
         </div>
-      </CardHeader>
+        {loading ? <Skeleton className="h-6 w-24" /> : <div className="truncate text-lg font-bold tabular-nums text-foreground">{value}</div>}
+        <DeltaBadge value={delta} />
+      </CardContent>
     </Card>
   )
 }
 
-function CustomerActivityTable({ loading, data }: { loading: boolean; data?: { TotalItemCount: number; Items: Array<any> } }) {
-  const { t } = useTranslation()
+function DeltaBadge({ value, suffix = "so với hôm qua" }: { value: number | null; suffix?: string }) {
+  if (value == null) return <span className="block text-xs text-muted-foreground">Chưa có dữ liệu so sánh</span>
+  const isUp = value >= 0
+  const Icon = isUp ? ArrowUpRight : ArrowDownRight
   return (
-    <Card className="overflow-hidden">
-      <TableLoadingOrEmpty loading={loading} empty={!data?.Items?.length}>
-        <table className="w-full border-collapse text-left text-sm">
-          <thead className="bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
-            <tr>
-              <th className="px-6 py-4 text-center"><Users className="mx-auto h-4 w-4" /></th>
-              <th className="px-6 py-4">{t("common.customer")}</th>
-              <th className="px-6 py-4 text-right">{t("common.points")}</th>
-              <th className="px-6 py-4 text-center">{t("dashboard.level")}</th>
-              <th className="px-6 py-4">{t("dashboard.levelProgress")}</th>
-              <th className="px-6 py-4">{t("dashboard.lastActivity")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {data?.Items.map((item, index) => (
-              <tr key={`${item.Name}-${index}`} className="transition-colors hover:bg-muted/30">
-                <td className="px-6 py-4 text-center">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
-                    {item.Name?.charAt(0)?.toUpperCase() || "K"}
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="font-semibold text-foreground">{item.Name}</div>
-                  <div className="text-xs text-muted-foreground">ĐT: {item.Phone || ""} | {item.Address || ""}</div>
-                </td>
-                <td className="px-6 py-4 text-right font-mono font-medium">{formatNumber(item.Point ?? 0)}</td>
-                <td className="px-6 py-4 text-center text-xs font-medium">{item.CustomerGroup?.Name || "N/A"}</td>
-                <td className="min-w-[200px] px-6 py-4">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-xs font-bold text-primary">{formatNumber(item.PointPercent ?? 0)}%</span>
-                      <span className="text-xs text-muted-foreground">{item.NextCustomerGroup?.Name || ""}</span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(item.PointPercent ?? 0, 100)}%` }} />
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-xs text-muted-foreground">
-                  <div className="font-medium text-foreground">{item.LastActivity?.Name || ""}</div>
-                  <div>{formatDateTime(item.LastActivity?.Date)}</div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableLoadingOrEmpty>
-      <TableFooter total={data?.TotalItemCount} />
-    </Card>
-  )
-}
-
-function OrderActivityTable({ loading, data }: { loading: boolean; data?: { TotalItemCount: number; Items: Array<any> } }) {
-  const { t } = useTranslation()
-  return (
-    <Card className="overflow-hidden">
-      <TableLoadingOrEmpty loading={loading} empty={!data?.Items?.length}>
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-4 text-center">#</th>
-              <th className="px-4 py-4 text-center">{t("common.receiptNo")}</th>
-              <th className="px-4 py-4 text-left">{t("common.customer")}</th>
-              <th className="px-4 py-4 text-right">{t("common.total")}</th>
-              <th className="px-4 py-4 text-right">{t("common.cash")}</th>
-              <th className="px-4 py-4 text-right">{t("common.transfer")}</th>
-              <th className="px-4 py-4 text-right">{t("common.debt")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {data?.Items.map((item, index) => (
-              <tr key={`${item.Name}-${index}`} className="transition-colors hover:bg-muted/30">
-                <td className="px-4 py-4 text-center text-muted-foreground">{index + 1}</td>
-                <td className="px-4 py-4 text-center">
-                  <div className="font-medium text-foreground">{item.Name}</div>
-                  <div className="text-xs text-muted-foreground">{formatDateTime(item.Date)}</div>
-                </td>
-                <td className="px-4 py-4 font-medium">{item.Customer?.Name || t("common.retailCustomer")}</td>
-                <td className="px-4 py-4 text-right font-semibold">{formatNumber(item.Total)}</td>
-                <td className="px-4 py-4 text-right text-muted-foreground">{formatNumber(item.Cash)}</td>
-                <td className="px-4 py-4 text-right text-muted-foreground">{formatNumber(item.Card)}</td>
-                <td className="px-4 py-4 text-right font-medium text-rose-600">{formatNumber(item.Shortage)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableLoadingOrEmpty>
-      <TableFooter total={data?.TotalItemCount} />
-    </Card>
-  )
-}
-
-function ProductActivityTable({ loading, data }: { loading: boolean; data?: { TotalItemCount: number; Items: Array<any> } }) {
-  const { t } = useTranslation()
-  return (
-    <Card className="overflow-hidden">
-      <TableLoadingOrEmpty loading={loading} empty={!data?.Items?.length}>
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
-            <tr>
-              <th className="px-4 py-4 text-center">#</th>
-              <th className="px-4 py-4 text-left">{t("common.product")}</th>
-              <th className="px-4 py-4 text-center">{t("common.unit")}</th>
-              <th className="px-4 py-4 text-right">{t("common.quantity")}</th>
-              <th className="px-4 py-4 text-right">{t("common.price")}</th>
-              <th className="px-4 py-4 text-right">{t("common.discount")}</th>
-              <th className="px-4 py-4 text-right">{t("common.amount")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {data?.Items.map((item, index) => (
-              <tr key={`${item.Product?.ProductCode}-${index}`} className="transition-colors hover:bg-muted/30">
-                <td className="px-4 py-4 text-center text-muted-foreground">{index + 1}</td>
-                <td className="px-4 py-4">
-                  <div className="font-medium text-foreground">{item.Product?.Name}</div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">
-                    {t("common.code")}: <span className="font-mono">{item.Product?.ProductCode}</span> | {t("common.barcode")}: <span className="font-mono">{item.Product?.Barcode || ""}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-4 text-center text-xs">{item.Unit?.Name || ""}</td>
-                <td className="px-4 py-4 text-right font-medium">{formatNumber(item.Quantity)}</td>
-                <td className="px-4 py-4 text-right text-muted-foreground">{formatNumber(item.Price)}</td>
-                <td className="px-4 py-4 text-right text-muted-foreground">{formatNumber((item.DiscountPercent ?? 0) * 100)}%</td>
-                <td className="px-4 py-4 text-right font-semibold text-primary">{formatNumber(item.Amount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </TableLoadingOrEmpty>
-      <TableFooter total={data?.TotalItemCount} />
-    </Card>
-  )
-}
-
-function TableLoadingOrEmpty({ loading, empty, children }: { loading: boolean; empty: boolean; children: React.ReactNode }) {
-  if (loading) {
-    return (
-      <div className="space-y-2 p-6">
-        {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-10 w-full" />)}
-      </div>
-    )
-  }
-
-  if (empty) return <EmptyState height="h-32" />
-
-  return <div className="w-full overflow-x-auto">{children}</div>
-}
-
-function EmptyState({ height }: { height: string }) {
-  const { t } = useTranslation()
-  return <div className={`flex ${height} items-center justify-center text-sm text-muted-foreground`}>{t("common.noData")}</div>
-}
-
-function TableFooter({ total }: { total?: number }) {
-  const { t } = useTranslation()
-  return (
-    <div className="border-t bg-muted/30 px-6 py-4 text-sm text-muted-foreground">
-      {t("common.total")}: <span className="font-semibold text-foreground">{formatNumber(total ?? 0)}</span>
-    </div>
+    <span className={cn("inline-flex items-center gap-0.5 text-xs font-semibold", isUp ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+      <Icon className="h-3 w-3 shrink-0" />
+      {Math.abs(value).toFixed(0)}% {suffix}
+    </span>
   )
 }

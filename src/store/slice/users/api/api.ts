@@ -966,12 +966,13 @@ export const userApiSlice = createApi({
       transformResponse: (res: TPosResponse<TPosCustomer>) => res.Data,
     }),
 
-    saveCustomer: builder.mutation<void, TPosCustomer>({
+    saveCustomer: builder.mutation<TPosCustomer, TPosCustomer>({
       query: (data) => {
         const form = new FormData()
         form.append('model', JSON.stringify(data))
         return { url: data.Id ? 'customers/update' : 'customers/create', method: 'POST', body: form }
       },
+      transformResponse: (res: TPosResponse<TPosCustomer>) => res.Data,
     }),
 
     updateCustomerStatus: builder.mutation<void, { id: number; statusId: number }>({

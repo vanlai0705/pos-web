@@ -216,7 +216,7 @@ export interface TPosOrderActivity {
 
 /** statistic/filter-product-statistic */
 export interface TPosProductStatisticItem {
-  Product: { Name: string; ProductCode: string; Barcode?: string };
+  Product: { Name: string; ProductCode: string; Barcode?: string; ProductGroup?: { Id?: number; Name?: string } };
   Unit?: { Name: string };
   Quantity: number;
   Price: number;
