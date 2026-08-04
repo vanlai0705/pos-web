@@ -87,7 +87,7 @@ function TreeRows<T extends TreeSidebarNode>({
           <div key={item.Id} className="relative">
             {level > 0 ? (
               <span
-                className="pointer-events-none absolute bottom-0 top-0 w-px bg-slate-200"
+                className="pointer-events-none absolute bottom-0 top-0 w-px bg-border"
                 style={{ left: 18 + Math.min(level - 1, 5) * 18 }}
               />
             ) : null}
@@ -97,8 +97,8 @@ function TreeRows<T extends TreeSidebarNode>({
               className={cn(
                 'group mx-1.5 my-0.5 flex h-9 w-[calc(100%-0.75rem)] items-center gap-1.5 rounded-md pr-1.5 text-left text-sm transition-all duration-150',
                 selected
-                  ? 'bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-100'
-                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950',
+                  ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
+                  : 'text-foreground/80 hover:bg-muted hover:text-foreground',
               )}
               style={{ paddingLeft: 10 + Math.min(level, 5) * 18 }}
             >
@@ -106,8 +106,8 @@ function TreeRows<T extends TreeSidebarNode>({
                 className={cn(
                   'flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors',
                   selected
-                    ? 'border-indigo-200 bg-white text-indigo-600'
-                    : 'border-slate-200 bg-white text-slate-400 group-hover:border-slate-300 group-hover:text-slate-600',
+                    ? 'border-primary/30 bg-background text-primary'
+                    : 'border-border bg-background text-muted-foreground group-hover:border-foreground/30 group-hover:text-foreground',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -118,17 +118,17 @@ function TreeRows<T extends TreeSidebarNode>({
               {renderMeta?.(item)}
               <span className={cn('flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100', selected && 'opacity-100')}>
                 {onCreateChild && canShowActions ? (
-                  <ItemAction title={t('common.addChildGroup')} className="text-emerald-600 hover:bg-emerald-100" onClick={() => onCreateChild(item)}>
+                  <ItemAction title={t('common.addChildGroup')} className="text-emerald-600 hover:bg-emerald-500/15 dark:text-emerald-400" onClick={() => onCreateChild(item)}>
                     <Plus className="h-3.5 w-3.5" />
                   </ItemAction>
                 ) : null}
                 {onEditItem && canShowActions ? (
-                  <ItemAction title={t('common.editGroup')} className="text-indigo-600 hover:bg-indigo-100" onClick={() => onEditItem(item)}>
+                  <ItemAction title={t('common.editGroup')} className="text-primary hover:bg-primary/15" onClick={() => onEditItem(item)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </ItemAction>
                 ) : null}
                 {onDeleteItem && canShowActions ? (
-                  <ItemAction title={t('common.deleteGroup')} className="text-red-600 hover:bg-red-100" onClick={() => onDeleteItem(item)}>
+                  <ItemAction title={t('common.deleteGroup')} className="text-red-600 hover:bg-red-500/15 dark:text-red-400" onClick={() => onDeleteItem(item)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </ItemAction>
                 ) : null}
@@ -175,23 +175,23 @@ export function TreeSidebar<T extends TreeSidebarNode>({
   const filteredItems = filterTree(items, searchText)
 
   return (
-    <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] lg:h-full lg:w-[236px]">
-      <div className="shrink-0 border-b border-indigo-200 bg-gradient-to-br from-indigo-600 via-indigo-600 to-sky-600 px-2.5 py-2.5 text-white">
+    <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-lg border bg-card shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:shadow-none lg:h-full lg:w-[236px]">
+      <div className="shrink-0 border-b border-primary/40 bg-gradient-to-br from-primary to-primary/75 px-2.5 py-2.5 text-primary-foreground">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/15 text-white shadow-sm ring-1 ring-white/20">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/15 text-primary-foreground shadow-sm ring-1 ring-white/20">
                 <FolderOpen className="h-4 w-4" />
               </span>
-              <h2 className="min-w-0 truncate text-xs font-bold uppercase tracking-wide text-white">{translateMenuTitle(title, t)}</h2>
+              <h2 className="min-w-0 truncate text-xs font-bold uppercase tracking-wide text-primary-foreground">{translateMenuTitle(title, t)}</h2>
             </div>
-            <p className="mt-1 truncate pl-9 text-[10px] font-medium text-indigo-100">
+            <p className="mt-1 truncate pl-9 text-[10px] font-medium text-primary-foreground/80">
               {loading ? t('common.loading') : `${filteredItems.length} ${t('common.all').toLowerCase()}`}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {onCreate ? (
-              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-md bg-white/15 text-white hover:bg-white/25 hover:text-white" onClick={onCreate} title={t('common.addNew')}>
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-md bg-white/15 text-primary-foreground hover:bg-white/25 hover:text-primary-foreground" onClick={onCreate} title={t('common.addNew')}>
                 <Plus className="h-4 w-4" />
               </Button>
             ) : null}
@@ -199,19 +199,19 @@ export function TreeSidebar<T extends TreeSidebarNode>({
         </div>
       </div>
 
-      <div className="shrink-0 border-b border-slate-100 bg-white p-2.5">
+      <div className="shrink-0 border-b bg-card p-2.5">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchText}
             onChange={event => onSearchTextChange(event.target.value)}
             placeholder={translateKnownText(searchPlaceholder, t) ?? t('common.search')}
-            className="h-9 rounded-md border-slate-200 bg-slate-50 pl-8 text-sm shadow-none transition-colors focus:bg-white"
+            className="h-9 rounded-md bg-muted/50 pl-8 text-sm shadow-none transition-colors focus:bg-background"
           />
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-white">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-card">
         {loading ? (
           <div className="space-y-2 p-3">
             {Array.from({ length: 9 }).map((_, index) => (
@@ -235,7 +235,7 @@ export function TreeSidebar<T extends TreeSidebarNode>({
             />
           </div>
         ) : (
-          <div className="mx-3 mt-4 rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-8 text-center text-sm text-muted-foreground">
+          <div className="mx-3 mt-4 rounded-md border border-dashed bg-muted/40 px-3 py-8 text-center text-sm text-muted-foreground">
             {translateKnownText(emptyText, t) ?? t('common.noData')}
           </div>
         )}

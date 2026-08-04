@@ -4,7 +4,6 @@ import { FileSpreadsheet, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useGenericPostMutation } from '@/store/slice/users/api/api'
-import { buildModelFormData } from '@/utils/multipart'
 
 interface ColumnHeader { Name?: string; Value?: number }
 interface MappedItem { Id?: number; Name?: string; Value?: number | null }
@@ -53,7 +52,13 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
 
   const handleFile = async (file: File) => {
     try {
-      const res = await request({ url: headerUrl, method: 'POST', body: buildModelFormData(null, [file]) }).unwrap()
+      // Every get-excel-header-* endpoint binds a fixed IFormFile parameter
+      // named `formFile` — some are lenient about the field name, but
+      // opening-balances/* 500s ("Object reference not set...") on anything
+      // else, so this must always be sent as exactly `formFile`.
+      const form = new FormData()
+      form.append('formFile', file)
+      const res = await request({ url: headerUrl, method: 'POST', body: form }).unwrap()
       const data = (res?.Data ?? {}) as ExcelMapped
       setMapped({
         FileName: data.FileName,
@@ -179,6 +184,7 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
           {step === 'upload' && <Button variant="outline" onClick={close}>Đóng</Button>}
           {step === 'map' && (
             <>
+              <Button variant="outline" onClick={close}>Huỷ</Button>
               <Button variant="outline" onClick={() => setStep('upload')}>Chọn file khác</Button>
               <Button variant="outline" disabled={busy} onClick={handlePreview}>Xem trước</Button>
               <Button disabled={busy} onClick={handleImport}>{busy ? 'Đang nhập...' : 'Nhập dữ liệu'}</Button>

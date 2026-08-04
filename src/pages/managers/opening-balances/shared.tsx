@@ -48,6 +48,20 @@ function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function toDateInputValue(value: string) {
+  return `${value}`.split('T')[0]
+}
+
+/**
+ * Once a "ngày chốt" (closing date) has been recorded for this entity, the
+ * server always echoes it back on `Sumary.Date` — the date field then locks
+ * to that value so a stray edit can't silently overwrite a different day's
+ * opening balance. Mirrors Angular's syncDateFromSummary exactly.
+ */
+function summaryDateOf(data: any): string | undefined {
+  return data?.Sumary?.Date || data?.Summary?.Date
+}
+
 function parseNumber(value: string) {
   if (!value) return 0
   return Number(`${value}`.replace(/,/g, '').replace(/\s/g, '')) || 0
@@ -206,8 +220,8 @@ function toPascalStock(stock: any, stockId?: number) {
 
 function inputClassName(value?: number) {
   return cn(
-    'h-8 w-full rounded-md border border-transparent bg-transparent px-2 text-right font-semibold tabular-nums outline-none transition focus:border-blue-200 focus:bg-white focus:ring-2 focus:ring-blue-100',
-    Number(value || 0) < 0 && 'text-red-600',
+    'h-8 w-full rounded-md border border-transparent bg-transparent px-2 text-right font-semibold tabular-nums text-foreground outline-none transition focus:border-primary/30 focus:bg-background focus:ring-2 focus:ring-primary/20',
+    Number(value || 0) < 0 && 'text-red-600 dark:text-red-400',
   )
 }
 
@@ -237,6 +251,7 @@ export function OpeningBalanceEntityPage({
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
 
   const [date, setDate] = useState(today())
+  const [isDateLocked, setIsDateLocked] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
@@ -255,6 +270,10 @@ export function OpeningBalanceEntityPage({
           Date: date,
         },
       }).unwrap()
+
+      const summaryDate = summaryDateOf(data)
+      setIsDateLocked(!!summaryDate)
+      if (summaryDate) setDate(toDateInputValue(summaryDate))
 
       const items = data?.Items ?? []
       setRows(items.map(toBalanceRow))
@@ -347,13 +366,13 @@ export function OpeningBalanceEntityPage({
       header: entityLabel,
       cell: ({ row }) => {
         const entity = getEntity(row.original, entityKey)
-        return <span className="font-semibold text-slate-800">{entity.CompanyName || entity.Name || '-'}</span>
+        return <span className="font-semibold text-foreground">{entity.CompanyName || entity.Name || '-'}</span>
       },
     },
     {
       id: 'address',
       header: 'Địa chỉ',
-      cell: ({ row }) => <span className="line-clamp-1 text-slate-600">{getEntity(row.original, entityKey).Address || '-'}</span>,
+      cell: ({ row }) => <span className="line-clamp-1 text-muted-foreground">{getEntity(row.original, entityKey).Address || '-'}</span>,
     },
     {
       id: 'phone',
@@ -367,7 +386,7 @@ export function OpeningBalanceEntityPage({
     {
       id: 'amount',
       header: 'Số tiền',
-      meta: { headClassName: 'w-44 text-right bg-amber-50 text-amber-700', cellClassName: 'w-44 bg-amber-50/40' },
+      meta: { headClassName: 'w-44 text-right bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300', cellClassName: 'w-44 bg-amber-50/40 dark:bg-amber-950/20' },
       cell: ({ row }) => (
         <Input
           value={row.original.AmountText}
@@ -389,8 +408,8 @@ export function OpeningBalanceEntityPage({
               <FileSpreadsheet className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="text-sm font-bold text-slate-900">{title}</h1>
-              <p className="text-xs text-slate-500">Tổng giá trị: <b className="text-red-600">{formatMoney(totalAmount)}</b></p>
+              <h1 className="text-sm font-bold text-foreground">{title}</h1>
+              <p className="text-xs text-muted-foreground">Tổng giá trị: <b className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</b></p>
             </div>
           </div>
         )}
@@ -398,9 +417,13 @@ export function OpeningBalanceEntityPage({
         searchPlaceholder="Tìm kiếm..."
         onSearchChange={setSearchInput}
         filters={(
-          <label className="flex h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm">
+          <label className={cn(
+            'flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm',
+            isDateLocked && 'opacity-70',
+          )} title={isDateLocked ? 'Đã chốt công nợ ở ngày này — không thể đổi' : undefined}>
             <CalendarDays className="h-4 w-4 text-sky-600" />
-            <Input type="date" value={date} onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0" />
+            <Input type="date" value={date} disabled={isDateLocked}
+              onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed" />
           </label>
         )}
         actions={(
@@ -439,9 +462,9 @@ export function OpeningBalanceEntityPage({
         />
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-4 py-3 shadow-sm">
-        <div className="text-sm font-semibold text-slate-600">
-          Tổng giá trị: <span className="text-red-600">{formatMoney(totalAmount)}</span>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+        <div className="text-sm font-semibold text-muted-foreground">
+          Tổng giá trị: <span className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</span>
         </div>
         <div className="flex items-center gap-2">
           <ToolbarButton tone="primary" disabled={saving} onClick={saveData}>
@@ -467,6 +490,7 @@ export function OpeningInventoryPageContent() {
   const { data: stockData } = useFilterWarehousesQuery({ PageIndex: 0, PageSize: 100, StatusId: 0 })
 
   const [date, setDate] = useState(today())
+  const [isDateLocked, setIsDateLocked] = useState(false)
   const [stockId, setStockId] = useState<number | undefined>()
   const [searchInput, setSearchInput] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -490,6 +514,10 @@ export function OpeningInventoryPageContent() {
           StockId: stockId,
         },
       }).unwrap()
+
+      const summaryDate = summaryDateOf(data)
+      setIsDateLocked(!!summaryDate)
+      if (summaryDate) setDate(toDateInputValue(summaryDate))
 
       const items = data?.Items ?? []
       setRows(items.map(toInventoryRow))
@@ -588,7 +616,7 @@ export function OpeningInventoryPageContent() {
     {
       id: 'name',
       header: 'Tên hàng',
-      cell: ({ row }) => <span className="font-semibold text-slate-800">{row.original.Product?.Name || '-'}</span>,
+      cell: ({ row }) => <span className="font-semibold text-foreground">{row.original.Product?.Name || '-'}</span>,
     },
     {
       id: 'unit',
@@ -605,7 +633,7 @@ export function OpeningInventoryPageContent() {
     {
       id: 'quantity',
       header: 'SL tồn',
-      meta: { headClassName: 'w-36 text-right bg-amber-50 text-amber-700', cellClassName: 'w-36 bg-amber-50/40' },
+      meta: { headClassName: 'w-36 text-right bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300', cellClassName: 'w-36 bg-amber-50/40 dark:bg-amber-950/20' },
       cell: ({ row }) => (
         <Input
           value={row.original.QuantityText}
@@ -619,7 +647,7 @@ export function OpeningInventoryPageContent() {
     {
       id: 'unitPrice',
       header: 'Giá vốn',
-      meta: { headClassName: 'w-40 text-right bg-amber-50 text-amber-700', cellClassName: 'w-40 bg-amber-50/40' },
+      meta: { headClassName: 'w-40 text-right bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300', cellClassName: 'w-40 bg-amber-50/40 dark:bg-amber-950/20' },
       cell: ({ row }) => (
         <Input
           value={row.original.UnitPriceText}
@@ -647,11 +675,11 @@ export function OpeningInventoryPageContent() {
               <Warehouse className="h-4 w-4" />
             </div>
             <div>
-              <h1 className="text-sm font-bold text-slate-900">Cập nhật tồn kho ban đầu</h1>
-              <p className="text-xs text-slate-500">
-                SL: <b className="text-sky-700">{formatMoney(totalQuantity)}</b>
+              <h1 className="text-sm font-bold text-foreground">Cập nhật tồn kho ban đầu</h1>
+              <p className="text-xs text-muted-foreground">
+                SL: <b className="text-sky-700 dark:text-sky-400">{formatMoney(totalQuantity)}</b>
                 <span className="mx-2">|</span>
-                Giá trị: <b className="text-red-600">{formatMoney(totalAmount)}</b>
+                Giá trị: <b className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</b>
               </p>
             </div>
           </div>
@@ -661,14 +689,18 @@ export function OpeningInventoryPageContent() {
         onSearchChange={setSearchInput}
         filters={(
           <div className="flex flex-wrap items-center gap-2">
-            <label className="flex h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm">
+            <label className={cn(
+              'flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm',
+              isDateLocked && 'opacity-70',
+            )} title={isDateLocked ? 'Đã chốt tồn kho ở ngày này — không thể đổi' : undefined}>
               <CalendarDays className="h-4 w-4 text-sky-600" />
-              <Input type="date" value={date} onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0" />
+              <Input type="date" value={date} disabled={isDateLocked}
+                onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed" />
             </label>
             <select
               value={stockId ?? ''}
               onChange={event => { setStockId(event.target.value ? Number(event.target.value) : undefined); setPage(1) }}
-              className="h-10 min-w-[180px] rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+              className="h-10 min-w-[180px] rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm outline-none focus:border-primary/30 focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Tất cả kho</option>
               {stocks.map(stock => (
@@ -713,11 +745,11 @@ export function OpeningInventoryPageContent() {
         />
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-4 py-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-5 text-sm font-semibold text-slate-600">
-          <span>Tổng mặt hàng: <b className="text-sky-700">{formatMoney(rows.length)}</b></span>
-          <span>Tổng số lượng: <b className="text-sky-700">{formatMoney(totalQuantity)}</b></span>
-          <span>Tổng giá trị: <b className="text-red-600">{formatMoney(totalAmount)}</b></span>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-5 text-sm font-semibold text-muted-foreground">
+          <span>Tổng mặt hàng: <b className="text-sky-700 dark:text-sky-400">{formatMoney(rows.length)}</b></span>
+          <span>Tổng số lượng: <b className="text-sky-700 dark:text-sky-400">{formatMoney(totalQuantity)}</b></span>
+          <span>Tổng giá trị: <b className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</b></span>
         </div>
         <div className="flex items-center gap-2">
           <ToolbarButton tone="primary" disabled={saving} onClick={saveData}>
