@@ -99,6 +99,13 @@ function TableCard({ table, onClick, selected, blocked }: {
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
+// Status filter sentinels — mirror Angular's area-table.component onChangeArea(id):
+// 0 = all, -1 = in-use (isHasOrder), -2 = QR orders (isAnonymous). -3 (empty-only)
+// has no backend param, so it's filtered client-side.
+const FILTER_IN_USE = -1
+const FILTER_QR = -2
+const FILTER_EMPTY = -3
+
 function FloorSidebar({ areas, selected, onSelect, loading }: {
   areas: TPosArea[]
   selected: number
@@ -106,6 +113,8 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
   loading: boolean
 }) {
   const { t } = useTranslation()
+  const itemClass = (active: boolean) =>
+    `block w-full rounded-sm px-2 py-2 text-left text-xs ${active ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'}`
   return (
     <aside className="hidden w-[184px] shrink-0 border-r border-slate-200 bg-slate-50/95 text-slate-700 md:flex md:flex-col">
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -115,22 +124,21 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
           </div>
         ) : (
           <>
-            <button
-              onClick={() => onSelect(0)}
-              className={`block w-full rounded-sm px-2 py-2 text-left text-xs ${
-                selected === 0 ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
+            <button onClick={() => onSelect(0)} className={itemClass(selected === 0)}>
               {t('pages.actives.tablesOrder.allAreas')}
             </button>
+            <button onClick={() => onSelect(FILTER_IN_USE)} className={itemClass(selected === FILTER_IN_USE)}>
+              {t('pages.actives.tablesOrder.filterInUse')}
+            </button>
+            <button onClick={() => onSelect(FILTER_EMPTY)} className={itemClass(selected === FILTER_EMPTY)}>
+              {t('pages.actives.tablesOrder.filterEmpty')}
+            </button>
+            <button onClick={() => onSelect(FILTER_QR)} className={itemClass(selected === FILTER_QR)}>
+              {t('pages.actives.tablesOrder.filterQr')}
+            </button>
+            <div className="my-2 border-t border-slate-200" />
             {areas.map(area => (
-              <button
-                key={area.Id}
-                onClick={() => onSelect(area.Id)}
-                className={`block w-full rounded-sm px-2 py-2 text-left text-xs ${
-                  selected === area.Id ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
+              <button key={area.Id} onClick={() => onSelect(area.Id)} className={itemClass(selected === area.Id)}>
                 {area.Name}
               </button>
             ))}
@@ -156,13 +164,17 @@ export default function TablesOrderPage() {
   const [splitOpen, setSplitOpen] = useState(false)
 
   const { data: areas = [], isLoading: areasLoading } = useGetAreasQuery()
-  const { data: allTables = [], isLoading: tablesLoading, refetch } = useGetTablesQuery(
-    selectedAreaId === -1
+  const { data: rawTables = [], isLoading: tablesLoading, refetch } = useGetTablesQuery(
+    selectedAreaId === FILTER_IN_USE
       ? { isHasOrder: true }
-      : selectedAreaId > 0
-        ? { areaId: selectedAreaId }
-        : {},
+      : selectedAreaId === FILTER_QR
+        ? { isAnonymous: true }
+        : selectedAreaId > 0
+          ? { areaId: selectedAreaId }
+          : {},
   )
+  // "Còn trống" has no backend param — fetch the unfiltered list and filter client-side.
+  const allTables = selectedAreaId === FILTER_EMPTY ? rawTables.filter(table => !table.OrderId) : rawTables
   const [transferTable] = useTransferTableMutation()
   const [mergeTables] = useMergeTablesMutation()
   const [splitTable] = useSplitTableMutation()
@@ -243,7 +255,13 @@ export default function TablesOrderPage() {
 
   const selectedAreaName = selectedAreaId > 0
     ? areas.find(area => area.Id === selectedAreaId)?.Name ?? t('pages.actives.tablesOrder.area')
-    : t('pages.actives.tablesOrder.allAreas')
+    : selectedAreaId === FILTER_IN_USE
+      ? t('pages.actives.tablesOrder.filterInUse')
+      : selectedAreaId === FILTER_QR
+        ? t('pages.actives.tablesOrder.filterQr')
+        : selectedAreaId === FILTER_EMPTY
+          ? t('pages.actives.tablesOrder.filterEmpty')
+          : t('pages.actives.tablesOrder.allAreas')
 
   const modeBanner = mode === 'MERGE'
     ? t('pages.actives.tablesOrder.mergeModeBanner')
@@ -296,7 +314,13 @@ export default function TablesOrderPage() {
         )}
 
         <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-100 bg-white px-4 py-2 md:hidden">
-          {[{ id: 0, name: t('common.all') }, ...areas.map(area => ({ id: area.Id, name: area.Name }))].map(area => (
+          {[
+            { id: 0, name: t('common.all') },
+            { id: FILTER_IN_USE, name: t('pages.actives.tablesOrder.filterInUse') },
+            { id: FILTER_EMPTY, name: t('pages.actives.tablesOrder.filterEmpty') },
+            { id: FILTER_QR, name: t('pages.actives.tablesOrder.filterQr') },
+            ...areas.map(area => ({ id: area.Id, name: area.Name })),
+          ].map(area => (
             <button
               key={area.id}
               onClick={() => setSelectedAreaId(area.id)}
