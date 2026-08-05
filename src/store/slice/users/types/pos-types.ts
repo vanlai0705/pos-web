@@ -635,6 +635,7 @@ export interface TPosOrderFilterParams {
   DateFrom?: string
   DateTo?: string
   StatusId?: number | ''
+  CustomerId?: number
 }
 
 // ─── Actives: Bookings ───────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Search, Plus, Minus, Trash2, X,
@@ -21,14 +21,11 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { withDomainPath } from '@/utils/domain-route'
 import {
   useFilterActiveProductsQuery,
   useGetProductGroupsSimpleQuery,
   useSaveOrderMutation,
   useCompleteOrderMutation,
-  useSaveBookingMutation,
-  useSaveQuotationMutation,
   useGetSettingOrderQuery,
   useGetPaymentTypesQuery,
   useLazyGetTableOrderDetailQuery,
@@ -36,7 +33,9 @@ import {
   useDeleteTableOrderMutation,
   useGenericDownloadMutation,
   useLazyGetOrderKitchenQuery,
+  useLazyGetOrderDetailQuery,
 } from '@/store/slice/users/api/api'
+import { OrderSearchDialog } from './order-search-dialog'
 import { printData, printDatas, type PrinterSetting } from '@/utils/print-service'
 import type {
   TPosActiveProduct, TPosOrder, TPosOrderItem, TPosCustomerInvoice, TPosSettingOrder,
@@ -430,7 +429,7 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
  * `save-exit` / `print-*` persist through `tables/*-order`; the rest reuse `orders/*`.
  */
 export type OrderAction =
-  | 'pay' | 'print' | 'temp' | 'booking' | 'quotation'
+  | 'pay' | 'print' | 'temp'
   | 'save-exit' | 'print-temp' | 'print-kitchen' | 'print-label' | 'cancel-order'
 
 interface SalesTabProps {
@@ -445,12 +444,13 @@ interface SalesTabProps {
 
 function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTabProps) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const [cart, setCart] = useState<CartItem[]>([])
+  // Bumped after a successful retail payment to force InternalOrderPanel to
+  // remount — it caches its own copies of customer/staff/note/fund locally,
+  // so resetting only SalesTab's state wouldn't clear what's on screen.
+  const [resetKey, setResetKey] = useState(0)
   const [saveOrder, { isLoading: savingOrder }] = useSaveOrderMutation()
   const [completeOrder, { isLoading: completing }] = useCompleteOrderMutation()
-  const [saveBooking, { isLoading: savingBooking }] = useSaveBookingMutation()
-  const [saveQuotation, { isLoading: savingQuotation }] = useSaveQuotationMutation()
   const [loadTableOrder] = useLazyGetTableOrderDetailQuery()
   const [saveTableOrder, { isLoading: savingTable }] = useSaveTableOrderMutation()
   const [fetchOrderKitchen] = useLazyGetOrderKitchenQuery()
@@ -460,6 +460,10 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
   const [deleteTableOrder, { isLoading: deletingTable }] = useDeleteTableOrderMutation()
   const [downloadFile] = useGenericDownloadMutation()
   const { data: settings } = useGetSettingOrderQuery()
+  // RTK Query dedupes this against InternalOrderPanel's own identical call —
+  // needed here too so handleSave can resolve a cash fallback even when the
+  // panel's own picker never rendered anything for the user to click.
+  const { data: fundTypes = [] } = useGetPaymentTypesQuery()
   const { user: auth } = useAuth()
   // `Member` mirrors Angular's currentMember: the logged-in user plus their shops.
   const member = useMemo(() => {
@@ -469,7 +473,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
   }, [auth])
   const perItemTax = !!settings?.IsTaxPerItemAllowed
   const isTableMode = !!tableLabel
-  const saving = savingOrder || completing || savingBooking || savingQuotation || savingTable || deletingTable
+  const saving = savingOrder || completing || savingTable || deletingTable
 
   // Panel state refs (hoisted so we can read on submit)
   const [fund, setFund] = useState<{ type: TPosFundType | null; accountId?: number }>({ type: null })
@@ -516,6 +520,44 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       .catch(() => toast.error(t('pages.actives.order.loadTableOrderFailed')))
     return () => { cancelled = true }
   }, [tableId, bookingId, loadTableOrder])
+
+  // "Đặt hàng" / "Báo giá" — search-and-resume an existing booking/quotation.
+  // Bookings and quotations live in the same Orders table under a different
+  // Type/Status, so picking one loads it the same way orders/detail always
+  // does (Angular's orderDetail(id), called from onFunctionOrderClick).
+  const [loadOrderDetail] = useLazyGetOrderDetailQuery()
+  const [bookingSearchOpen, setBookingSearchOpen] = useState(false)
+  const [quotationSearchOpen, setQuotationSearchOpen] = useState(false)
+
+  const applyPickedOrder = useCallback(async (id?: number) => {
+    if (!id) return
+    try {
+      const order = await loadOrderDetail(id).unwrap()
+      if (!order) return
+      setCart((order.Items ?? []).map(it => ({
+        product: (it.Product ?? {}) as TPosActiveProduct,
+        qty: it.Quantity ?? 1,
+        price: it.Price ?? it.Product?.Price ?? 0,
+        discountPct: it.DiscountPercent ?? 0,
+        note: it.Note ?? '',
+        tax: it.Tax ?? it.Product?.Tax ?? null,
+      })))
+      setSelectedCustomer(order.Customer ?? null)
+      if (order.User) setSelectedStaff(order.User as TPosUser)
+      setNote(order.Note ?? '')
+      setDetail(order.Detail ?? '')
+    } catch {
+      toast.error(t('pages.actives.order.loadOrderFailed'))
+    }
+  }, [loadOrderDetail, t])
+
+  // Guard shared by both pickers: Angular refuses to open the search dialog
+  // while the cart already has items, to avoid silently discarding them.
+  const openOrderSearch = (kind: 'booking' | 'quotation') => {
+    if (cart.length > 0) { toast.error(t('pages.actives.order.searchDialogCartNotEmpty')); return }
+    if (kind === 'booking') setBookingSearchOpen(true)
+    else setQuotationSearchOpen(true)
+  }
 
   const addToCart = useCallback((product: TPosActiveProduct) => {
     setCart(prev => {
@@ -744,40 +786,6 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       : undefined
     const items = buildItems()
 
-    if (action === 'booking') {
-      try {
-        await saveBooking({
-          Id: bookingId,
-          Customer: selectedCustomer ?? undefined,
-          User: user,
-          Note: note || undefined,
-          SubTotal: subTotal,
-          Total: total,
-          Items: items,
-        }).unwrap()
-        toast.success(t('pages.actives.order.bookingSuccess'))
-        setCart([])
-        if (onBack) onBack()
-      } catch { toast.error(t('pages.actives.order.bookingFailed')) }
-      return
-    }
-
-    if (action === 'quotation') {
-      try {
-        await saveQuotation({
-          Customer: selectedCustomer ?? undefined,
-          User: user,
-          Note: note || undefined,
-          SubTotal: subTotal,
-          Total: total,
-          Items: items,
-        }).unwrap()
-        toast.success(t('pages.actives.order.quotationSuccess'))
-        setCart([])
-      } catch { toast.error(t('pages.actives.order.quotationFailed')) }
-      return
-    }
-
     // "Cà thẻ" settles on the card; every other fund type settles as cash.
     const isCard = /ca the|card/.test(normalizeName(fund.type?.Name))
     // Retail opens a payment dialog that pre-fills "Khách đưa" with the total;
@@ -785,7 +793,11 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
     const paid = payment === '' ? (isTableMode ? 0 : total) : Number(payment)
     const now = new Date().toISOString()
     // A picked account wins over the fund type itself — same as sell-payment.
-    const fundTypeRef = fund.accountId ?? fund.type?.Id
+    // If nothing was ever picked (e.g. the picker had nothing to show yet),
+    // fall back to a real "Tiền mặt" fund type so payment isn't blocked —
+    // defaults to cash, matching how a walk-in sale is normally settled.
+    const cashFallback = fundTypes.find(f => /tien mat|cash/.test(normalizeName(f.Name))) ?? fundTypes[0]
+    const fundTypeRef = fund.accountId ?? fund.type?.Id ?? cashFallback?.Id
 
     const order: TPosOrder = {
       Id: bookingId,
@@ -799,7 +811,10 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       Member: member,
       CreatorUser: null,
       StockOut: settings?.StockDefault ?? null,
-      FundType: fundTypeRef ? { Id: fundTypeRef } : null,
+      // An explicit `null` here is what actually crashes the backend
+      // (NullReferenceException) — omit the key entirely on the rare case
+      // even the cash fallback above couldn't resolve anything.
+      FundType: fundTypeRef ? { Id: fundTypeRef } : undefined,
       Items: items,
       PromotionItems: [],
       Table: null,
@@ -821,7 +836,14 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       Type: 0,
       PaymentType: 0,
       IsCustomersDebt: false,
-      IsPrint: action === 'print' || action === 'print-temp',
+      // Angular never sends IsPrint at all — every order-save endpoint
+      // (temp/complete/table) omits it entirely; printing is a fully
+      // separate client-side step (printBill/printKitchenTicket/
+      // printTempReceipt below) that runs AFTER the save succeeds, keyed off
+      // `action`, not off anything in this payload. Including it here was
+      // this migration's own addition, not something the real API expects —
+      // and is the likely cause of a backend NullReferenceException on
+      // orders/completed for shops with incomplete printer/receipt config.
       IsExportInvoice: invoiceForm.isInvoice,
       CustomerInvoice: buildCustomerInvoice(invoiceForm),
     }
@@ -865,13 +887,25 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       toast.success(t('pages.actives.order.paymentSuccess'))
       setCart([])
       const finish = () => {
-        // In the restaurant flow the caller sends us back to the floor plan and
-        // refetches the tables; only the standalone POS jumps to the order list.
-        if (isTableMode) onBack?.()
-        else {
-          navigate(withDomainPath('/actives/order-manager'))
-          onBack?.()
-        }
+        // Restaurant: back to the floor plan, table gets refetched there.
+        // Retail: stays on this same screen (matches Angular's clearOrder(),
+        // which just resets the order model in place) and resets the form so
+        // the next sale starts clean — "Thanh toán và in"/"không in" must
+        // leave the cashier right where they were, not bounce to order-manager.
+        if (isTableMode) { onBack?.(); return }
+        setSelectedCustomer(null)
+        setSelectedStaff(null)
+        setNote('')
+        setDetail('')
+        setDiscountPct(0)
+        setDiscountAmt(0)
+        setVoucher(0)
+        setTransferCost(0)
+        setTaxOverride(null)
+        setPayment('')
+        setInvoiceForm(EMPTY_INVOICE_FORM)
+        setFund({ type: null })
+        setResetKey(k => k + 1)
       }
       if (action === 'print' && res?.Id) printBill(res.Id, res.Printers, finish)
       else finish()
@@ -882,12 +916,14 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
     <div className="flex gap-2 h-full min-h-0 p-2">
       <div className="flex-[3] min-w-0 h-full">
         <InternalOrderPanel
+          key={resetKey}
           cart={cart}
           onQty={updateQty}
           onRemove={removeItem}
           onClear={() => setCart([])}
           onUpdateItem={updateItem}
           onSave={handleSave}
+          onOpenOrderSearch={openOrderSearch}
           saving={saving}
           settings={settings}
           totals={totals}
@@ -933,6 +969,19 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
           </div>
         </SheetContent>
       </Sheet>
+
+      <OrderSearchDialog
+        open={bookingSearchOpen}
+        onOpenChange={setBookingSearchOpen}
+        kind="booking"
+        onConfirm={order => { setBookingSearchOpen(false); applyPickedOrder(order.Id) }}
+      />
+      <OrderSearchDialog
+        open={quotationSearchOpen}
+        onOpenChange={setQuotationSearchOpen}
+        kind="quotation"
+        onConfirm={order => { setQuotationSearchOpen(false); applyPickedOrder(order.Id) }}
+      />
     </div>
   )
 }
@@ -994,7 +1043,7 @@ function MoneyRow({ label, children }: { label: string; children: React.ReactNod
 function PercentInput({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled?: boolean }) {
   const draft = useNumberDraft(value, onChange, { min: 0, max: 100 })
   return (
-    <input type="number" min={0} max={100} disabled={disabled} {...draft}
+    <input type="text" disabled={disabled} {...draft}
       className="w-full text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-center disabled:cursor-not-allowed disabled:opacity-50" />
   )
 }
@@ -1008,7 +1057,7 @@ function NumInput({ value, onChange, suffix, className }: {
   const draft = useNumberDraft(value, onChange, { min: 0 })
   return (
     <div className={cn('flex items-center border border-input rounded px-1.5 py-0.5 bg-background', className)}>
-      <input type="number" min={0} {...draft}
+      <input type="text" {...draft}
         className="w-0 flex-1 text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-right" />
       {suffix && <span className="text-xs text-muted-foreground ml-0.5">{suffix}</span>}
     </div>
@@ -1024,6 +1073,7 @@ interface InternalOrderPanelProps {
   onClear: () => void
   onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => void
   onSave: (action: OrderAction) => void
+  onOpenOrderSearch: (kind: 'booking' | 'quotation') => void
   saving: boolean
   settings?: TPosSettingOrder
   totals: ReturnType<typeof calcTotals>
@@ -1054,7 +1104,7 @@ interface MoneyControls {
 }
 
 function InternalOrderPanel({
-  cart, onQty, onRemove, onClear, onUpdateItem, onSave, saving, settings, totals, perItemTax,
+  cart, onQty, onRemove, onClear, onUpdateItem, onSave, onOpenOrderSearch, saving, settings, totals, perItemTax,
   tableLabel, hasTableOrder, onBack,
   onFundTypeChange, onCustomerChange, onStaffChange, onNoteChange,
   detail, setDetail, invoiceForm, setInvoiceForm, money,
@@ -1238,16 +1288,21 @@ function InternalOrderPanel({
                       <div className="flex items-center gap-1.5">
                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${DOT_COLORS[c]}`} />
                         <div className="min-w-0 flex items-center gap-1">
-                          <span className="font-medium text-foreground line-clamp-1">{item.product.Name}</span>
-                          {/* KCT = không chịu thuế (Product.Tax null), CT = chịu thuế — matches order-item-list.component's tax-status-badge, shown regardless of IsTaxPerItemAllowed. */}
+                          {/* KCT = không chịu thuế (Product.Tax null), VAT {percent}% = chịu thuế —
+                              shown before the name per request, using the line's own tax rate
+                              (falls back to the product's registered rate) so an edited per-line
+                              % stays reflected here too. */}
                           <span className={cn(
                             'shrink-0 rounded-full px-1.5 text-[9px] font-bold leading-[14px] whitespace-nowrap',
                             item.product.Tax == null
                               ? 'bg-muted text-muted-foreground'
                               : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
                           )}>
-                            {item.product.Tax == null ? t('pages.actives.order.taxExemptBadge') : t('pages.actives.order.taxableBadge')}
+                            {item.product.Tax == null
+                              ? t('pages.actives.order.taxExemptBadge')
+                              : t('pages.actives.order.taxableBadge', { percent: item.tax ?? item.product.Tax })}
                           </span>
+                          <span className="font-medium text-foreground line-clamp-1">{item.product.Name}</span>
                         </div>
                       </div>
                     </td>
@@ -1445,11 +1500,11 @@ function InternalOrderPanel({
           </div>
           {/* Action buttons - row 2 */}
           <div className="grid grid-cols-3 gap-1.5">
-            <button onClick={() => onSave('booking')} disabled={saving}
+            <button onClick={() => onOpenOrderSearch('booking')} disabled={saving}
               className="flex items-center justify-center gap-1 rounded-lg border border-orange-400 px-2 py-2.5 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all disabled:opacity-40">
               <BookOpen className="h-3.5 w-3.5" /> {t('pages.actives.order.bookingButton')}
             </button>
-            <button onClick={() => onSave('quotation')} disabled={saving}
+            <button onClick={() => onOpenOrderSearch('quotation')} disabled={saving}
               className="flex items-center justify-center gap-1 rounded-lg border border-violet-400 px-2 py-2.5 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all disabled:opacity-40">
               <FileText className="h-3.5 w-3.5" /> {t('pages.actives.order.quotationButton')}
             </button>
