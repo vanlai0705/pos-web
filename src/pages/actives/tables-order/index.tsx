@@ -1,21 +1,21 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Armchair,
-  BarChart3,
-  CalendarDays,
-  LayoutGrid,
-  Maximize2,
-  RefreshCw,
-  Search,
-  Users,
-  ZoomIn,
-  ZoomOut,
-} from 'lucide-react'
+import { toast } from 'sonner'
+import { Armchair, Layers, ArrowLeftRight, Scissors } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useGetAreasQuery, useGetTablesQuery } from '@/store/slice/users/api/api'
+import {
+  useGetAreasQuery,
+  useGetTablesQuery,
+  useTransferTableMutation,
+  useMergeTablesMutation,
+  useSplitTableMutation,
+} from '@/store/slice/users/api/api'
 import type { TPosArea, TPosTable } from '@/store/slice/users/types/pos-types'
+import { cn } from '@/utils'
 import PosOrderPage from '../order'
+import { SplitOrderModal } from './split-order-modal'
+
+type Mode = 'NORMAL' | 'MERGE' | 'MOVE' | 'SPLIT'
 
 // ─── Elapsed time ─────────────────────────────────────────────────────────────
 
@@ -28,7 +28,12 @@ function elapsed(dateStr?: string) {
 
 // ─── Table card ───────────────────────────────────────────────────────────────
 
-function TableCard({ table, onClick }: { table: TPosTable; onClick: () => void }) {
+function TableCard({ table, onClick, selected, blocked }: {
+  table: TPosTable
+  onClick: () => void
+  selected: boolean
+  blocked: boolean
+}) {
   const { t } = useTranslation()
   const occupied = !!table.OrderId
   const isQrOrder = occupied && !!table.IsAnonymous
@@ -53,8 +58,17 @@ function TableCard({ table, onClick }: { table: TPosTable; onClick: () => void }
   return (
     <button
       onClick={onClick}
-      className="group relative h-[112px] w-[132px] cursor-pointer transition-transform duration-150 active:scale-[0.97]"
+      disabled={blocked}
+      className={cn(
+        'group relative h-[112px] w-[132px] transition-transform duration-150',
+        blocked ? 'cursor-not-allowed opacity-40 grayscale' : 'cursor-pointer active:scale-[0.97]',
+      )}
     >
+      {selected && (
+        <span className="absolute -left-1.5 -top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white shadow">
+          ✓
+        </span>
+      )}
       {['left-3 top-0', 'right-3 top-0', 'left-3 bottom-0', 'right-3 bottom-0'].map(pos => (
         <span
           key={pos}
@@ -62,7 +76,11 @@ function TableCard({ table, onClick }: { table: TPosTable; onClick: () => void }
         />
       ))}
       <div
-        className={`absolute inset-x-0 top-5 h-[70px] rounded-md border-2 px-3 py-2 transition-colors ${tableClass}`}
+        className={cn(
+          'absolute inset-x-0 top-5 h-[70px] rounded-md border-2 px-3 py-2 transition-colors',
+          tableClass,
+          selected && 'ring-2 ring-indigo-500 ring-offset-1',
+        )}
       >
         <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
           <p className="text-sm font-bold leading-none">#{table.Name}</p>
@@ -90,70 +108,34 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
   const { t } = useTranslation()
   return (
     <aside className="hidden w-[184px] shrink-0 border-r border-slate-200 bg-slate-50/95 text-slate-700 md:flex md:flex-col">
-      <div className="border-b border-slate-200 px-5 py-4">
-        <p className="text-[11px] font-medium text-slate-500">Restaurant POS</p>
-        <p className="mt-1 text-xs font-semibold text-slate-800">Downtown Bistro</p>
-      </div>
-
       <nav className="flex-1 space-y-1 px-3 py-4">
-        <button
-          onClick={() => onSelect(0)}
-          className={`flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-xs font-medium transition-colors ${
-            selected === 0 ? 'bg-teal-50 text-teal-800' : 'hover:bg-white'
-          }`}
-        >
-          <LayoutGrid className="h-4 w-4" />
-          {t('pages.actives.tablesOrder.floorPlan')}
-        </button>
-        <div className="ml-[29px] border-l border-slate-300 py-1 pl-3">
-          {loading ? (
-            <div className="space-y-2 py-1">
-              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-6 w-24 rounded-md" />)}
-            </div>
-          ) : (
-            <>
+        {loading ? (
+          <div className="space-y-2 py-1">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-6 w-24 rounded-md" />)}
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={() => onSelect(0)}
+              className={`block w-full rounded-sm px-2 py-2 text-left text-xs ${
+                selected === 0 ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {t('pages.actives.tablesOrder.allAreas')}
+            </button>
+            {areas.map(area => (
               <button
-                onClick={() => onSelect(0)}
+                key={area.Id}
+                onClick={() => onSelect(area.Id)}
                 className={`block w-full rounded-sm px-2 py-2 text-left text-xs ${
-                  selected === 0 ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'
+                  selected === area.Id ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                {t('pages.actives.tablesOrder.allAreas')}
+                {area.Name}
               </button>
-              <button
-                onClick={() => onSelect(-1)}
-                className={`block w-full rounded-sm px-2 py-2 text-left text-xs ${
-                  selected === -1 ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                {t('pages.actives.tablesOrder.inUse')}
-              </button>
-              {areas.map(area => (
-                <button
-                  key={area.Id}
-                  onClick={() => onSelect(area.Id)}
-                  className={`block w-full rounded-sm px-2 py-2 text-left text-xs ${
-                    selected === area.Id ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {area.Name}
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-        <button className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-600 hover:bg-white">
-          <CalendarDays className="h-4 w-4" />
-          {t('pages.actives.tablesOrder.bookTable')}
-        </button>
-        <button className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-600 hover:bg-white">
-          <BarChart3 className="h-4 w-4" />
-          {t('pages.actives.tablesOrder.reports')}
-        </button>
-        <button className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-600 hover:bg-white">
-          <Users className="h-4 w-4" />
-          {t('pages.actives.tablesOrder.staff')}
-        </button>
+            ))}
+          </>
+        )}
       </nav>
     </aside>
   )
@@ -166,6 +148,13 @@ export default function TablesOrderPage() {
   const [selectedAreaId, setSelectedAreaId] = useState(0)
   const [activeTable, setActiveTable] = useState<TPosTable | null>(null)
 
+  // Mode-based table actions (Gộp bàn/Chuyển bàn/Tách món) — mirrors
+  // pos_web's area-table.component: pick a source table, then a destination.
+  const [mode, setMode] = useState<Mode>('NORMAL')
+  const [fromTable, setFromTable] = useState<TPosTable | null>(null)
+  const [splitToTable, setSplitToTable] = useState<TPosTable | null>(null)
+  const [splitOpen, setSplitOpen] = useState(false)
+
   const { data: areas = [], isLoading: areasLoading } = useGetAreasQuery()
   const { data: allTables = [], isLoading: tablesLoading, refetch } = useGetTablesQuery(
     selectedAreaId === -1
@@ -174,6 +163,9 @@ export default function TablesOrderPage() {
         ? { areaId: selectedAreaId }
         : {},
   )
+  const [transferTable] = useTransferTableMutation()
+  const [mergeTables] = useMergeTablesMutation()
+  const [splitTable] = useSplitTableMutation()
 
   // If a table is selected, show POS selling view
   if (activeTable) {
@@ -189,15 +181,91 @@ export default function TablesOrderPage() {
     )
   }
 
-  const occupied = allTables.filter(tbl => !!tbl.OrderId).length
-  const empty = allTables.filter(tbl => !tbl.OrderId).length
-  const qrOrders = allTables.filter(tbl => !!tbl.OrderId && !!tbl.IsAnonymous).length
-  const servedOrders = occupied - qrOrders
-  const selectedAreaName = selectedAreaId === -1
-    ? t('pages.actives.tablesOrder.usingTables')
-    : selectedAreaId > 0
-      ? areas.find(area => area.Id === selectedAreaId)?.Name ?? t('pages.actives.tablesOrder.area')
-      : t('pages.actives.tablesOrder.allAreas')
+  const resetMode = () => { setMode('NORMAL'); setFromTable(null) }
+
+  const startMode = (m: Exclude<Mode, 'NORMAL'>) => {
+    setMode(mode === m ? 'NORMAL' : m)
+    setFromTable(null)
+    if (mode !== m) {
+      toast.success(t(`pages.actives.tablesOrder.pickSource${m === 'MERGE' ? 'Merge' : m === 'MOVE' ? 'Move' : 'Split'}`))
+    }
+  }
+
+  const runMergeOrMove = async (from: TPosTable, to: TPosTable) => {
+    const verb = mode === 'MOVE' ? t('pages.actives.tablesOrder.moveVerb') : t('pages.actives.tablesOrder.mergeVerb')
+    if (!window.confirm(t('pages.actives.tablesOrder.confirmActionTable', { verb, from: from.Name, to: to.Name }))) return
+    try {
+      if (mode === 'MOVE') await transferTable({ fromTableId: from.Id, toTableId: to.Id }).unwrap()
+      else await mergeTables({ fromTableId: from.Id, toTableId: to.Id }).unwrap()
+      toast.success(mode === 'MOVE' ? t('pages.actives.tablesOrder.moveSuccess') : t('pages.actives.tablesOrder.mergeSuccess'))
+      resetMode()
+      refetch()
+    } catch {
+      toast.error(t('pages.actives.tablesOrder.actionFailed'))
+    }
+  }
+
+  const handleTableClick = (table: TPosTable) => {
+    if (mode === 'NORMAL') { setActiveTable(table); return }
+
+    // Can't start a selection on an empty table — nothing to merge/move/split yet.
+    if (!fromTable && !table.OrderId) return
+
+    if (!fromTable) {
+      setFromTable(table)
+      toast.success(mode === 'MERGE'
+        ? t('pages.actives.tablesOrder.pickDestinationMerge', { name: table.Name })
+        : t('pages.actives.tablesOrder.pickDestinationMoveOrSplit'))
+      return
+    }
+
+    if (table.Id === fromTable.Id) {
+      toast.error(mode === 'MERGE' ? t('pages.actives.tablesOrder.cannotSameTableMerge') : t('pages.actives.tablesOrder.cannotSameTableMove'))
+      return
+    }
+
+    if (mode === 'SPLIT') { setSplitToTable(table); setSplitOpen(true); return }
+    runMergeOrMove(fromTable, table)
+  }
+
+  const handleSplitConfirm = async (itemIds: number[]) => {
+    if (!fromTable || !splitToTable) return
+    try {
+      await splitTable({ fromTableId: fromTable.Id, toTableId: splitToTable.Id, itemIds }).unwrap()
+      toast.success(t('pages.actives.tablesOrder.splitSuccess'))
+      setSplitOpen(false)
+      resetMode()
+      refetch()
+    } catch {
+      toast.error(t('pages.actives.tablesOrder.splitFailed'))
+    }
+  }
+
+  const selectedAreaName = selectedAreaId > 0
+    ? areas.find(area => area.Id === selectedAreaId)?.Name ?? t('pages.actives.tablesOrder.area')
+    : t('pages.actives.tablesOrder.allAreas')
+
+  const modeBanner = mode === 'MERGE'
+    ? t('pages.actives.tablesOrder.mergeModeBanner')
+    : mode === 'MOVE'
+      ? t('pages.actives.tablesOrder.moveModeBanner')
+      : mode === 'SPLIT'
+        ? t('pages.actives.tablesOrder.splitModeBanner')
+        : ''
+
+  const modeButton = (m: Exclude<Mode, 'NORMAL'>, Icon: typeof Layers, labelKey: string, activeClass: string) => (
+    <button
+      onClick={() => startMode(m)}
+      title={t(labelKey)}
+      className={cn(
+        'flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors',
+        mode === m ? activeClass : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+      )}
+    >
+      <Icon className="h-4 w-4" />
+      <span className="hidden md:inline">{t(labelKey)}</span>
+    </button>
+  )
 
   return (
     <div className="absolute inset-0 flex overflow-hidden bg-slate-100">
@@ -212,47 +280,23 @@ export default function TablesOrderPage() {
         <header className="flex h-12 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-800">{selectedAreaName}</p>
-            <p className="text-[11px] text-slate-400 md:hidden">{t('pages.actives.tablesOrder.restaurantFloorPlan')}</p>
           </div>
-          <div className="ml-auto hidden items-center gap-5 md:flex">
-            <span className="flex items-center gap-1.5 text-xs text-slate-600">
-              <span className="h-2 w-2 rounded-full bg-slate-300" />
-              {t('pages.actives.tablesOrder.emptyTable')} ({empty})
-            </span>
-            <span className="flex items-center gap-1.5 text-xs text-slate-600">
-              <span className="h-2 w-2 rounded-full bg-teal-700" />
-              {t('pages.actives.tablesOrder.occupiedTable')} ({servedOrders})
-            </span>
-            <span className="flex items-center gap-1.5 text-xs text-slate-600">
-              <span className="h-2 w-2 rounded-full bg-orange-500" />
-              {t('pages.actives.tablesOrder.qrOrder')} ({qrOrders})
-            </span>
-          </div>
-          <div className="ml-auto flex items-center gap-1 md:ml-2">
-            <button
-              onClick={() => refetch()}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-              title={t('common.reload')}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title={t('common.search')}>
-              <Search className="h-4 w-4" />
-            </button>
-            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title={t('common.zoomIn')}>
-              <ZoomIn className="h-4 w-4" />
-            </button>
-            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title={t('common.zoomOut')}>
-              <ZoomOut className="h-4 w-4" />
-            </button>
-            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title={t('common.fullscreen')}>
-              <Maximize2 className="h-4 w-4" />
-            </button>
+          <div className="ml-auto flex items-center gap-1">
+            {modeButton('SPLIT', Scissors, 'pages.actives.tablesOrder.splitModeButton', 'bg-amber-100 text-amber-700')}
+            {modeButton('MOVE', ArrowLeftRight, 'pages.actives.tablesOrder.moveModeButton', 'bg-blue-100 text-blue-700')}
+            {modeButton('MERGE', Layers, 'pages.actives.tablesOrder.mergeModeButton', 'bg-emerald-100 text-emerald-700')}
           </div>
         </header>
 
+        {mode !== 'NORMAL' && (
+          <div className="mx-4 mt-3 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700">
+            <span>{modeBanner}</span>
+            <button onClick={resetMode} className="text-xs font-bold text-rose-600 hover:underline">{t('common.cancel')}</button>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-100 bg-white px-4 py-2 md:hidden">
-          {[{ id: 0, name: t('common.all') }, { id: -1, name: t('pages.actives.tablesOrder.inUse') }, ...areas.map(area => ({ id: area.Id, name: area.Name }))].map(area => (
+          {[{ id: 0, name: t('common.all') }, ...areas.map(area => ({ id: area.Id, name: area.Name }))].map(area => (
             <button
               key={area.id}
               onClick={() => setSelectedAreaId(area.id)}
@@ -288,13 +332,23 @@ export default function TablesOrderPage() {
                 <TableCard
                   key={table.Id}
                   table={table}
-                  onClick={() => setActiveTable(table)}
+                  selected={fromTable?.Id === table.Id}
+                  blocked={mode !== 'NORMAL' && !table.OrderId && !fromTable}
+                  onClick={() => handleTableClick(table)}
                 />
               ))}
             </div>
           )}
         </div>
       </main>
+
+      <SplitOrderModal
+        open={splitOpen}
+        onOpenChange={open => { setSplitOpen(open); if (!open) resetMode() }}
+        fromTable={fromTable}
+        toTable={splitToTable}
+        onConfirm={handleSplitConfirm}
+      />
     </div>
   )
 }

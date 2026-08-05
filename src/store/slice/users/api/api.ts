@@ -606,11 +606,12 @@ export const userApiSlice = createApi({
       transformErrorResponse: (res: any) => res?.data?.Errors?.[0]?.Message || res.status,
     }),
 
-    getTables: builder.query<TPosTable[], { areaId?: number; isHasOrder?: boolean }>({
+    getTables: builder.query<TPosTable[], { areaId?: number; isHasOrder?: boolean; isAnonymous?: boolean }>({
       query: (p) => {
         const params = new URLSearchParams()
         if (p.areaId && p.areaId > 0) params.append('areaId', String(p.areaId))
         if (p.isHasOrder) params.append('isHasOrder', 'true')
+        if (p.isAnonymous) params.append('IsAnonymous', 'true')
         const qs = params.toString()
         return { url: `tables/get-list${qs ? '?' + qs : ''}`, method: 'GET' }
       },
@@ -639,6 +640,23 @@ export const userApiSlice = createApi({
 
     deleteTableOrder: builder.mutation<void, number>({
       query: (tableId) => ({ url: `tables/delete-order?tableId=${tableId}`, method: "DELETE" }),
+    }),
+
+    /** Whole order moves from one table to another; source table empties out. */
+    transferTable: builder.mutation<void, { fromTableId: number; toTableId: number }>({
+      query: (body) => ({ url: "tables/transfer", method: "PUT", body }),
+    }),
+
+    /** Source table's order is merged into the destination table's order. */
+    mergeTables: builder.mutation<void, { fromTableId: number; toTableId: number }>({
+      query: (body) => ({ url: "tables/merge", method: "PUT", body }),
+    }),
+
+    /** Move specific line items (itemIds) from one table's order to another —
+     * omitting itemIds moves the whole order (mirrors Angular's "Chuyển bàn"
+     * reusing this same endpoint without an item list). */
+    splitTable: builder.mutation<void, { fromTableId: number; toTableId: number; itemIds?: number[] }>({
+      query: (body) => ({ url: "tables/split", method: "PUT", body }),
     }),
 
     /**
@@ -1267,6 +1285,9 @@ export const {
   useLazyGetTableOrderDetailQuery,
   useSaveTableOrderMutation,
   useDeleteTableOrderMutation,
+  useTransferTableMutation,
+  useMergeTablesMutation,
+  useSplitTableMutation,
   useLazyGetOrderKitchenQuery,
   useGetProductGroupsQuery,
   useSelectShopMutation,
