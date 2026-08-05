@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { STATUS } from '@/constants/data';
 import { StatusBadge } from './ui/status-badge';
 
@@ -12,5 +13,6 @@ type StatusProps = {
 export const Status: React.FC<StatusProps> = ({
   status
 }) => {
-  return <StatusBadge statusId={status} label={status === STATUS.ACTIVE ? 'Hoạt động' : 'Ngưng hoạt động'} />;
+  const { t } = useTranslation();
+  return <StatusBadge statusId={status} label={status === STATUS.ACTIVE ? t('common.active') : t('components.tagStatus.inactive')} />;
 };

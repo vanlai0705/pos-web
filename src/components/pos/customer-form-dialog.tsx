@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Search } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -63,12 +64,13 @@ export function CustomerDialog({
   onClose: () => void
   onSave: () => void
 }) {
+  const { t } = useTranslation()
   const set = (patch: Partial<TPosCustomer>) => setForm(current => ({ ...current, ...patch }))
 
   const searchTaxNumber = async () => {
     const taxId = (form.TaxNumber || form.TaxCode || '').trim()
     if (!taxId) {
-      toast.warning('Vui lòng nhập mã số thuế')
+      toast.warning(t('components.customerFormDialog.taxIdRequiredWarning'))
       return
     }
 
@@ -79,7 +81,7 @@ export function CustomerDialog({
       })
       const result = await response.json()
       if (!result?.data) {
-        toast.error('MST không tồn tại')
+        toast.error(t('components.customerFormDialog.taxIdNotFoundError'))
         return
       }
       set({
@@ -91,20 +93,20 @@ export function CustomerDialog({
         Name: form.Name || result.data.name || '',
       })
     } catch {
-      toast.error('Không thể tra cứu MST')
+      toast.error(t('components.customerFormDialog.taxLookupFailedError'))
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={value => !value && onClose()}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
-        <DialogHeader><DialogTitle>{form.Id ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{form.Id ? t('components.customerFormDialog.editCustomerTitle') : t('components.customerFormDialog.addCustomerTitle')}</DialogTitle></DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Mã khách hàng">
-              <Input value={form.CustomerCode || form.Code || ''} onChange={event => set({ CustomerCode: event.target.value, Code: event.target.value })} placeholder="Tự động nếu bỏ trống" />
+            <Field label={t('components.customerFormDialog.customerCodeLabel')}>
+              <Input value={form.CustomerCode || form.Code || ''} onChange={event => set({ CustomerCode: event.target.value, Code: event.target.value })} placeholder={t('components.customerFormDialog.customerCodePlaceholder')} />
             </Field>
-            <Field label="Tên khách hàng" required>
+            <Field label={t('common.customerName')} required>
               <Input value={form.Name || ''} onChange={event => set({ Name: event.target.value })} />
             </Field>
           </div>
@@ -112,9 +114,9 @@ export function CustomerDialog({
           <div className="grid gap-3 sm:grid-cols-2 sm:items-end">
             <div className="flex h-10 items-center gap-3 rounded-md border bg-slate-50 px-3">
               <Switch checked={!!form.IsCompany} onCheckedChange={checked => set({ IsCompany: checked })} />
-              <span className="text-sm font-medium text-slate-700">Là doanh nghiệp/công ty</span>
+              <span className="text-sm font-medium text-slate-700">{t('components.customerFormDialog.isCompanyLabel')}</span>
             </div>
-            <Field label="Nhóm khách hàng">
+            <Field label={t('components.customerFormDialog.customerGroupLabel')}>
               <select
                 value={form.CustomerGroup?.Id || ''}
                 onChange={event => {
@@ -124,7 +126,7 @@ export function CustomerDialog({
                 }}
                 className="h-10 w-full rounded-md border bg-white px-3 text-sm"
               >
-                <option value="">Không có</option>
+                <option value="">{t('components.customerFormDialog.noGroupOption')}</option>
                 {groups.map(group => <option key={group.Id} value={group.Id}>{group.Name}</option>)}
               </select>
             </Field>
@@ -132,7 +134,7 @@ export function CustomerDialog({
 
           {form.IsCompany ? (
             <div className="grid gap-3 rounded-lg border bg-slate-50 p-3 sm:grid-cols-2">
-              <Field label="Mã số thuế">
+              <Field label={t('components.customerFormDialog.taxNumberLabel')}>
                 <div className="flex gap-2">
                   <Input value={form.TaxNumber || form.TaxCode || ''} onChange={event => set({ TaxNumber: event.target.value, TaxCode: event.target.value })} />
                   <Button type="button" size="icon" className="h-10 w-10" onClick={searchTaxNumber}>
@@ -140,37 +142,37 @@ export function CustomerDialog({
                   </Button>
                 </div>
               </Field>
-              <Field label="Tên đơn vị/Công ty">
+              <Field label={t('components.customerFormDialog.companyNameLabel')}>
                 <Input value={form.CompanyName || ''} onChange={event => set({ CompanyName: event.target.value })} />
               </Field>
             </div>
           ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Số điện thoại">
+            <Field label={t('components.customerFormDialog.phoneLabel')}>
               <Input value={form.Phone || ''} onChange={event => set({ Phone: event.target.value })} />
             </Field>
-            <Field label="Căn cước công dân (CCCD)">
+            <Field label={t('components.customerFormDialog.citizenIdLabel')}>
               <Input value={form.CitizenId || form.IdCard || ''} onChange={event => set({ CitizenId: event.target.value, IdCard: event.target.value })} />
             </Field>
-            <Field label="Địa chỉ Email">
+            <Field label={t('components.customerFormDialog.emailLabel')}>
               <Input type="email" value={form.Email || ''} onChange={event => set({ Email: event.target.value })} />
             </Field>
-            <Field label="Ngày thành lập / Sinh nhật">
+            <Field label={t('components.customerFormDialog.birthdayLabel')}>
               <Input type="date" value={form.Birthday?.slice(0, 10) || ''} onChange={event => set({ Birthday: event.target.value })} />
             </Field>
           </div>
 
-          <Field label="Địa chỉ">
+          <Field label={t('common.address')}>
             <Input value={form.Address || ''} onChange={event => set({ Address: event.target.value })} />
           </Field>
-          <Field label="Ghi chú thêm">
+          <Field label={t('components.customerFormDialog.noteLabel')}>
             <Textarea rows={3} value={form.Note || ''} onChange={event => set({ Note: event.target.value })} />
           </Field>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button onClick={onSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? t('components.customerFormDialog.savingStatus') : t('common.save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

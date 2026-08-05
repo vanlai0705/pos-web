@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, ChevronLeft, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils";
@@ -11,6 +12,7 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   // Parse current value or fallback
@@ -68,8 +70,16 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
     }
   }, [value, isOpen]);
 
-  const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
-  const weekDays = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  const monthNames = Array.from({ length: 12 }, (_, i) => t('components.dateTimePicker.monthLabel', { month: i + 1 }));
+  const weekDays = [
+    t('components.dateTimePicker.weekDaySun'),
+    t('components.dateTimePicker.weekDayMon'),
+    t('components.dateTimePicker.weekDayTue'),
+    t('components.dateTimePicker.weekDayWed'),
+    t('components.dateTimePicker.weekDayThu'),
+    t('components.dateTimePicker.weekDayFri'),
+    t('components.dateTimePicker.weekDaySat'),
+  ];
 
   const prevMonth = () => {
     if (navMonth === 0) {
@@ -150,7 +160,7 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
   };
 
   const formatDisplay = () => {
-    if (!value) return "Chọn ngày và giờ...";
+    if (!value) return t('components.dateTimePicker.placeholderSelectDateTime');
     const y = selectedDate.getFullYear();
     const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
     const d = String(selectedDate.getDate()).padStart(2, "0");
@@ -262,7 +272,7 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
         </div>
 
         <div className="border-t border-neutral-100 p-3 flex items-center justify-between bg-neutral-50/50">
-          <span className="text-xs font-bold text-neutral-500 select-none">Giờ</span>
+          <span className="text-xs font-bold text-neutral-500 select-none">{t('components.dateTimePicker.hourLabel')}</span>
           <div className="flex items-center gap-1.5">
             <select
               value={hours}
@@ -308,21 +318,21 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
             onClick={handleClear}
             className="px-3 py-1 text-xs font-semibold text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded transition"
           >
-            Xóa
+            {t('components.dateTimePicker.clear')}
           </button>
           <button
             type="button"
             onClick={handleToday}
             className="px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded transition"
           >
-            Hôm nay
+            {t('components.dateTimePicker.today')}
           </button>
           <button
             type="button"
             onClick={handleOK}
             className="px-4 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded transition shadow-sm"
           >
-            Đồng ý
+            {t('components.dateTimePicker.confirm')}
           </button>
         </div>
       </PopoverContent>

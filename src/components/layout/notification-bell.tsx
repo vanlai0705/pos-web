@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { cn } from '@/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,18 +19,19 @@ import type { TPosNotificationItem } from '@/store/slice/users/types/pos-types'
 import { getImageUrl } from '@/utils/common'
 import { withDomainPath } from '@/utils/domain-route'
 
-function timeAgo(dateStr?: string) {
+function timeAgo(t: TFunction, dateStr?: string) {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
   const m = Math.floor(diff / 60000)
-  if (m < 1) return 'Vừa xong'
-  if (m < 60) return `${m} phút trước`
+  if (m < 1) return t('components.notificationBell.justNow')
+  if (m < 60) return t('components.notificationBell.minutesAgo', { count: m })
   const h = Math.floor(m / 60)
-  if (h < 24) return `${h} giờ trước`
-  return `${Math.floor(h / 24)} ngày trước`
+  if (h < 24) return t('components.notificationBell.hoursAgo', { count: h })
+  return t('components.notificationBell.daysAgo', { count: Math.floor(h / 24) })
 }
 
 export function NotificationBell() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
 
@@ -84,10 +87,10 @@ export function NotificationBell() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div>
-            <span className="font-semibold text-sm">Thông báo</span>
+            <span className="font-semibold text-sm">{t('components.notificationBell.title')}</span>
             {unreadCount > 0 && (
               <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                {unreadCount} chưa đọc
+                {t('components.notificationBell.unreadCount', { count: unreadCount })}
               </span>
             )}
           </div>
@@ -97,7 +100,7 @@ export function NotificationBell() {
               <button
                 onClick={handleMarkAll}
                 disabled={markingAll}
-                title="Đánh dấu tất cả đã đọc"
+                title={t('common.markAllRead')}
                 className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               >
                 <CheckCheck className="w-4 h-4" />
@@ -112,7 +115,7 @@ export function NotificationBell() {
             ? (
               <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
                 <Bell className="w-8 h-8 opacity-25" />
-                <p className="text-sm">Không có thông báo</p>
+                <p className="text-sm">{t('components.notificationBell.noNotifications')}</p>
               </div>
             )
             : notifications.map(item => {
@@ -142,7 +145,7 @@ export function NotificationBell() {
                     {item.Detail && (
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.Detail}</p>
                     )}
-                    <p className="text-[11px] text-muted-foreground/60 mt-1">{timeAgo(item.Date)}</p>
+                    <p className="text-[11px] text-muted-foreground/60 mt-1">{timeAgo(t, item.Date)}</p>
                   </div>
 
                   <div className="flex-none flex flex-col items-center gap-1">
@@ -151,7 +154,7 @@ export function NotificationBell() {
                         <div className="w-2 h-2 rounded-full bg-primary" />
                         <button
                           onClick={e => handleMarkRead(e, item)}
-                          title="Đánh dấu đã đọc"
+                          title={t('common.markRead')}
                           className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted transition-all"
                         >
                           <Check className="w-3 h-3 text-muted-foreground" />
@@ -171,7 +174,7 @@ export function NotificationBell() {
             onClick={() => { setOpen(false); navigate(withDomainPath('/notifications')) }}
             className="w-full text-center text-sm text-primary hover:text-primary/80 font-medium transition-colors"
           >
-            Xem tất cả thông báo →
+            {t('components.notificationBell.viewAll')}
           </button>
         </div>
       </DropdownMenuContent>

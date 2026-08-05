@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Receipt, RefreshCw, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { withDomainPath } from '@/utils/domain-route'
@@ -21,16 +22,6 @@ import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE } from '../shared
 import { baseUrl } from '@/constants'
 import dayjs from 'dayjs'
 
-const DEFAULT_RETAIL = 'BÁN CHO NGƯỜI TIÊU DÙNG'
-
-const STATUS_LIST = [
-  { value: '' as any, label: 'Tất cả trạng thái' },
-  { value: 0, label: 'Chờ phát hành' },
-  { value: 1, label: 'Không xuất' },
-  { value: 2, label: 'Đã phát hành' },
-  { value: 3, label: 'Huỷ' },
-]
-
 function defaultMonthStart() {
   return dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD')
 }
@@ -43,6 +34,7 @@ function defaultToday() {
 type ViewerState = { html: string | null; pdfUrl: string | null; fileName: string }
 
 function InvoiceViewer({ state, onClose }: { state: ViewerState; onClose: () => void }) {
+  const { t } = useTranslation()
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div
@@ -50,7 +42,7 @@ function InvoiceViewer({ state, onClose }: { state: ViewerState; onClose: () => 
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
-          <span className="font-semibold text-sm truncate">{state.fileName || 'Hoá đơn'}</span>
+          <span className="font-semibold text-sm truncate">{state.fileName || t('pages.actives.invoices.invoiceLabel')}</span>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
@@ -70,9 +62,20 @@ function InvoiceViewer({ state, onClose }: { state: ViewerState; onClose: () => 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function InvoicesPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const auth = useAppSelector(selectAuth)
   const token = auth.data?.SessionToken ?? ''
+
+  const DEFAULT_RETAIL = t('pages.actives.invoices.defaultRetailCustomer')
+
+  const STATUS_LIST = [
+    { value: '' as any, label: t('common.allStatuses') },
+    { value: 0, label: t('pages.actives.invoices.statusPending') },
+    { value: 1, label: t('pages.actives.invoices.statusNotIssued') },
+    { value: 2, label: t('pages.actives.invoices.statusPublished') },
+    { value: 3, label: t('common.cancel') },
+  ]
 
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
@@ -106,20 +109,20 @@ export default function InvoicesPage() {
   const handleImport = useCallback(async (invoice: TPosOrderInvoice) => {
     try {
       await importInvoice(invoice.Id).unwrap()
-      toast.success('Đã phát hành hoá đơn thành công')
+      toast.success(t('pages.actives.invoices.importSuccess'))
       refetch()
     } catch {
-      toast.error('Phát hành hoá đơn thất bại')
+      toast.error(t('pages.actives.invoices.importError'))
     }
-  }, [importInvoice, refetch])
+  }, [importInvoice, refetch, t])
 
   const handleView = useCallback(async (invoice: TPosOrderInvoice) => {
     if (invoice.InvoiceType === 0) {
       try {
         const res = await viewHtml(invoice.Id).unwrap()
-        setViewer({ html: res?.Html ?? null, pdfUrl: null, fileName: `Hoá đơn #${invoice.OrderId}` })
+        setViewer({ html: res?.Html ?? null, pdfUrl: null, fileName: `${t('pages.actives.invoices.invoiceLabel')} #${invoice.OrderId}` })
       } catch {
-        toast.error('Không thể tải hoá đơn')
+        toast.error(t('pages.actives.invoices.viewInvoiceError'))
       }
     } else {
       try {
@@ -139,20 +142,20 @@ export default function InvoicesPage() {
         const fileName = fileNameMatch?.[1]?.replace(/['"]/g, '') || `invoice-${invoice.Id}.pdf`
         setViewer({ html: null, pdfUrl: url, fileName })
       } catch {
-        toast.error('Không thể tải file PDF')
+        toast.error(t('pages.actives.invoices.viewPdfError'))
       }
     }
-  }, [viewHtml, token])
+  }, [viewHtml, token, t])
 
   const handleCheck = useCallback(async (invoice: TPosOrderInvoice) => {
     try {
       const res = await checkInvoice(invoice.Id).unwrap()
-      const msg = res?.KeyInvoiceMsg?.Message || 'Đã hoàn tất quá trình kiểm tra'
+      const msg = res?.KeyInvoiceMsg?.Message || t('pages.actives.invoices.checkSuccess')
       toast.success(msg)
     } catch {
-      toast.error('Kiểm tra thất bại')
+      toast.error(t('pages.actives.invoices.checkError'))
     }
-  }, [checkInvoice])
+  }, [checkInvoice, t])
 
   const handleCloseViewer = useCallback(() => {
     setViewer(null)
@@ -169,18 +172,18 @@ export default function InvoicesPage() {
 
   const handleCancel = useCallback(async (invoice: TPosOrderInvoice) => {
     if (!invoice.OrderId) {
-      toast.warning('Không tìm thấy mã đơn hàng để huỷ')
+      toast.warning(t('pages.actives.invoices.cancelMissingOrderId'))
       return
     }
-    if (!window.confirm('Bạn có chắc là muốn huỷ hoá đơn này không?')) return
+    if (!window.confirm(t('pages.actives.invoices.confirmCancel'))) return
     try {
       await cancelOrder(invoice.OrderId).unwrap()
-      toast.success('Huỷ hoá đơn thành công')
+      toast.success(t('pages.actives.invoices.cancelSuccess'))
       refetch()
     } catch {
-      toast.error('Huỷ hoá đơn thất bại')
+      toast.error(t('pages.actives.invoices.cancelError'))
     }
-  }, [cancelOrder, refetch])
+  }, [cancelOrder, refetch, t])
 
   const onKeyword = useCallback((v: string) => { setKeyword(v); setPage(1) }, [])
   const onDateFrom = useCallback((v: string) => { setDateFrom(v); setPage(1) }, [])
@@ -198,7 +201,7 @@ export default function InvoicesPage() {
     },
     {
       id: 'date',
-      header: 'Ngày',
+      header: t('common.date'),
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
           {row.original.InvoiceDate ? dayjs(row.original.InvoiceDate).format('DD/MM/YYYY HH:mm') : '—'}
@@ -207,7 +210,7 @@ export default function InvoicesPage() {
     },
     {
       id: 'orderId',
-      header: 'Số phiếu',
+      header: t('common.voucherNo'),
       cell: ({ row }) => {
         const inv = row.original
         return (
@@ -223,7 +226,7 @@ export default function InvoicesPage() {
     },
     {
       id: 'publishStatus',
-      header: 'Trạng thái',
+      header: t('common.status'),
       cell: ({ row }) => {
         const inv = row.original
         return inv.PublishStatus != null ? (
@@ -233,12 +236,12 @@ export default function InvoicesPage() {
     },
     {
       id: 'invoiceType',
-      header: 'Loại HĐ',
+      header: t('common.invoiceType'),
       cell: ({ row }) => row.original.InvoiceType === 0 ? 'EASY INVOICE' : 'MINVOICE',
     },
     {
       id: 'companyName',
-      header: 'Đơn vị',
+      header: t('pages.actives.invoices.unitName'),
       meta: { className: 'min-w-[180px]' },
       cell: ({ row }) => {
         const name = row.original.CompanyName
@@ -247,60 +250,60 @@ export default function InvoicesPage() {
     },
     {
       id: 'taxAgencyCode',
-      header: 'Mã CQ Thuế',
+      header: t('common.taxAuthorityCode'),
       cell: ({ row }) => <CodeTag value={row.original.TaxAgencyCode} />,
     },
     {
       id: 'phone',
-      header: 'Điện thoại',
+      header: t('common.phone'),
       cell: ({ row }) => row.original.PhoneNumber || '—',
     },
     {
       id: 'address',
-      header: 'Địa chỉ',
+      header: t('common.address'),
       meta: { className: 'min-w-[180px]' },
       cell: ({ row }) => row.original.Address || '—',
     },
     {
       id: 'buyerName',
-      header: 'Người mua',
+      header: t('common.buyer'),
       cell: ({ row }) => row.original.BuyerName || '—',
     },
     {
       id: 'paymentMethod',
-      header: 'Thanh toán',
+      header: t('common.paymentMethod'),
       cell: ({ row }) => row.original.PaymentMethod || '—',
     },
     {
       id: 'bankAccount',
-      header: 'Số TK',
+      header: t('common.accountNo'),
       cell: ({ row }) => row.original.BankAccount || '—',
     },
     {
       id: 'bankName',
-      header: 'Ngân hàng',
+      header: t('common.bank'),
       cell: ({ row }) => row.original.BankName || '—',
     },
     {
       id: 'invoiceSymbol',
-      header: 'Ký hiệu',
+      header: t('common.invoiceSymbol'),
       cell: ({ row }) => row.original.InvoiceSymbol || '—',
     },
     {
       id: 'invoiceNumber',
-      header: 'Số HĐ',
+      header: t('common.invoiceNo'),
       cell: ({ row }) => row.original.InvoiceNumber || '—',
     },
     {
       id: 'totalAmount',
-      header: 'Tổng cộng',
+      header: t('pages.actives.invoices.totalAmount'),
       cell: ({ row }) => (
         <MoneyTag value={row.original.TotalAmount} />
       ),
     },
     {
       id: 'histories',
-      header: 'Mô tả',
+      header: t('pages.actives.invoices.descriptionHistory'),
       cell: ({ row }) => (
         <div className="text-xs text-muted-foreground space-y-0.5 max-w-[200px]">
           {(row.original.Histories ?? []).map((h, i) => (
@@ -311,7 +314,7 @@ export default function InvoicesPage() {
     },
     {
       id: 'actions',
-      header: 'Thao tác',
+      header: t('common.actions'),
       meta: {
         headClassName: 'sticky right-0 bg-muted/40 border-l z-10',
         cellClassName: 'sticky right-0 bg-card border-l z-10',
@@ -327,7 +330,7 @@ export default function InvoicesPage() {
                 disabled={importing}
                 onClick={() => handleImport(inv)}
               >
-                Phát hành
+                {t('pages.actives.invoices.publishAction')}
               </Button>
             )}
             {inv.PublishStatus === 2 && (
@@ -336,7 +339,7 @@ export default function InvoicesPage() {
                 className="h-7 px-2 text-xs bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => handleView(inv)}
               >
-                Xem HĐ
+                {t('pages.actives.invoices.viewInvoiceAction')}
               </Button>
             )}
             <Button
@@ -346,7 +349,7 @@ export default function InvoicesPage() {
               disabled={checking}
               onClick={() => handleCheck(inv)}
             >
-              Kiểm tra
+              {t('pages.actives.invoices.checkAction')}
             </Button>
             {inv.PublishStatus === 2 && (
               <Button
@@ -355,7 +358,7 @@ export default function InvoicesPage() {
                 className="h-7 px-2 text-xs border-rose-400 text-rose-600 hover:bg-rose-50"
                 onClick={() => handleCancel(inv)}
               >
-                Huỷ
+                {t('common.cancel')}
               </Button>
             )}
           </div>
@@ -367,8 +370,8 @@ export default function InvoicesPage() {
   return (
     <>
       <div className="space-y-4">
-        <ListPageHeader title="Danh sách hoá đơn" icon={Receipt}>
-          <SearchBar value={keyword} onChange={onKeyword} placeholder="Tìm kiếm..." />
+        <ListPageHeader title={t('pages.actives.invoices.pageTitle')} icon={Receipt}>
+          <SearchBar value={keyword} onChange={onKeyword} placeholder={t('common.search')} />
           <select
             value={publishStatus === '' ? '' : String(publishStatus)}
             onChange={e => onStatus(e.target.value)}
@@ -382,7 +385,7 @@ export default function InvoicesPage() {
           </select>
           <DateRangeFilter from={dateFrom} to={dateTo} onFrom={onDateFrom} onTo={onDateTo} />
           <Button variant="outline" size="sm" className="h-8" onClick={() => { setPage(1); refetch() }}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Tải lại
+            <RefreshCw className="h-3.5 w-3.5 mr-1" /> {t('common.reload')}
           </Button>
         </ListPageHeader>
 
@@ -394,7 +397,7 @@ export default function InvoicesPage() {
           page={page}
           pageSize={pageSize} onPageSizeChange={setPageSize}
           onPageChange={setPage}
-          emptyText="Không có hoá đơn nào"
+          emptyText={t('pages.actives.invoices.emptyText')}
         />
       </div>
 

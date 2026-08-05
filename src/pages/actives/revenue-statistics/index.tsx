@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { TrendingUp } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useFilterRevenueStatisticsQuery, useFilterRevenueStatisticsSummaryQuery } from '@/store/slice/users/api/api'
@@ -10,6 +11,7 @@ import {
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 
 function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
@@ -27,37 +29,37 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
   const columns: ColumnDef<TPosRevenueStatItem>[] = [
     {
       id: 'stt',
-      header: 'STT',
+      header: t('common.index'),
       cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'name',
-      header: 'Số phiếu',
+      header: t('common.voucherNo'),
       cell: ({ row }) => <VoucherTag value={row.original.Name} />,
     },
     {
       id: 'date',
-      header: 'Ngày',
+      header: t('common.date'),
       cell: ({ row }) => <span className="whitespace-nowrap">{fmtDateTime(row.original.Date)}</span>,
     },
     {
       id: 'customer',
-      header: 'Khách hàng',
+      header: t('common.customer'),
       cell: ({ row }) => row.original.Customer?.Name ?? '—',
     },
     {
       id: 'subTotal',
-      header: 'Tiền hàng',
+      header: t('pages.actives.revenueStatistics.subTotal'),
       cell: ({ row }) => <MoneyTag value={row.original.SubTotal} />,
     },
     {
       id: 'discount',
-      header: 'Giảm giá',
+      header: t('pages.actives.revenueStatistics.discount'),
       cell: ({ row }) => <MoneyTag value={row.original.Discount} />,
     },
     {
       id: 'discountPercent',
-      header: 'Tỷ lệ GG',
+      header: t('pages.actives.revenueStatistics.discountPercent'),
       cell: ({ row }) => (
         <span className="tabular-nums">
           {row.original.DiscountPercent != null ? `${row.original.DiscountPercent.toFixed(1)}%` : '—'}
@@ -66,12 +68,12 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
     },
     {
       id: 'transferCost',
-      header: 'Phí VC',
+      header: t('pages.actives.revenueStatistics.transferCost'),
       cell: ({ row }) => <MoneyTag value={row.original.TransferCost} />,
     },
     {
       id: 'total',
-      header: 'Tổng cộng',
+      header: t('pages.actives.revenueStatistics.total'),
       cell: ({ row }) => <MoneyTag value={row.original.Total} />,
     },
   ]
@@ -79,10 +81,10 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryCard label="Tiền hàng" value={sumary?.SubTotal} currency />
-        <SummaryCard label="Giảm giá" value={sumary?.Discount} currency />
-        <SummaryCard label="Phí vận chuyển" value={sumary?.TransferCost} currency />
-        <SummaryCard label="Tổng cộng" value={sumary?.Total} currency />
+        <SummaryCard label={t('pages.actives.revenueStatistics.subTotal')} value={sumary?.SubTotal} currency />
+        <SummaryCard label={t('pages.actives.revenueStatistics.discount')} value={sumary?.Discount} currency />
+        <SummaryCard label={t('pages.actives.revenueStatistics.transferCostFull')} value={sumary?.TransferCost} currency />
+        <SummaryCard label={t('pages.actives.revenueStatistics.total')} value={sumary?.Total} currency />
       </div>
 
       <DataTable
@@ -93,13 +95,14 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
         page={page}
         pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
-        emptyText="Không có dữ liệu"
+        emptyText={t('common.noData')}
       />
     </div>
   )
 }
 
 function SummaryTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const { data: items = [], isLoading } = useFilterRevenueStatisticsSummaryQuery({ DateFrom: dateFrom, DateTo: dateTo })
   const totalAmount = items.reduce((sum, item) => sum + (item.Total ?? 0), 0)
 
@@ -107,15 +110,15 @@ function SummaryTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
     <div className="space-y-4">
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30 flex items-center justify-between">
-          <span className="font-semibold text-sm">TỔNG DOANH SỐ</span>
+          <span className="font-semibold text-sm">{t('pages.actives.revenueStatistics.totalRevenue')}</span>
           <MoneyTag value={totalAmount || undefined} className="text-sm" />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40">
               <tr>
-                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">Phương thức thanh toán</th>
-                <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">Tổng tiền</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground">{t('pages.actives.revenueStatistics.paymentMethod')}</th>
+                <th className="text-right px-3 py-2.5 font-medium text-muted-foreground">{t('pages.actives.revenueStatistics.totalAmount')}</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -142,32 +145,33 @@ function SummaryTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
 }
 
 export default function RevenueStatisticsPage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<'revenue' | 'summary'>('revenue')
   const { dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
 
   const tabs = [
-    { key: 'revenue', label: 'Thống kê doanh thu' },
-    { key: 'summary', label: 'Tổng hợp' },
+    { key: 'revenue', label: t('pages.actives.revenueStatistics.title') },
+    { key: 'summary', label: t('pages.actives.revenueStatistics.tabSummary') },
   ] as const
 
   return (
     <div className="space-y-4">
-      <ListPageHeader title="Thống kê doanh thu" icon={TrendingUp}>
+      <ListPageHeader title={t('pages.actives.revenueStatistics.title')} icon={TrendingUp}>
         <DateRangeFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
       </ListPageHeader>
 
       <div className="border-b flex gap-0">
-        {tabs.map(t => (
+        {tabs.map(tabItem => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tabItem.key}
+            onClick={() => setTab(tabItem.key)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === t.key
+              tab === tabItem.key
                 ? 'border-primary text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t.label}
+            {tabItem.label}
           </button>
         ))}
       </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Package, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -24,6 +25,7 @@ function imgUrl(url?: string | null) {
 }
 
 export default function ActiveProductsPage() {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -44,22 +46,22 @@ export default function ActiveProductsPage() {
   const total = data?.TotalItemCount ?? 0
 
   const changeStatus = async (id: number, statusId: number) => {
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá mặt hàng này?')) return
+    if (statusId === STATUS.DELETED && !window.confirm(t('pages.actives.products.confirmDelete'))) return
     try {
       await updateStatus({ id, statusId }).unwrap()
       refetch()
-    } catch { toast.error('Không thể cập nhật trạng thái') }
+    } catch { toast.error(t('pages.actives.products.updateStatusFailed')) }
   }
 
   const columns: ColumnDef<TPosActiveProduct>[] = [
     {
       id: 'stt',
-      header: 'STT',
+      header: t('common.index'),
       cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'image',
-      header: 'Hình',
+      header: t('common.image'),
       cell: ({ row }) => {
         const item = row.original
         const url = imgUrl(item.Image?.Url ?? item.Images?.[0]?.Url)
@@ -74,49 +76,49 @@ export default function ActiveProductsPage() {
     },
     {
       id: 'code',
-      header: 'Mã hàng',
+      header: t('common.productCode'),
       cell: ({ row }) => <CodeTag value={row.original.Code} />,
     },
     {
       id: 'name',
-      header: 'Tên mặt hàng',
+      header: t('common.productName'),
       cell: ({ row }) => <span className="font-medium">{row.original.Name}</span>,
     },
     {
       id: 'group',
-      header: 'Nhóm',
+      header: t('common.group'),
       cell: ({ row }) => <span className="text-xs">{row.original.ProductGroup?.Name ?? '—'}</span>,
     },
     {
       id: 'unit',
-      header: 'ĐVT',
+      header: t('common.unit'),
       cell: ({ row }) => <span className="text-xs">{row.original.Unit?.Name ?? '—'}</span>,
     },
     {
       id: 'price',
-      header: 'Giá bán',
+      header: t('common.salePrice'),
       cell: ({ row }) => <MoneyTag value={row.original.Price} />,
     },
     {
       id: 'importPrice',
-      header: 'Giá nhập',
+      header: t('common.inputPrice'),
       cell: ({ row }) => <MoneyTag value={row.original.ImportPrice} />,
     },
     {
       id: 'quantity',
-      header: 'Tồn',
+      header: t('common.inventory'),
       cell: ({ row }) => (
         <span className="tabular-nums">{row.original.Quantity?.toLocaleString('vi-VN') ?? '—'}</span>
       ),
     },
     {
       id: 'status',
-      header: 'TT',
+      header: t('common.statusShort'),
       cell: ({ row }) => <StatusBadge status={row.original.Status} />,
     },
     {
       id: 'actions',
-      header: 'Thao tác',
+      header: t('common.actions'),
       cell: ({ row }) => {
         const item = row.original
         if (!item.Id) return null
@@ -128,17 +130,17 @@ export default function ActiveProductsPage() {
             <DropdownMenuContent align="end">
               {item.Status?.Id !== STATUS.ACTIVE && (
                 <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.ACTIVE)}>
-                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> Kích hoạt
+                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> {t('common.activate')}
                 </DropdownMenuItem>
               )}
               {item.Status?.Id !== STATUS.LOCKED && (
                 <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.LOCKED)}>
-                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> Khoá
+                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> {t('common.lock')}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(item.Id!, STATUS.DELETED)}>
-                <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('pages.actives.products.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -149,23 +151,23 @@ export default function ActiveProductsPage() {
 
   return (
     <div className="space-y-4">
-      <ListPageHeader title="Mặt hàng" icon={Package}>
-        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder="Tìm mặt hàng..." />
+      <ListPageHeader title={t('pages.actives.products.title')} icon={Package}>
+        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder={t('common.searchProduct')} />
         <select
           value={statusId}
           onChange={e => { setStatusId(e.target.value === '' ? '' : Number(e.target.value)); setPage(1) }}
           className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="">Tất cả TT</option>
-          <option value={STATUS.ACTIVE}>Hoạt động</option>
-          <option value={STATUS.LOCKED}>Đã khoá</option>
+          <option value="">{t('pages.actives.products.allStatusShort')}</option>
+          <option value={STATUS.ACTIVE}>{t('common.active')}</option>
+          <option value={STATUS.LOCKED}>{t('common.locked')}</option>
         </select>
         <select
           value={groupId}
           onChange={e => { setGroupId(e.target.value === '' ? '' : Number(e.target.value)); setPage(1) }}
           className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="">Tất cả nhóm</option>
+          <option value="">{t('pages.actives.products.allGroups')}</option>
           {groups.map(g => <option key={g.Id} value={g.Id}>{g.Name}</option>)}
         </select>
       </ListPageHeader>
@@ -178,7 +180,7 @@ export default function ActiveProductsPage() {
         page={page}
         pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
-        emptyText="Không có mặt hàng nào"
+        emptyText={t('pages.actives.products.emptyText')}
       />
     </div>
   )

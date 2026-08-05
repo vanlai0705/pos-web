@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import {
   Area,
   AreaChart,
@@ -86,6 +87,7 @@ const SERIES_COLORS = [
 ]
 
 export default function DashboardPage() {
+  const { t } = useTranslation()
   const today = new Date()
   const yesterday = addDays(today, -1)
   const todayFrom = toRangeParam(today, false)
@@ -156,11 +158,11 @@ export default function DashboardPage() {
   const statusBreakdown = useMemo(() => {
     const counts = new Map<string, number>()
     ;(ordersTodayList?.Items ?? []).forEach(o => {
-      const name = o.Status?.Name || "Không rõ"
+      const name = o.Status?.Name || t('pages.dashboard.unknownStatus')
       counts.set(name, (counts.get(name) ?? 0) + 1)
     })
     return [...counts.entries()].map(([name, count]) => ({ name, count }))
-  }, [ordersTodayList])
+  }, [ordersTodayList, t])
   const statusTotal = statusBreakdown.reduce((s, i) => s + i.count, 0)
 
   // ── Row 3: top products + revenue by group, both derived from today's
@@ -180,12 +182,12 @@ export default function DashboardPage() {
     })
     const rows = [...totals.entries()]
       .map(([gid, amount]) => ({
-        name: gid === "none" ? "Khác" : productGroups.find(g => g.Id === gid)?.Name || "Khác",
+        name: gid === "none" ? t('pages.dashboard.otherGroup') : productGroups.find(g => g.Id === gid)?.Name || t('pages.dashboard.otherGroup'),
         amount,
       }))
       .sort((a, b) => b.amount - a.amount)
     return rows.slice(0, 5)
-  }, [todayItems, productGroups])
+  }, [todayItems, productGroups, t])
   const groupRevenueTotal = groupRevenue.reduce((s, i) => s + i.amount, 0)
 
   return (
@@ -193,27 +195,27 @@ export default function DashboardPage() {
       {/* Row 1 — today's KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <KpiCard
-          icon={Wallet} tone="blue" label="Doanh thu hôm nay"
+          icon={Wallet} tone="blue" label={t('pages.dashboard.kpiRevenueToday')}
           loading={salesTodayLoading} value={formatNumber(salesToday?.TotalCount ?? 0) + "đ"}
           delta={pctDelta(salesToday?.TotalCount ?? 0, salesYesterday?.TotalCount ?? 0)}
         />
         <KpiCard
-          icon={TrendingUp} tone="emerald" label="Lợi nhuận hôm nay"
+          icon={TrendingUp} tone="emerald" label={t('pages.dashboard.kpiProfitToday')}
           loading={productStatTodayLoading} value={formatNumber(profitToday) + "đ"}
           delta={pctDelta(profitToday, profitYesterday)}
         />
         <KpiCard
-          icon={ReceiptText} tone="amber" label="Hoá đơn hôm nay"
+          icon={ReceiptText} tone="amber" label={t('pages.dashboard.kpiOrdersToday')}
           loading={ordersTodayLoading} value={formatNumber(ordersToday?.TotalCount ?? 0)}
           delta={pctDelta(ordersToday?.TotalCount ?? 0, ordersYesterday?.TotalCount ?? 0)}
         />
         <KpiCard
-          icon={UserPlus} tone="violet" label="Khách hàng mới"
+          icon={UserPlus} tone="violet" label={t('pages.dashboard.kpiNewCustomers')}
           loading={customersTodayLoading} value={formatNumber(customersToday?.TotalCount ?? 0)}
           delta={pctDelta(customersToday?.TotalCount ?? 0, customersYesterday?.TotalCount ?? 0)}
         />
         <KpiCard
-          icon={Package} tone="cyan" label="Sản phẩm đã bán"
+          icon={Package} tone="cyan" label={t('pages.dashboard.kpiProductsSold')}
           loading={productStatTodayLoading} value={formatNumber(qtyToday)}
           delta={pctDelta(qtyToday, qtyYesterday)}
         />
@@ -223,10 +225,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Doanh thu 7 ngày qua</CardTitle>
+            <CardTitle className="text-sm font-semibold">{t('pages.dashboard.weekRevenueTitle')}</CardTitle>
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-bold tabular-nums text-foreground">{formatNumber(weekTotal)}đ</span>
-              <DeltaBadge value={pctDelta(weekTotal, prevWeekTotal)} suffix="so với kỳ trước" />
+              <DeltaBadge value={pctDelta(weekTotal, prevWeekTotal)} suffix={t('pages.dashboard.vsPreviousPeriod')} />
             </div>
           </CardHeader>
           <CardContent className="pt-0">
@@ -242,7 +244,7 @@ export default function DashboardPage() {
                   <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis tickFormatter={v => formatShort(Number(v))} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={40} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={v => [formatNumber(Number(v)) + "đ", "Doanh thu"]} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={v => [formatNumber(Number(v)) + "đ", t('pages.dashboard.revenueTooltipLabel')]} />
                   <Area dataKey="value" type="monotone" stroke={SERIES_COLORS[0]} strokeWidth={2} fill="url(#week-fill)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -252,7 +254,7 @@ export default function DashboardPage() {
 
         <Card className="lg:col-span-1">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Doanh thu theo giờ hôm nay</CardTitle>
+            <CardTitle className="text-sm font-semibold">{t('pages.dashboard.hourlyRevenueTitle')}</CardTitle>
             <span className="text-xl font-bold tabular-nums text-foreground">{formatNumber(hourlyToday.reduce((s, h) => s + h.value, 0))}đ</span>
           </CardHeader>
           <CardContent className="pt-0">
@@ -262,7 +264,7 @@ export default function DashboardPage() {
                   <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="hour" interval={3} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis tickFormatter={v => formatShort(Number(v))} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={40} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={v => [formatNumber(Number(v)) + "đ", "Doanh thu"]} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={v => [formatNumber(Number(v)) + "đ", t('pages.dashboard.revenueTooltipLabel')]} />
                   <Bar dataKey="value" fill={SERIES_COLORS[0]} radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -272,12 +274,12 @@ export default function DashboardPage() {
 
         <Card className="lg:col-span-1">
           <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-semibold">Tình hình đơn hàng</CardTitle>
-            <span className="text-xs text-muted-foreground">hôm nay</span>
+            <CardTitle className="text-sm font-semibold">{t('pages.dashboard.orderStatusTitle')}</CardTitle>
+            <span className="text-xs text-muted-foreground">{t('pages.dashboard.todayLabel')}</span>
           </CardHeader>
           <CardContent className="pt-0">
             {statusLoading ? <Skeleton className="h-[180px] w-full" /> : statusTotal === 0 ? (
-              <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">Chưa có đơn hàng nào</div>
+              <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">{t('pages.dashboard.noOrdersYet')}</div>
             ) : (
               <div className="flex items-center gap-3">
                 <div className="relative h-[140px] w-[140px] shrink-0">
@@ -291,7 +293,7 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-lg font-bold text-foreground">{statusTotal}</span>
-                    <span className="text-[10px] text-muted-foreground">Tổng phiếu</span>
+                    <span className="text-[10px] text-muted-foreground">{t('pages.dashboard.totalOrders')}</span>
                   </div>
                 </div>
                 <div className="min-w-0 flex-1 space-y-1.5">
@@ -317,13 +319,13 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Top sản phẩm bán chạy hôm nay</CardTitle>
+            <CardTitle className="text-sm font-semibold">{t('pages.dashboard.topProductsTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2.5 pt-0">
             {productStatTodayLoading ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
             ) : topProducts.length === 0 ? (
-              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">Chưa bán sản phẩm nào</div>
+              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">{t('pages.dashboard.noProductsSold')}</div>
             ) : topProducts.map((item, i) => (
               <div key={i} className="flex items-center gap-2.5">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">{i + 1}</span>
@@ -336,7 +338,7 @@ export default function DashboardPage() {
                     <div className="h-1.5 flex-1 rounded-full bg-muted">
                       <div className="h-full rounded-full bg-primary" style={{ width: `${maxTopAmount ? Math.max(4, (item.Amount / maxTopAmount) * 100) : 0}%` }} />
                     </div>
-                    <span className="shrink-0 text-[10px] text-muted-foreground">Đã bán {formatNumber(item.Quantity)}</span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">{t('pages.dashboard.soldCount', { qty: formatNumber(item.Quantity) })}</span>
                   </div>
                 </div>
               </div>
@@ -346,11 +348,11 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Doanh thu theo nhóm hàng hôm nay</CardTitle>
+            <CardTitle className="text-sm font-semibold">{t('pages.dashboard.groupRevenueTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             {productStatTodayLoading ? <Skeleton className="h-[160px] w-full" /> : groupRevenueTotal === 0 ? (
-              <div className="flex h-[160px] items-center justify-center text-sm text-muted-foreground">Chưa có dữ liệu</div>
+              <div className="flex h-[160px] items-center justify-center text-sm text-muted-foreground">{t('pages.dashboard.noDataYet')}</div>
             ) : (
               <div className="flex items-center gap-4">
                 <div className="relative h-[150px] w-[150px] shrink-0">
@@ -422,14 +424,15 @@ function KpiCard({ icon: Icon, tone, label, value, delta, loading }: {
   )
 }
 
-function DeltaBadge({ value, suffix = "so với hôm qua" }: { value: number | null; suffix?: string }) {
-  if (value == null) return <span className="block text-xs text-muted-foreground">Chưa có dữ liệu so sánh</span>
+function DeltaBadge({ value, suffix }: { value: number | null; suffix?: string }) {
+  const { t } = useTranslation()
+  if (value == null) return <span className="block text-xs text-muted-foreground">{t('pages.dashboard.noComparisonData')}</span>
   const isUp = value >= 0
   const Icon = isUp ? ArrowUpRight : ArrowDownRight
   return (
     <span className={cn("inline-flex items-center gap-0.5 text-xs font-semibold", isUp ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
       <Icon className="h-3 w-3 shrink-0" />
-      {Math.abs(value).toFixed(0)}% {suffix}
+      {Math.abs(value).toFixed(0)}% {suffix ?? t('pages.dashboard.vsYesterday')}
     </span>
   )
 }

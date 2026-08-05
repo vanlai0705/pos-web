@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Store, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { getImageUrl } from '@/utils/common'
 
@@ -33,6 +34,7 @@ import {
 import { toast } from 'sonner'
 
 export function ShopSwitcher() {
+  const { t } = useTranslation()
   const { data: shopSetting, refetch } = useGetUserShopSettingQuery()
   const [selectShop, { isLoading }] = useSelectShopMutation()
   const [open, setOpen] = useState(false)
@@ -51,7 +53,7 @@ export function ShopSwitcher() {
       await refetch()
       window.location.reload()
     } catch {
-      toast.error('Không thể chuyển cửa hàng')
+      toast.error(t('components.shopSwitcher.switchShopFailed'))
     }
   }
 
@@ -85,7 +87,7 @@ export function ShopSwitcher() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="min-w-[200px]">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Chọn cửa hàng</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">{t('components.shopSwitcher.selectShop')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {shops.map(shop => {
           const itemImg = getImageUrl(shop.Image?.Url) ?? null

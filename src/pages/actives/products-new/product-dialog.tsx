@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Package, Tag, Scale, Store, Printer, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Dialog, FormDialogContent, FormDialogHeader, FormDialogBody, FormDialogFooter, DialogTitle,
@@ -49,10 +50,10 @@ function emptyProduct(groupId?: number): TPosActiveProduct {
 type RecipeRow = TPosProductRecipeRow & { _isNew?: boolean }
 
 const TABS = [
-  { key: 'product', label: 'Mặt hàng', icon: Package },
-  { key: 'price', label: 'Giá', icon: Tag },
-  { key: 'recipe', label: 'Định lượng', icon: Scale },
-  { key: 'shop', label: 'Cửa hàng', icon: Store },
+  { key: 'product', labelKey: 'pages.actives.productDialog.tabProduct', icon: Package },
+  { key: 'price', labelKey: 'pages.actives.productDialog.tabPrice', icon: Tag },
+  { key: 'recipe', labelKey: 'pages.actives.productDialog.tabRecipe', icon: Scale },
+  { key: 'shop', labelKey: 'pages.actives.productDialog.tabShop', icon: Store },
 ] as const
 type TabKey = typeof TABS[number]['key']
 
@@ -66,6 +67,7 @@ export function ProductDialog({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<TabKey>('product')
   const [form, setForm] = useState<TPosActiveProduct>(emptyProduct(defaultGroupId))
   const [images, setImages] = useState<ImageSlot[]>([emptySlot()])
@@ -156,7 +158,7 @@ export function ProductDialog({
   }
 
   const printLabel = () => {
-    if (!form.Id) { toast.error('Vui lòng lưu mặt hàng trước khi in nhãn'); return }
+    if (!form.Id) { toast.error(t('pages.actives.productDialog.pleaseSaveBeforePrint')); return }
     printData(settingProduct?.PrinterUrl, 'products/print-label', settingProduct?.BarcodePrinterName, {
       PrintCount: printCount || 1,
       ProductIds: [form.Id],
@@ -201,14 +203,14 @@ export function ProductDialog({
       setSelectedRecipeIndex(-1)
       return
     }
-    if (!window.confirm('Bạn có chắc chắn muốn xóa định lượng này?')) return
+    if (!window.confirm(t('pages.actives.productDialog.confirmDeleteRecipe'))) return
     if (!form.Id || !row.Id) return
     try {
       await deleteProductRecipe({ productId: form.Id, id: row.Id }).unwrap()
       setSelectedRecipeIndex(-1)
       refetchRecipes()
     } catch {
-      toast.error('Không thể xóa định lượng')
+      toast.error(t('pages.actives.productDialog.deleteRecipeFailed'))
     }
   }
 
@@ -217,13 +219,13 @@ export function ProductDialog({
       await updateShop({ ...shop, IsDefault: !shop.IsDefault }).unwrap()
       refetchShops()
     } catch {
-      toast.error('Không thể cập nhật cửa hàng')
+      toast.error(t('pages.actives.productDialog.updateShopFailed'))
     }
   }
 
   const persistProduct = async (): Promise<number | undefined> => {
     if (!form.Name?.trim()) {
-      toast.error('Vui lòng nhập tên mặt hàng')
+      toast.error(t('pages.actives.productDialog.pleaseEnterName'))
       return undefined
     }
     const files = images.map(i => i.File).filter((f): f is File => !!f)
@@ -243,7 +245,7 @@ export function ProductDialog({
       if (newId && newId !== form.Id) set({ Id: newId })
       return newId
     } catch {
-      toast.error('Không thể lưu mặt hàng')
+      toast.error(t('pages.actives.productDialog.saveProductFailed'))
       return undefined
     }
   }
@@ -288,7 +290,9 @@ export function ProductDialog({
       if (!id) return
       await persistPriceList(id)
       await persistPendingRecipes(id)
-      toast.success(form.Id ? 'Cập nhật mặt hàng thành công' : 'Thêm mặt hàng thành công')
+      toast.success(form.Id
+        ? t('pages.actives.productDialog.updateProductSuccess')
+        : t('pages.actives.productDialog.createProductSuccess'))
       onSaved()
       after?.()
     } finally {
@@ -309,7 +313,9 @@ export function ProductDialog({
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <FormDialogContent className="grid-rows-[auto_auto_minmax(0,1fr)_auto] h-[90vh] w-full max-w-[95vw] sm:max-w-5xl">
         <FormDialogHeader>
-          <DialogTitle>{form.Id ? 'Cập nhật mặt hàng' : 'Tạo mặt hàng mới'}</DialogTitle>
+          <DialogTitle>
+            {form.Id ? t('pages.actives.productDialog.updateProduct') : t('pages.actives.productDialog.createNew')}
+          </DialogTitle>
         </FormDialogHeader>
 
         <div className="flex flex-wrap gap-2 border-b bg-muted/20 px-5 py-3">
@@ -325,7 +331,7 @@ export function ProductDialog({
                   : 'border-transparent bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground',
               )}
             >
-              <tab.icon className="h-4 w-4" /> {tab.label}
+              <tab.icon className="h-4 w-4" /> {t(tab.labelKey)}
             </button>
           ))}
         </div>
@@ -356,11 +362,11 @@ export function ProductDialog({
         </FormDialogBody>
 
         <FormDialogFooter className="sm:justify-end">
-          <Button variant="outline" onClick={onClose}>Huỷ</Button>
-          <Button onClick={() => runSave()} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
-          <Button variant="secondary" onClick={() => runSave(resetForCreateNext)} disabled={saving}>Lưu & Mới</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button onClick={() => runSave()} disabled={saving}>{saving ? t('pages.actives.productDialog.saving') : t('common.save')}</Button>
+          <Button variant="secondary" onClick={() => runSave(resetForCreateNext)} disabled={saving}>{t('pages.actives.productDialog.saveAndNew')}</Button>
           <Button variant="default" className="bg-foreground text-background hover:bg-foreground/90" onClick={() => runSave(onClose)} disabled={saving}>
-            Lưu & Thoát
+            {t('pages.actives.productDialog.saveAndExit')}
           </Button>
         </FormDialogFooter>
       </FormDialogContent>
@@ -388,34 +394,35 @@ function ProductTab({
   setPrintCount: (v: number) => void
   onPrint: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
       <div className="space-y-3 lg:col-span-8">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {settingProduct?.IsUsingProductCode !== false && (
-            <Field label="Mã sản phẩm">
-              <Input value={form.ProductCode || form.Code || ''} onChange={e => set({ ProductCode: e.target.value, Code: e.target.value })} placeholder="Nhập mã sẵn có" />
+            <Field label={t('pages.actives.productDialog.productCodeLabel')}>
+              <Input value={form.ProductCode || form.Code || ''} onChange={e => set({ ProductCode: e.target.value, Code: e.target.value })} placeholder={t('pages.actives.productDialog.productCodePlaceholder')} />
             </Field>
           )}
           {settingProduct?.IsUsingBarcode !== false && (
-            <Field label="Mã vạch (Barcode)">
-              <Input value={form.Barcode || ''} onChange={e => set({ Barcode: e.target.value })} placeholder="Nhập mã hàng" />
+            <Field label={t('pages.actives.productDialog.barcodeLabel')}>
+              <Input value={form.Barcode || ''} onChange={e => set({ Barcode: e.target.value })} placeholder={t('pages.actives.productDialog.barcodePlaceholder')} />
             </Field>
           )}
         </div>
 
-        <Field label="Tên mặt hàng" required>
-          <Input value={form.Name || ''} onChange={e => set({ Name: e.target.value })} placeholder="Nhập tên mặt hàng" />
+        <Field label={t('common.productName')} required>
+          <Input value={form.Name || ''} onChange={e => set({ Name: e.target.value })} placeholder={t('pages.actives.productDialog.productNamePlaceholder')} />
         </Field>
 
         <label className="flex items-center gap-2 py-1 text-foreground">
           <input type="checkbox" checked={!!form.IsRecipe} onChange={e => set({ IsRecipe: e.target.checked, isRecipe: e.target.checked })}
             className="h-4 w-4 rounded accent-primary" />
-          <span className="cursor-pointer select-none text-sm font-medium">Định lượng (Công thức chế biến)</span>
+          <span className="cursor-pointer select-none text-sm font-medium">{t('pages.actives.productDialog.isRecipeLabel')}</span>
         </label>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Field label="Nhóm mặt hàng">
+          <Field label={t('pages.actives.productDialog.productGroupLabel')}>
             <select
               value={form.ProductGroup?.Id || ''}
               onChange={e => {
@@ -425,59 +432,59 @@ function ProductTab({
               }}
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
-              <option value="">Không có</option>
+              <option value="">{t('pages.actives.productDialog.noneOption')}</option>
               {groups.map(g => <option key={g.Id} value={g.Id}>{g.Name}</option>)}
             </select>
           </Field>
-          <Field label="Đơn vị tính">
-            <LookupSelect endpoint="units/filter-simple" placeholder="Chọn đơn vị tính"
+          <Field label={t('pages.actives.productDialog.unitLabel')}>
+            <LookupSelect endpoint="units/filter-simple" placeholder={t('pages.actives.productDialog.unitPlaceholder')}
               value={form.Unit as { Id?: number; Name?: string } | null}
               onChange={v => set({ Unit: v ? { Id: v.Id, Name: v.Name ?? '' } : undefined })} />
           </Field>
-          <Field label="Loại mặt hàng">
-            <LookupSelect<TPosProductType> endpoint="producttypes/get-list" placeholder="Chọn loại mặt hàng"
+          <Field label={t('pages.actives.productDialog.productTypeLabel')}>
+            <LookupSelect<TPosProductType> endpoint="producttypes/get-list" placeholder={t('pages.actives.productDialog.productTypePlaceholder')}
               value={form.ProductType ?? null}
               onChange={v => set({ ProductType: v ? { Id: v.Id, Name: v.Name, Code: v.Code } : undefined })} />
           </Field>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field label="Giá bán">
+          <Field label={t('common.salePrice')}>
             <NumberInput value={form.Price ?? 0} onChange={v => set({ Price: v })} />
           </Field>
-          <Field label="Giá nhập">
+          <Field label={t('common.inputPrice')}>
             <NumberInput value={form.PriceInput ?? form.ImportPrice ?? 0} onChange={v => set({ PriceInput: v, ImportPrice: v })} />
           </Field>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Field label="Thuế (%)">
+          <Field label={t('pages.actives.productDialog.taxLabel')}>
             <NumberInput value={form.Tax ?? 0} onChange={onTaxChange} disabled={isNoTax} />
           </Field>
-          <Field label="Không có thuế">
+          <Field label={t('pages.actives.productDialog.noTaxLabel')}>
             <label className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3">
               <input type="checkbox" checked={isNoTax} onChange={e => onNoTaxToggle(e.target.checked)} className="h-4 w-4 rounded accent-primary" />
-              <span className="text-sm text-foreground">Áp dụng</span>
+              <span className="text-sm text-foreground">{t('pages.actives.productDialog.applyLabel')}</span>
             </label>
           </Field>
         </div>
 
         <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-2">
-          <Field label="Số lượng in mã vạch">
+          <Field label={t('pages.actives.productDialog.printQuantityLabel')}>
             <NumberInput value={printCount} onChange={setPrintCount} />
           </Field>
           <Button type="button" onClick={onPrint} className="h-9 w-full bg-emerald-600 hover:bg-emerald-700">
-            <Printer className="mr-1.5 h-4 w-4" /> In nhãn
+            <Printer className="mr-1.5 h-4 w-4" /> {t('pages.actives.productDialog.printLabelButton')}
           </Button>
         </div>
 
-        <Field label="Ghi chú">
-          <Textarea rows={3} value={form.Note || ''} onChange={e => set({ Note: e.target.value })} placeholder="Nhập ghi chú thêm cho mặt hàng..." />
+        <Field label={t('common.note')}>
+          <Textarea rows={3} value={form.Note || ''} onChange={e => set({ Note: e.target.value })} placeholder={t('pages.actives.productDialog.notePlaceholder')} />
         </Field>
       </div>
 
       <div className="lg:col-span-4">
-        <Field label="Hình ảnh mặt hàng" className="h-full">
+        <Field label={t('pages.actives.productDialog.productImagesLabel')} className="h-full">
           <div className="h-full rounded-xl border bg-muted/20 p-3">
             <ProductImageUploads images={images} onChange={setImages} />
           </div>
@@ -493,18 +500,19 @@ function PriceTab({ priceList, onChange }: {
   priceList: TPosProductPriceRow[]
   onChange: (index: number, field: 'PriceSmall' | 'PriceMedium' | 'PriceLarge', value: number) => void
 }) {
+  const { t } = useTranslation()
   if (!priceList.length) {
-    return <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">Chưa có mức giá nào được thiết lập</div>
+    return <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">{t('pages.actives.productDialog.noPriceLevels')}</div>
   }
   return (
     <div className="overflow-x-auto rounded-xl border">
       <table className="w-full text-sm">
         <thead className="bg-muted/50">
           <tr>
-            <th className="min-w-[180px] px-3 py-2 text-left font-semibold text-muted-foreground">Mức giá</th>
-            <th className="min-w-[120px] px-3 py-2 text-center font-semibold text-muted-foreground">Nhỏ</th>
-            <th className="min-w-[120px] px-3 py-2 text-center font-semibold text-muted-foreground">Vừa</th>
-            <th className="min-w-[120px] px-3 py-2 text-center font-semibold text-muted-foreground">Lớn</th>
+            <th className="min-w-[180px] px-3 py-2 text-left font-semibold text-muted-foreground">{t('pages.actives.productDialog.priceLevelColumn')}</th>
+            <th className="min-w-[120px] px-3 py-2 text-center font-semibold text-muted-foreground">{t('pages.actives.productDialog.small')}</th>
+            <th className="min-w-[120px] px-3 py-2 text-center font-semibold text-muted-foreground">{t('pages.actives.productDialog.medium')}</th>
+            <th className="min-w-[120px] px-3 py-2 text-center font-semibold text-muted-foreground">{t('pages.actives.productDialog.large')}</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -532,18 +540,19 @@ function RecipeTab({ productId, recipes, selectedIndex, onSelect, onAdd, onDelet
   onAdd: () => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex items-center gap-2">
         <Button type="button" size="sm" disabled={!productId} onClick={onAdd} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="mr-1 h-3.5 w-3.5" /> Thêm
+          <Plus className="mr-1 h-3.5 w-3.5" /> {t('pages.actives.productDialog.add')}
         </Button>
         <Button type="button" size="sm" variant="destructive" disabled={selectedIndex < 0} onClick={onDelete}>
-          <Trash2 className="mr-1 h-3.5 w-3.5" /> Xoá
+          <Trash2 className="mr-1 h-3.5 w-3.5" /> {t('pages.actives.productDialog.deleteButton')}
         </Button>
         {!productId && (
           <span className="rounded bg-amber-100 px-2 py-1 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-            Cần lưu mặt hàng trước khi thêm định lượng
+            {t('pages.actives.productDialog.needSaveBeforeRecipe')}
           </span>
         )}
       </div>
@@ -553,10 +562,10 @@ function RecipeTab({ productId, recipes, selectedIndex, onSelect, onAdd, onDelet
           <thead className="sticky top-0 bg-muted/50">
             <tr>
               <th className="w-10 px-3 py-2 text-center font-semibold text-muted-foreground">#</th>
-              <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Mã vật tư</th>
-              <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Tên vật tư</th>
-              <th className="px-3 py-2 text-left font-semibold text-muted-foreground">DVT</th>
-              <th className="px-3 py-2 text-right font-semibold text-muted-foreground">Giá bán</th>
+              <th className="px-3 py-2 text-left font-semibold text-muted-foreground">{t('pages.actives.productDialog.materialCodeColumn')}</th>
+              <th className="px-3 py-2 text-left font-semibold text-muted-foreground">{t('pages.actives.productDialog.materialNameColumn')}</th>
+              <th className="px-3 py-2 text-left font-semibold text-muted-foreground">{t('pages.actives.productDialog.unitColumnShort')}</th>
+              <th className="px-3 py-2 text-right font-semibold text-muted-foreground">{t('common.salePrice')}</th>
               <th className="px-3 py-2 text-right font-semibold text-muted-foreground">S</th>
               <th className="px-3 py-2 text-right font-semibold text-muted-foreground">M</th>
               <th className="px-3 py-2 text-right font-semibold text-muted-foreground">L</th>
@@ -564,7 +573,7 @@ function RecipeTab({ productId, recipes, selectedIndex, onSelect, onAdd, onDelet
           </thead>
           <tbody className="divide-y">
             {recipes.length === 0 ? (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">Chưa có định lượng</td></tr>
+              <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">{t('pages.actives.productDialog.noRecipes')}</td></tr>
             ) : recipes.map((item, i) => (
               <tr
                 key={i}
@@ -574,7 +583,7 @@ function RecipeTab({ productId, recipes, selectedIndex, onSelect, onAdd, onDelet
                 <td className="px-3 py-2 text-center">{i + 1}</td>
                 <td className="px-3 py-2">
                   {item.ProductRecipe?.ProductCode}
-                  {item._isNew && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Mới</span>}
+                  {item._isNew && <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">{t('pages.actives.productDialog.newBadge')}</span>}
                 </td>
                 <td className="px-3 py-2">{item.ProductRecipe?.Name || '-'}</td>
                 <td className="px-3 py-2">{item.ProductRecipe?.Unit?.Name || '-'}</td>
@@ -594,19 +603,20 @@ function RecipeTab({ productId, recipes, selectedIndex, onSelect, onAdd, onDelet
 // ─── Tab: Cửa hàng ──────────────────────────────────────────────────────────
 
 function ShopTab({ shops, onToggle }: { shops: TPosShop[]; onToggle: (shop: TPosShop) => void }) {
+  const { t } = useTranslation()
   return (
     <div className="overflow-x-auto rounded-xl border">
       <table className="w-full text-sm">
         <thead className="bg-muted/50">
           <tr>
             <th className="w-12 px-3 py-2 text-center font-semibold text-muted-foreground">#</th>
-            <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Cửa hàng</th>
-            <th className="w-20 px-3 py-2 text-center font-semibold text-muted-foreground">Chọn</th>
+            <th className="px-3 py-2 text-left font-semibold text-muted-foreground">{t('pages.actives.productDialog.shopColumn')}</th>
+            <th className="w-20 px-3 py-2 text-center font-semibold text-muted-foreground">{t('pages.actives.productDialog.selectColumn')}</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {shops.length === 0 ? (
-            <tr><td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">Chưa có cửa hàng</td></tr>
+            <tr><td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">{t('pages.actives.productDialog.noShops')}</td></tr>
           ) : shops.map((shop, i) => (
             <tr key={shop.Id} className={cn(shop.IsDefault && 'bg-primary/5')}>
               <td className="px-3 py-2 text-center">{i + 1}</td>

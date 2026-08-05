@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CalendarCheck, Plus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -15,6 +16,7 @@ import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 
 
 export default function BookingPage() {
+  const { t } = useTranslation()
   const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
@@ -41,18 +43,18 @@ export default function BookingPage() {
     try {
       await updateStatus({ id, statusId: newStatusId }).unwrap()
       refetch()
-    } catch { toast.error('Không thể cập nhật trạng thái') }
+    } catch { toast.error(t('pages.actives.booking.toggleStatusError')) }
   }
 
   const columns: ColumnDef<TPosBooking>[] = [
     {
       id: 'stt',
-      header: 'STT',
+      header: t('common.index'),
       cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'code',
-      header: 'Số phiếu',
+      header: t('common.voucherNo'),
       cell: ({ row }) => (
         <button
           type="button"
@@ -65,39 +67,39 @@ export default function BookingPage() {
     },
     {
       id: 'date',
-      header: 'Ngày',
+      header: t('common.date'),
       cell: ({ row }) => <span className="whitespace-nowrap">{fmtDate(row.original.Date)}</span>,
     },
     {
       id: 'deliveryDate',
-      header: 'Ngày giao',
+      header: t('common.deliveryDate'),
       cell: ({ row }) => <span className="whitespace-nowrap">{fmtDate(row.original.DeliveryDate)}</span>,
     },
     {
       id: 'customer',
-      header: 'Khách hàng',
+      header: t('common.customer'),
       cell: ({ row }) => row.original.Customer?.Name ?? '—',
     },
     {
       id: 'user',
-      header: 'Nhân viên',
+      header: t('pages.actives.booking.employee'),
       cell: ({ row }) => row.original.User?.Name ?? '—',
     },
     {
       id: 'total',
-      header: 'Tiền hàng',
+      header: t('pages.actives.booking.subtotalColumn'),
       cell: ({ row }) => (
         <MoneyTag value={row.original.Total ?? row.original.SubTotal} />
       ),
     },
     {
       id: 'status',
-      header: 'TT',
+      header: t('common.statusShort'),
       cell: ({ row }) => <StatusBadge status={row.original.Status} />,
     },
     {
       id: 'actions',
-      header: 'Thao tác',
+      header: t('common.actions'),
       cell: ({ row }) => {
         const item = row.original
         return (
@@ -122,21 +124,21 @@ export default function BookingPage() {
 
   return (
     <div className="space-y-4">
-      <ListPageHeader title="Khách đặt hàng" icon={CalendarCheck}>
-        <SearchBar value={keyword} onChange={setKeyword} placeholder="Tìm số phiếu, khách hàng..." />
+      <ListPageHeader title={t('pages.actives.booking.pageTitle')} icon={CalendarCheck}>
+        <SearchBar value={keyword} onChange={setKeyword} placeholder={t('pages.actives.booking.searchPlaceholder')} />
         <DateRangeFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
         <select
           value={statusId}
           onChange={e => { setStatusId(e.target.value === '' ? '' : Number(e.target.value)); goPage(1) }}
           className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="">Tất cả TT</option>
-          <option value={1}>Hoạt động</option>
-          <option value={2}>Đã huỷ</option>
-          <option value={4}>Hoàn thành</option>
+          <option value="">{t('pages.actives.booking.statusAll')}</option>
+          <option value={1}>{t('common.active')}</option>
+          <option value={2}>{t('pages.actives.booking.statusCancelled')}</option>
+          <option value={4}>{t('pages.actives.booking.statusCompleted')}</option>
         </select>
         <Button size="sm" onClick={openAdd} className="h-8">
-          <Plus className="h-3.5 w-3.5 mr-1" /> Tạo đơn đặt
+          <Plus className="h-3.5 w-3.5 mr-1" /> {t('pages.actives.booking.createBooking')}
         </Button>
       </ListPageHeader>
 
@@ -148,12 +150,12 @@ export default function BookingPage() {
         page={page}
         pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={goPage}
-        emptyText="Không có đơn đặt hàng nào"
+        emptyText={t('pages.actives.booking.emptyText')}
       />
 
       <StockDocumentDialog
         open={modal} onOpenChange={setModal}
-        title="Tạo đơn đặt hàng"
+        title={t('pages.actives.booking.dialogTitle')}
         endpoints={{ detail: 'bookings/detail', create: 'bookings/create', update: 'bookings/update' }}
         options={{ customer: true }}
         editId={editId}
