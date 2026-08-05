@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -23,7 +24,7 @@ type SelectSearchableProps = {
 };
 
 const SelectSearchable: React.FC<SelectSearchableProps> = ({
-  placeholder = "Chọn...",
+  placeholder,
   className,
   value,
   onChange,
@@ -32,10 +33,13 @@ const SelectSearchable: React.FC<SelectSearchableProps> = ({
   valueKey = 'value',
   labelKey = 'label',
 }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const resolvedPlaceholder = placeholder ?? t('components.selectSearchable.selectPlaceholder');
 
   const selectedOption = options.find((opt) => String(opt[valueKey]) === String(value || ''));
 
@@ -91,7 +95,7 @@ const SelectSearchable: React.FC<SelectSearchableProps> = ({
         disabled={disabled}
       >
         <span className="truncate">
-          {selectedOption ? selectedOption[labelKey] : placeholder}
+          {selectedOption ? selectedOption[labelKey] : resolvedPlaceholder}
         </span>
         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </Button>
@@ -104,17 +108,17 @@ const SelectSearchable: React.FC<SelectSearchableProps> = ({
         >
           <Command shouldFilter={false} className="rounded-md">
             <CommandInput
-              placeholder="Tìm kiếm..."
+              placeholder={t('components.selectSearchable.searchPlaceholder')}
               value={searchValue}
               onValueChange={setSearchValue}
               autoFocus
             />
             <CommandList className="max-h-[250px]">
-              <CommandEmpty>Không tìm thấy kết quả.</CommandEmpty>
+              <CommandEmpty>{t('components.selectSearchable.noResultsFound')}</CommandEmpty>
               <CommandGroup>
                 {filteredOptions.length === 0 ? (
                   <div className="px-2 py-1.5 text-sm text-muted-foreground text-center">
-                    Không có dữ liệu
+                    {t('common.noData')}
                   </div>
                 ) : (
                   filteredOptions.map((option) => (

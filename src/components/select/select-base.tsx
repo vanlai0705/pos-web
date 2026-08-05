@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import {
   SelectTrigger,
   SelectValue,
@@ -33,6 +34,7 @@ const SelectBase: React.FC<SelectBaseProps> = ({
   disabled = false,
   valueDisable = ""
 }) => {
+  const { t } = useTranslation();
   return (
     <Select
       disabled={loading}
@@ -45,7 +47,7 @@ const SelectBase: React.FC<SelectBaseProps> = ({
       <SelectContent className={`${classNameContent} max-h-60 overflow-y-auto`}>
         {options.length === 0 ? (
           <div className="px-2 py-1.5 text-sm text-muted-foreground text-center">
-            Không có dữ liệu
+            {t('common.noData')}
           </div>
         ) : (
           options.map((option) => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { buildModelFormData } from '@/utils/multipart'
 import { Plus, X } from 'lucide-react'
@@ -114,8 +115,8 @@ function withTempIds(items: PromotionItem[] = []) {
   return items.map(i => ({ ...i, TempId: String(i.Id ?? crypto.randomUUID()) }))
 }
 
-function errMsg(e: any) {
-  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || 'Không thể xử lý yêu cầu'
+function errMsg(e: any, fallback: string) {
+  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || fallback
 }
 
 const money = (v?: number) => (v ?? 0).toLocaleString('vi-VN')
@@ -125,6 +126,7 @@ const money = (v?: number) => (v ?? 0).toLocaleString('vi-VN')
  * `promotions/create|update|detail` and differ only in `Type` and item columns.
  */
 export function PromotionDialog({ open, onOpenChange, type, title, editId, onSaved }: Props) {
+  const { t } = useTranslation()
   const [form, setForm] = useState<Promotion>(emptyPromotion(type))
   const mode = rowMode(type)
   const showDiscount = hasDiscountCols(type)
@@ -146,8 +148,8 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
           Items: withTempIds(d.Items),
         })
       })
-      .catch(e => toast.error(errMsg(e)))
-  }, [open, editId, type, fetchDetail])
+      .catch(e => toast.error(errMsg(e, t('components.promotionDialog.errorProcessRequest'))))
+  }, [open, editId, type, fetchDetail, t])
 
   const setItems = (fn: (items: PromotionItem[]) => PromotionItem[]) =>
     setForm(f => ({ ...f, Items: fn(f.Items ?? []) }))
@@ -178,9 +180,9 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
   }
 
   const handleSave = async () => {
-    if (!form.Name?.trim()) { toast.error('Vui lòng nhập tên chương trình'); return }
+    if (!form.Name?.trim()) { toast.error(t('components.promotionDialog.nameRequired')); return }
     if (mode !== 'single' && !(form.Items ?? []).length) {
-      toast.error('Chi tiết khuyến mãi đang trống — vui lòng thêm ít nhất một dòng')
+      toast.error(t('components.promotionDialog.itemsRequired'))
       return
     }
     try {
@@ -197,10 +199,12 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
           Items: (form.Items ?? []).map(({ TempId: _TempId, ...rest }) => rest),
         }),
       }).unwrap()
-      toast.success(form.Id ? 'Cập nhật thành công' : 'Thêm chương trình thành công')
+      toast.success(form.Id
+        ? t('components.promotionDialog.updateSuccess')
+        : t('components.promotionDialog.createSuccess'))
       onOpenChange(false)
       onSaved()
-    } catch (e) { toast.error(errMsg(e)) }
+    } catch (e) { toast.error(errMsg(e, t('components.promotionDialog.errorProcessRequest'))) }
   }
 
   const items = form.Items ?? []
@@ -210,53 +214,55 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>{form.Id ? `Sửa ${title.toLowerCase()}` : title}</DialogTitle>
+          <DialogTitle>
+            {form.Id ? t('components.promotionDialog.editTitle', { title: title.toLowerCase() }) : title}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <div className="grid grid-cols-4 gap-3">
             <div className="col-span-2 space-y-1">
-              <Label>Tên <span className="text-destructive">*</span></Label>
+              <Label>{t('common.name')} <span className="text-destructive">*</span></Label>
               <Input value={form.Name ?? ''} onChange={e => setForm(f => ({ ...f, Name: e.target.value }))}
-                placeholder="Tên chương trình" />
+                placeholder={t('common.programName')} />
             </div>
             <div className="space-y-1">
-              <Label>Từ ngày</Label>
+              <Label>{t('common.fromDate')}</Label>
               <Input type="date" value={form.DateFrom ?? ''} onChange={e => setForm(f => ({ ...f, DateFrom: e.target.value }))} />
             </div>
             <div className="space-y-1">
-              <Label>Đến ngày</Label>
+              <Label>{t('common.toDate')}</Label>
               <Input type="date" value={form.DateTo ?? ''} onChange={e => setForm(f => ({ ...f, DateTo: e.target.value }))} />
             </div>
           </div>
 
           <div className="grid grid-cols-4 items-end gap-3">
             <div className="space-y-1">
-              <Label>Ưu tiên</Label>
+              <Label>{t('components.promotionDialog.priority')}</Label>
               <NumberInput min={0} max={999999} value={form.Priority ?? 0}
                 onChange={v => setForm(f => ({ ...f, Priority: v }))} />
             </div>
             <div className="col-span-2 space-y-1">
-              <Label>Ghi chú</Label>
+              <Label>{t('common.note')}</Label>
               <Textarea rows={1} value={form.Note ?? ''} onChange={e => setForm(f => ({ ...f, Note: e.target.value }))} />
             </div>
             <label className="flex cursor-pointer select-none items-center gap-2 py-2">
               {/* Angular flips Status to Locked when "Ngừng áp dụng" is on. */}
               <Switch checked={stopped}
                 onCheckedChange={v => setForm(f => ({ ...f, Status: { Id: v ? STATUS.LOCKED : STATUS.ACTIVE } }))} />
-              <span className="text-sm font-medium">Ngừng áp dụng</span>
+              <span className="text-sm font-medium">{t('components.promotionDialog.stopApplying')}</span>
             </label>
           </div>
 
           {mode === 'single' ? (
             <div className="grid grid-cols-2 gap-3 rounded-xl border bg-muted/30 p-3">
               <div className="space-y-1">
-                <Label>Tỷ lệ giảm giá (%)</Label>
+                <Label>{t('components.promotionDialog.discountPercentLabel')}</Label>
                 <NumberInput min={0} max={100} value={items[0]?.DiscountPercent ?? 0}
                   onChange={v => patchItem(items[0]?.TempId ?? '', { DiscountPercent: v })} />
               </div>
               <div className="space-y-1">
-                <Label>Giảm giá</Label>
+                <Label>{t('components.promotionDialog.discountAmount')}</Label>
                 <NumberInput min={0} max={999999999} value={items[0]?.Discount ?? 0}
                   onChange={v => patchItem(items[0]?.TempId ?? '', { Discount: v })} />
               </div>
@@ -265,20 +271,22 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Label className="flex-1">
-                  Chi tiết khuyến mãi <span className="text-destructive">*</span>
+                  {t('components.promotionDialog.itemsDetail')} <span className="text-destructive">*</span>
                 </Label>
                 {mode === 'productGroup' && (
-                  <LookupSelect className="w-64" endpoint="productgroups/filter-simple" placeholder="Chọn nhóm hàng để thêm"
+                  <LookupSelect className="w-64" endpoint="productgroups/filter-simple"
+                    placeholder={t('components.promotionDialog.selectGroupToAdd')}
                     value={null} onChange={v => addByPick('ProductGroup', v)} />
                 )}
                 {mode === 'product' && (
-                  <LookupSelect<TProduct> className="w-64" endpoint="products/filter-simple" placeholder="Chọn mặt hàng để thêm"
+                  <LookupSelect<TProduct> className="w-64" endpoint="products/filter-simple"
+                    placeholder={t('components.promotionDialog.selectProductToAdd')}
                     subtitle={p => p.Barcode} value={null} onChange={v => addByPick('Product', v)} />
                 )}
                 {mode === 'manual' && (
                   <Button type="button" size="sm" variant="outline"
                     onClick={() => setItems(list => [...list, newItem(type)])}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Thêm dòng
+                    <Plus className="h-3.5 w-3.5 mr-1" /> {t('components.promotionDialog.addRow')}
                   </Button>
                 )}
               </div>
@@ -287,22 +295,22 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-xs text-muted-foreground">
                     <tr className="h-9">
-                      <th className="w-10 px-2">STT</th>
-                      {type === PROMOTION_TYPE.DiscountByCategory && <th className="px-2 text-left">Nhóm hàng</th>}
-                      {type === PROMOTION_TYPE.DiscountByProduct && <th className="px-2 text-left">Mặt hàng</th>}
-                      {type === PROMOTION_TYPE.DiscountByProduct && <th className="px-2">Mã vạch</th>}
-                      {type === PROMOTION_TYPE.DiscountByBillTotal && <th className="px-2 text-right">Giá trị đơn hàng từ</th>}
+                      <th className="w-10 px-2">{t('common.index')}</th>
+                      {type === PROMOTION_TYPE.DiscountByCategory && <th className="px-2 text-left">{t('components.promotionDialog.productGroupColumn')}</th>}
+                      {type === PROMOTION_TYPE.DiscountByProduct && <th className="px-2 text-left">{t('components.promotionDialog.productColumn')}</th>}
+                      {type === PROMOTION_TYPE.DiscountByProduct && <th className="px-2">{t('components.promotionDialog.barcodeColumn')}</th>}
+                      {type === PROMOTION_TYPE.DiscountByBillTotal && <th className="px-2 text-right">{t('components.promotionDialog.billTotalFrom')}</th>}
                       {(type === PROMOTION_TYPE.DiscountByQuantity
                         || type === PROMOTION_TYPE.ProductSamePrice
-                        || type === PROMOTION_TYPE.Buy1Get1) && <th className="px-2 text-left">Mặt hàng</th>}
-                      {type === PROMOTION_TYPE.Buy1Get1 && <th className="px-2">ĐVT</th>}
-                      {type === PROMOTION_TYPE.Buy1Get1 && <th className="px-2 text-left">Mặt hàng tặng</th>}
-                      {type === PROMOTION_TYPE.Buy1Get1 && <th className="px-2">ĐVT</th>}
-                      {type === PROMOTION_TYPE.DiscountByQuantity && <th className="px-2 text-right">Số lượng</th>}
-                      {showDiscount && <th className="px-2 text-right">Giảm %</th>}
-                      {showDiscount && <th className="px-2 text-right">Giảm giá</th>}
-                      {type === PROMOTION_TYPE.ProductSamePrice && <th className="px-2 text-right">Giá bán</th>}
-                      {type === PROMOTION_TYPE.ProductSamePrice && <th className="px-2 text-right">Giá khuyến mãi</th>}
+                        || type === PROMOTION_TYPE.Buy1Get1) && <th className="px-2 text-left">{t('components.promotionDialog.productColumn')}</th>}
+                      {type === PROMOTION_TYPE.Buy1Get1 && <th className="px-2">{t('components.promotionDialog.unitColumn')}</th>}
+                      {type === PROMOTION_TYPE.Buy1Get1 && <th className="px-2 text-left">{t('components.promotionDialog.giftProductColumn')}</th>}
+                      {type === PROMOTION_TYPE.Buy1Get1 && <th className="px-2">{t('components.promotionDialog.unitColumn')}</th>}
+                      {type === PROMOTION_TYPE.DiscountByQuantity && <th className="px-2 text-right">{t('common.quantity')}</th>}
+                      {showDiscount && <th className="px-2 text-right">{t('components.promotionDialog.discountPercentColumn')}</th>}
+                      {showDiscount && <th className="px-2 text-right">{t('components.promotionDialog.discountAmount')}</th>}
+                      {type === PROMOTION_TYPE.ProductSamePrice && <th className="px-2 text-right">{t('common.salePrice')}</th>}
+                      {type === PROMOTION_TYPE.ProductSamePrice && <th className="px-2 text-right">{t('components.promotionDialog.promotionalPrice')}</th>}
                       <th className="w-10" />
                     </tr>
                   </thead>
@@ -311,8 +319,8 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
                       <tr>
                         <td colSpan={12} className="p-4 text-center text-xs text-muted-foreground">
                           {mode === 'manual'
-                            ? 'Chưa có dòng nào — bấm "Thêm dòng"'
-                            : 'Chưa có dòng nào — chọn mặt hàng/nhóm hàng ở trên để thêm'}
+                            ? t('components.promotionDialog.emptyRowsManual')
+                            : t('components.promotionDialog.emptyRowsPicker')}
                         </td>
                       </tr>
                     )}
@@ -344,7 +352,8 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
                             || type === PROMOTION_TYPE.ProductSamePrice
                             || type === PROMOTION_TYPE.Buy1Get1) && (
                               <td className="px-2 py-1 min-w-[180px]">
-                                <LookupSelect<TProduct> endpoint="products/filter-simple" placeholder="Chọn mặt hàng"
+                                <LookupSelect<TProduct> endpoint="products/filter-simple"
+                                  placeholder={t('components.promotionDialog.selectProduct')}
                                   value={item.Product} onChange={v => patchItem(key, { Product: v })} />
                               </td>
                             )}
@@ -353,7 +362,8 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
                           )}
                           {type === PROMOTION_TYPE.Buy1Get1 && (
                             <td className="px-2 py-1 min-w-[180px]">
-                              <LookupSelect<TProduct> endpoint="products/filter-simple" placeholder="Mặt hàng tặng"
+                              <LookupSelect<TProduct> endpoint="products/filter-simple"
+                                placeholder={t('components.promotionDialog.giftProductColumn')}
                                 value={item.ProductGet} onChange={v => patchItem(key, { ProductGet: v })} />
                             </td>
                           )}
@@ -412,8 +422,10 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? t('components.promotionDialog.savingEllipsis') : t('common.save')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

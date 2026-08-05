@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Search, Trash2, Package } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { buildModelFormData } from '@/utils/multipart'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,8 +83,8 @@ function lineTotal(l: StockDocLine) {
   return (l.Quantity ?? 0) * (l.Price ?? 0)
 }
 
-function errMsg(e: any) {
-  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || 'Không thể xử lý yêu cầu'
+function errMsg(e: any, fallback: string) {
+  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || fallback
 }
 
 /**
@@ -94,6 +95,7 @@ function errMsg(e: any) {
 export function StockDocumentDialog({
   open, onOpenChange, title, endpoints, options, editId, onSaved,
 }: Props) {
+  const { t } = useTranslation()
   const isCheck = !!options.stockCheck
   const [form, setForm] = useState<StockDoc>(emptyStockDoc())
   const [keyword, setKeyword] = useState('')
@@ -122,8 +124,8 @@ export function StockDocumentDialog({
           Items: d.Items ?? [],
         })
       })
-      .catch(e => toast.error(errMsg(e)))
-  }, [open, editId, endpoints.detail, fetchDetail])
+      .catch(e => toast.error(errMsg(e, t('components.stockDocumentDialog.genericError'))))
+  }, [open, editId, endpoints.detail, fetchDetail, t])
 
   const setLine = useCallback((idx: number, patch: Partial<StockDocLine>) => {
     setForm(f => {
@@ -174,73 +176,75 @@ export function StockDocumentDialog({
   )
 
   const handleSave = async () => {
-    if (!(form.Items ?? []).length) { toast.error('Vui lòng chọn mặt hàng'); return }
-    if (options.stockIn && !form.StockIn?.Id) { toast.error('Vui lòng chọn kho nhập'); return }
-    if (options.stockOut && !form.StockOut?.Id) { toast.error('Vui lòng chọn kho xuất'); return }
+    if (!(form.Items ?? []).length) { toast.error(t('components.stockDocumentDialog.selectItemRequired')); return }
+    if (options.stockIn && !form.StockIn?.Id) { toast.error(t('components.stockDocumentDialog.selectStockInRequired')); return }
+    if (options.stockOut && !form.StockOut?.Id) { toast.error(t('components.stockDocumentDialog.selectStockOutRequired')); return }
     try {
       await request({
         url: form.Id ? endpoints.update : endpoints.create,
         method: 'POST',
         body: buildModelFormData(form),
       }).unwrap()
-      toast.success(form.Id ? 'Cập nhật thành công' : 'Tạo phiếu thành công')
+      toast.success(form.Id
+        ? t('components.stockDocumentDialog.updateSuccess')
+        : t('components.stockDocumentDialog.createSuccess'))
       onOpenChange(false)
       onSaved()
-    } catch (e) { toast.error(errMsg(e)) }
+    } catch (e) { toast.error(errMsg(e, t('components.stockDocumentDialog.genericError'))) }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl">
-        <DialogHeader><DialogTitle>{form.Id ? `Sửa ${title.toLowerCase()}` : title}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{form.Id ? `${t('components.stockDocumentDialog.editPrefix')} ${title.toLowerCase()}` : title}</DialogTitle></DialogHeader>
 
         <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <div className="space-y-3">
             {/* Header fields — mirrors view-order-edit */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Ngày</Label>
+                <Label>{t('common.date')}</Label>
                 <Input type="date" value={form.Date ?? ''} onChange={e => setForm(f => ({ ...f, Date: e.target.value }))} />
               </div>
               <div className="space-y-1">
-                <Label>Số phiếu</Label>
-                <Input value={form.Name ?? ''} disabled placeholder="Tự động" />
+                <Label>{t('common.voucherNo')}</Label>
+                <Input value={form.Name ?? ''} disabled placeholder={t('components.stockDocumentDialog.autoPlaceholder')} />
               </div>
               {options.stockOut && (
                 <div className="space-y-1">
-                  <Label>Kho xuất</Label>
-                  <LookupSelect endpoint="stock/filter-simple" placeholder="Chọn kho xuất"
+                  <Label>{t('common.stockOut')}</Label>
+                  <LookupSelect endpoint="stock/filter-simple" placeholder={t('components.stockDocumentDialog.selectStockOut')}
                     value={form.StockOut} onChange={v => setForm(f => ({ ...f, StockOut: v }))} />
                 </div>
               )}
               {options.stockIn && (
                 <div className="space-y-1">
-                  <Label>Kho nhập</Label>
-                  <LookupSelect endpoint="stock/filter-simple" placeholder="Chọn kho nhập"
+                  <Label>{t('common.stockIn')}</Label>
+                  <LookupSelect endpoint="stock/filter-simple" placeholder={t('components.stockDocumentDialog.selectStockIn')}
                     value={form.StockIn} onChange={v => setForm(f => ({ ...f, StockIn: v }))} />
                 </div>
               )}
               {options.supplier && (
                 <div className="space-y-1">
-                  <Label>Nhà cung cấp</Label>
-                  <LookupSelect endpoint="suppliers/filter-simple" placeholder="Chọn nhà cung cấp"
+                  <Label>{t('common.supplier')}</Label>
+                  <LookupSelect endpoint="suppliers/filter-simple" placeholder={t('components.stockDocumentDialog.selectSupplier')}
                     value={form.Supplier} onChange={v => setForm(f => ({ ...f, Supplier: v }))} />
                 </div>
               )}
               {options.customer && (
                 <div className="space-y-1">
-                  <Label>Khách hàng</Label>
-                  <LookupSelect endpoint="customers/filter-simple" placeholder="Chọn khách hàng"
+                  <Label>{t('common.customer')}</Label>
+                  <LookupSelect endpoint="customers/filter-simple" placeholder={t('components.stockDocumentDialog.selectCustomer')}
                     value={form.Customer} onChange={v => setForm(f => ({ ...f, Customer: v }))} />
                 </div>
               )}
               <div className="space-y-1">
-                <Label>Nhân viên</Label>
-                <LookupSelect endpoint="users/filter-simple" placeholder="Chọn nhân viên"
+                <Label>{t('components.stockDocumentDialog.employee')}</Label>
+                <LookupSelect endpoint="users/filter-simple" placeholder={t('components.stockDocumentDialog.selectEmployee')}
                   value={form.User} onChange={v => setForm(f => ({ ...f, User: v }))} />
               </div>
               <div className="space-y-1">
-                <Label>Ghi chú</Label>
+                <Label>{t('common.note')}</Label>
                 <Input value={form.Note ?? ''} onChange={e => setForm(f => ({ ...f, Note: e.target.value }))} />
               </div>
             </div>
@@ -251,14 +255,16 @@ export function StockDocumentDialog({
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-muted/60 backdrop-blur">
                     <tr>
-                      {['#', 'Mặt hàng', ...(isCheck ? ['SL hệ thống', 'SL thực tế', 'Chênh lệch'] : ['SL', 'Đơn giá', 'Thành tiền']), ''].map(h => (
+                      {['#', t('components.stockDocumentDialog.item'), ...(isCheck
+                        ? [t('components.stockDocumentDialog.qtySystem'), t('components.stockDocumentDialog.qtyReal'), t('components.stockDocumentDialog.difference')]
+                        : [t('components.stockDocumentDialog.qty'), t('common.price'), t('common.amount')]), ''].map(h => (
                         <th key={h} className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {(form.Items ?? []).length === 0 && (
-                      <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Chưa có mặt hàng</td></tr>
+                      <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">{t('components.stockDocumentDialog.noItems')}</td></tr>
                     )}
                     {(form.Items ?? []).map((l, i) => (
                       <tr key={l.Product?.Id ?? i} className="hover:bg-muted/20">
@@ -308,7 +314,7 @@ export function StockDocumentDialog({
               </div>
               {!isCheck && (
                 <div className="flex justify-between border-t bg-muted/30 px-3 py-2 text-sm">
-                  <span className="font-medium">Tổng cộng</span>
+                  <span className="font-medium">{t('components.stockDocumentDialog.grandTotal')}</span>
                   <span className="font-bold tabular-nums text-primary">{subTotal.toLocaleString('vi-VN')}</span>
                 </div>
               )}
@@ -319,13 +325,13 @@ export function StockDocumentDialog({
           <div className="rounded-lg border p-2 space-y-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input className="h-9 pl-8" placeholder="Tìm mặt hàng, mã vạch..."
+              <Input className="h-9 pl-8" placeholder={t('components.stockDocumentDialog.searchProductPlaceholder')}
                 value={keyword} onChange={e => setKeyword(e.target.value)} />
             </div>
             <div className="max-h-[420px] space-y-1 overflow-y-auto">
-              {loadingProducts && <div className="px-2 py-3 text-xs text-muted-foreground">Đang tải...</div>}
+              {loadingProducts && <div className="px-2 py-3 text-xs text-muted-foreground">{t('common.loading')}</div>}
               {!loadingProducts && products.length === 0 && (
-                <div className="px-2 py-3 text-xs text-muted-foreground">Không tìm thấy mặt hàng</div>
+                <div className="px-2 py-3 text-xs text-muted-foreground">{t('components.stockDocumentDialog.noProductsFound')}</div>
               )}
               {products.map(p => {
                 const img = getImageUrl(p.Image?.Url ?? p.Images?.[0]?.Url ?? undefined)
@@ -338,7 +344,7 @@ export function StockDocumentDialog({
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-medium">{p.Name}</div>
                       <div className="text-[10px] text-muted-foreground">
-                        {p.ProductCode ?? p.Code} · Tồn {p.Quantity?.toLocaleString('vi-VN') ?? 0}
+                        {p.ProductCode ?? p.Code} · {t('common.inventory')} {p.Quantity?.toLocaleString('vi-VN') ?? 0}
                       </div>
                     </div>
                     <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
@@ -353,11 +359,11 @@ export function StockDocumentDialog({
 
         <DialogFooter className="items-center justify-between sm:justify-between">
           <span className="text-xs italic text-muted-foreground">
-            {form.CreatorUser?.FullName ? `Tạo bởi: ${form.CreatorUser.FullName}` : ''}
+            {form.CreatorUser?.FullName ? `${t('components.stockDocumentDialog.createdBy')} ${form.CreatorUser.FullName}` : ''}
           </span>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? t('components.stockDocumentDialog.saving') : t('common.save')}</Button>
           </div>
         </DialogFooter>
       </DialogContent>

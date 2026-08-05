@@ -10,6 +10,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ConfirmDialogProps {
   trigger: ReactNode;
@@ -23,13 +24,22 @@ interface ConfirmDialogProps {
 
 const ConfirmDialog = ({
   trigger,
-  title = "Xác nhận?",
-  description = "Bạn có chắc chắn muốn thực hiện hành động này?",
-  confirmText = "Xác nhận",
-  cancelText = "Huỷ",
+  title,
+  description,
+  confirmText,
+  cancelText,
   onConfirm,
   loading = false,
 }: ConfirmDialogProps) => {
+  const { t } = useTranslation();
+
+  const resolvedTitle = title ?? t("components.confirmDialog.title");
+  const resolvedDescription =
+    description ?? t("components.confirmDialog.description");
+  const resolvedConfirmText =
+    confirmText ?? t("components.confirmDialog.confirmText");
+  const resolvedCancelText = cancelText ?? t("common.cancel");
+
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -38,16 +48,16 @@ const ConfirmDialog = ({
 
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogTitle>{resolvedTitle}</AlertDialogTitle>
           <AlertDialogDescription>
-            {description}
+            {resolvedDescription}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <AlertDialogFooter>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+          <AlertDialogCancel>{resolvedCancelText}</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={loading}>
-            {loading ? "Đang xử lý..." : confirmText}
+            {loading ? t("components.confirmDialog.processing") : resolvedConfirmText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

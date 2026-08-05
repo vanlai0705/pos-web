@@ -1,4 +1,5 @@
 import { PanelLeft, LayoutPanelTop } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -9,6 +10,7 @@ import {
 import { useAppState } from '@/context/app-provider'
 
 export function LayoutToggle() {
+  const { t } = useTranslation()
   const { layoutMode, setLayoutMode } = useAppState()
 
   const isSidebar = layoutMode === 'sidebar'
@@ -22,7 +24,7 @@ export function LayoutToggle() {
             size="icon"
             className="scale-95 rounded-full"
             onClick={() => setLayoutMode(isSidebar ? 'header' : 'sidebar')}
-            aria-label="Đổi kiểu layout"
+            aria-label={t('components.layoutToggle.toggleLayout')}
           >
             {isSidebar ? (
               <LayoutPanelTop className="size-[1.2rem]" />
@@ -32,7 +34,9 @@ export function LayoutToggle() {
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom">
-          {isSidebar ? 'Chuyển sang menu header' : 'Chuyển sang menu sidebar'}
+          {isSidebar
+            ? t('components.layoutToggle.switchToHeaderMenu')
+            : t('components.layoutToggle.switchToSidebarMenu')}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

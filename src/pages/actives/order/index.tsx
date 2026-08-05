@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Search, Plus, Minus, Trash2, X,
   Printer, Banknote, Smartphone, CreditCard,
@@ -125,6 +126,13 @@ interface CartItem {
   price: number
   discountPct: number
   note: string
+  /**
+   * Per-line tax percent, seeded from the product's own Tax when added to
+   * the cart (Angular's `createOrderItem`) and independently editable after
+   * that via the Thuế column. `null` means the product itself is untaxable
+   * ("KCT") — the column stays disabled and this never becomes a number.
+   */
+  tax: number | null
 }
 
 function itemDiscount(item: CartItem) {
@@ -136,9 +144,10 @@ function itemSubtotal(item: CartItem) {
   return Math.max(0, item.price * item.qty - itemDiscount(item))
 }
 
-/** Per-item tax percent — 0 unless the shop enables per-item tax. */
+/** Per-item tax percent — 0 unless the shop enables per-item tax; the line's
+ * own Tax wins over the product's (matches Angular's `getTaxPercentItem`). */
 function itemTaxPct(item: CartItem, perItemTax: boolean) {
-  return perItemTax ? Number(item.product.Tax ?? 0) || 0 : 0
+  return perItemTax ? Number(item.tax ?? item.product.Tax) || 0 : 0
 }
 
 function itemTaxAmount(item: CartItem, perItemTax: boolean) {
@@ -246,6 +255,7 @@ const PRODUCT_PAGE_SIZE = 30
 interface ProductPanelProps { onAdd: (p: TPosActiveProduct) => void }
 
 function ProductPanel({ onAdd }: ProductPanelProps) {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const [groupId, setGroupId] = useState<number | null>(null)
   const [showCost, setShowCost] = useState(false)
@@ -292,12 +302,12 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
       <div className="px-3 pt-3 pb-2 shrink-0 space-y-2 border-b bg-gradient-to-b from-primary/5 to-transparent">
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-primary shrink-0" />
-          <span className="flex-1 text-sm font-semibold text-foreground">Chọn sản phẩm</span>
+          <span className="flex-1 text-sm font-semibold text-foreground">{t('pages.actives.order.chooseProductHeading')}</span>
           <button
             type="button"
             onClick={() => setShowCost(v => !v)}
-            title="Ẩn/Hiện giá vốn"
-            aria-label="Ẩn/Hiện giá vốn"
+            title={t('pages.actives.order.toggleCostPrice')}
+            aria-label={t('pages.actives.order.toggleCostPrice')}
             aria-pressed={showCost}
             className={cn(
               'flex items-center justify-center h-7 w-7 rounded-lg border transition-colors',
@@ -312,7 +322,7 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input
-            type="text" placeholder="Tìm sản phẩm, mã vạch..."
+            type="text" placeholder={t('pages.actives.order.searchProductPlaceholder')}
             value={keyword} onChange={e => setKeyword(e.target.value)}
             className="w-full h-9 pl-8 pr-8 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground text-foreground"
           />
@@ -326,7 +336,7 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
           <button
             onClick={() => setGroupId(null)}
             className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${groupId === null ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}
-          >Tất cả</button>
+          >{t('common.all')}</button>
           {groups.map(g => (
             <button key={g.Id} onClick={() => setGroupId(g.Id ?? null)}
               className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${groupId === g.Id ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}
@@ -343,7 +353,7 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
         ) : products.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground">
             <Package className="h-8 w-8 opacity-30" />
-            <p className="text-sm">Không tìm thấy sản phẩm</p>
+            <p className="text-sm">{t('pages.actives.order.productsNotFound')}</p>
           </div>
         ) : (
           <div className={PRODUCT_GRID}>
@@ -434,6 +444,7 @@ interface SalesTabProps {
 }
 
 function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTabProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [cart, setCart] = useState<CartItem[]>([])
   const [saveOrder, { isLoading: savingOrder }] = useSaveOrderMutation()
@@ -497,11 +508,12 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
           price: it.Price ?? it.Product?.Price ?? 0,
           discountPct: it.DiscountPercent ?? 0,
           note: it.Note ?? '',
+          tax: it.Tax ?? it.Product?.Tax ?? null,
         })))
         if (order.Note) setNote(order.Note)
         if (order.Detail) setDetail(order.Detail)
       })
-      .catch(() => toast.error('Không tải được đơn hàng của bàn'))
+      .catch(() => toast.error(t('pages.actives.order.loadTableOrderFailed')))
     return () => { cancelled = true }
   }, [tableId, bookingId, loadTableOrder])
 
@@ -513,7 +525,10 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
         next[idx] = { ...next[idx], qty: next[idx].qty + 1 }
         return next
       }
-      return [...prev, { product, qty: 1, price: product.Price ?? 0, discountPct: 0, note: '' }]
+      // Angular's createOrderItem: a tax-exempt product (Tax === null/undefined)
+      // stays null forever on this line; anything else seeds a real number.
+      const tax = product.Tax == null ? null : Number(product.Tax) || 0
+      return [...prev, { product, qty: 1, price: product.Price ?? 0, discountPct: 0, note: '', tax }]
     })
   }, [])
 
@@ -531,7 +546,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
     setCart(prev => prev.filter((_, i) => i !== idx))
   }, [])
 
-  const updateItem = useCallback((idx: number, field: 'discountPct' | 'note' | 'price' | 'qty', value: number | string) => {
+  const updateItem = useCallback((idx: number, field: 'discountPct' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => {
     setCart(prev => {
       const next = [...prev]
       next[idx] = { ...next[idx], [field]: value }
@@ -601,7 +616,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       pdfCloseCallbackRef.current = onClosed ?? null
       setPdfPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url })
     } catch {
-      toast.error('Không thể tải hoá đơn để in')
+      toast.error(t('pages.actives.order.printInvoiceLoadFailed'))
       onClosed?.()
     }
   }
@@ -680,7 +695,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
         })
       })
     } catch {
-      toast.error('Không thể lấy dữ liệu in bếp')
+      toast.error(t('pages.actives.order.kitchenDataFailed'))
     }
   }
 
@@ -708,19 +723,19 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
     // Cancelling an existing table order is the one action that needs no cart.
     if (action === 'cancel-order') {
       if (!tableId) return
-      if (!window.confirm('Bạn có chắc là muốn xoá đơn hàng này không?')) return
+      if (!window.confirm(t('pages.actives.order.confirmDeleteOrder'))) return
       try {
         await deleteTableOrder(tableId).unwrap()
-        toast.success('Đã xoá đơn hàng')
+        toast.success(t('pages.actives.order.orderDeletedSuccess'))
         setCart([])
         onBack?.()
-      } catch { toast.error('Không thể xoá đơn hàng') }
+      } catch { toast.error(t('pages.actives.order.deleteOrderFailed')) }
       return
     }
 
-    if (cart.length === 0) { toast.error('Giỏ hàng trống'); return }
+    if (cart.length === 0) { toast.error(t('pages.actives.order.cartEmptyError')); return }
     if (invoiceForm.isInvoice && !invoiceForm.taxCode) {
-      toast.error('Vui lòng nhập thông tin để xuất hoá đơn')
+      toast.error(t('pages.actives.order.invoiceInfoRequired'))
       return
     }
 
@@ -740,10 +755,10 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
           Total: total,
           Items: items,
         }).unwrap()
-        toast.success('Đặt hàng thành công!')
+        toast.success(t('pages.actives.order.bookingSuccess'))
         setCart([])
         if (onBack) onBack()
-      } catch { toast.error('Không thể đặt hàng') }
+      } catch { toast.error(t('pages.actives.order.bookingFailed')) }
       return
     }
 
@@ -757,9 +772,9 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
           Total: total,
           Items: items,
         }).unwrap()
-        toast.success('Đã tạo báo giá!')
+        toast.success(t('pages.actives.order.quotationSuccess'))
         setCart([])
-      } catch { toast.error('Không thể tạo báo giá') }
+      } catch { toast.error(t('pages.actives.order.quotationFailed')) }
       return
     }
 
@@ -776,7 +791,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       Id: bookingId,
       Name: '',
       Date: now,
-      Detail: detail || 'Xuất bán hàng',
+      Detail: detail || t('pages.actives.order.defaultSaleDetail'),
       Note: note || '',
       Customer: selectedCustomer ?? null,
       User: user,
@@ -814,9 +829,9 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
     if (action === 'temp') {
       try {
         await saveOrder(order).unwrap()
-        toast.success('Đã lưu tạm đơn hàng')
+        toast.success(t('pages.actives.order.tempOrderSaved'))
         setCart([])
-      } catch { toast.error('Không thể lưu tạm đơn hàng') }
+      } catch { toast.error(t('pages.actives.order.tempOrderSaveFailed')) }
       return
     }
 
@@ -825,7 +840,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       try {
         const res = await saveTableOrder({ order: withTable(order), isUpdate: !!bookingId }).unwrap()
         const savedId = res?.OrderId ?? bookingId
-        toast.success('Đã lưu đơn hàng')
+        toast.success(t('pages.actives.order.orderSavedSuccess'))
         setCart([])
         const finish = () => onBack?.()
 
@@ -841,13 +856,13 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
           else finish()
           return
         }
-      } catch { toast.error('Không thể lưu đơn hàng') }
+      } catch { toast.error(t('pages.actives.order.orderSaveFailed')) }
       return
     }
 
     try {
       const res = await completeOrder(isTableMode ? withTable(order) : order).unwrap()
-      toast.success('Thanh toán thành công!')
+      toast.success(t('pages.actives.order.paymentSuccess'))
       setCart([])
       const finish = () => {
         // In the restaurant flow the caller sends us back to the floor plan and
@@ -860,7 +875,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       }
       if (action === 'print' && res?.Id) printBill(res.Id, res.Printers, finish)
       else finish()
-    } catch { toast.error('Không thể thanh toán đơn hàng') }
+    } catch { toast.error(t('pages.actives.order.paymentFailed')) }
   }
 
   return (
@@ -905,14 +920,14 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       <Sheet open={!!pdfPreviewUrl} onOpenChange={open => { if (!open) closePdfPreview() }}>
         <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
           <SheetHeader className="flex-none flex-row items-center justify-between gap-2 border-b px-4 py-3 space-y-0">
-            <SheetTitle>Hoá đơn</SheetTitle>
+            <SheetTitle>{t('pages.actives.order.invoicePreviewTitle')}</SheetTitle>
             <Button size="sm" className="mr-6" onClick={printPdfPreview}>
-              <Printer className="h-3.5 w-3.5 mr-1.5" /> In hoá đơn
+              <Printer className="h-3.5 w-3.5 mr-1.5" /> {t('pages.actives.order.printInvoiceButton')}
             </Button>
           </SheetHeader>
           <div className="flex-1 min-h-0 bg-muted/40 p-2">
             {pdfPreviewUrl && (
-              <iframe ref={pdfFrameRef} src={pdfPreviewUrl} title="Hoá đơn"
+              <iframe ref={pdfFrameRef} src={pdfPreviewUrl} title={t('pages.actives.order.invoicePreviewTitle')}
                 className="w-full h-full rounded border bg-white" />
             )}
           </div>
@@ -925,10 +940,10 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
 // ─── Internal order panel tabs ────────────────────────────────────────────────
 
 type PanelTab = 'sales' | 'invoice' | 'info'
-const PANEL_TABS: { key: PanelTab; label: string; icon: React.ElementType }[] = [
-  { key: 'sales',   label: 'Bán hàng',        icon: ShoppingCart },
-  { key: 'invoice', label: 'Hoá đơn điện tử', icon: FileText },
-  { key: 'info',    label: 'Thông tin',         icon: Info },
+const PANEL_TABS: { key: PanelTab; labelKey: string; icon: React.ElementType }[] = [
+  { key: 'sales',   labelKey: 'pages.actives.order.salesTabLabel',    icon: ShoppingCart },
+  { key: 'invoice', labelKey: 'pages.actives.order.eInvoiceTabLabel', icon: FileText },
+  { key: 'info',    labelKey: 'pages.actives.order.infoTabLabel',     icon: Info },
 ]
 
 // ─── Footer action button ─────────────────────────────────────────────────────
@@ -976,11 +991,11 @@ function MoneyRow({ label, children }: { label: string; children: React.ReactNod
 }
 
 /** Per-line discount %, kept clearable and clamped to 0–100. */
-function PercentInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function PercentInput({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled?: boolean }) {
   const draft = useNumberDraft(value, onChange, { min: 0, max: 100 })
   return (
-    <input type="number" min={0} max={100} {...draft}
-      className="w-full text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-center" />
+    <input type="number" min={0} max={100} disabled={disabled} {...draft}
+      className="w-full text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-center disabled:cursor-not-allowed disabled:opacity-50" />
   )
 }
 
@@ -1007,7 +1022,7 @@ interface InternalOrderPanelProps {
   onQty: (idx: number, delta: number) => void
   onRemove: (idx: number) => void
   onClear: () => void
-  onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price' | 'qty', value: number | string) => void
+  onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => void
   onSave: (action: OrderAction) => void
   saving: boolean
   settings?: TPosSettingOrder
@@ -1044,6 +1059,7 @@ function InternalOrderPanel({
   onFundTypeChange, onCustomerChange, onStaffChange, onNoteChange,
   detail, setDetail, invoiceForm, setInvoiceForm, money,
 }: InternalOrderPanelProps) {
+  const { t } = useTranslation()
   const [panelTab, setPanelTab] = useState<PanelTab>('sales')
   const { data: fundTypes = [] } = useGetPaymentTypesQuery()
   const [fundTypeId, setFundTypeId] = useState<number | null>(null)
@@ -1113,19 +1129,19 @@ function InternalOrderPanel({
         style={{ background: 'linear-gradient(to right, hsl(var(--primary) / 0.9), hsl(var(--primary) / 0.75))' }}>
         {onBack && <button onClick={onBack} className="text-white/80 hover:text-white transition-colors mr-1"><X className="h-3.5 w-3.5" /></button>}
         <ShoppingCart className="h-4 w-4 text-white/90" />
-        <span className="flex-1 text-sm font-bold text-white">{tableLabel ? 'Đặt bàn' : 'Đơn bán hàng'}</span>
+        <span className="flex-1 text-sm font-bold text-white">{tableLabel ? t('pages.actives.order.bookingHeaderTitle') : t('pages.actives.order.orderHeaderTitle')}</span>
         {tableLabel && <span className="bg-orange-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">{tableLabel}</span>}
         {cart.length > 0 && (
           <button onClick={onClear}
             className="flex items-center gap-1 rounded-full bg-rose-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-rose-600">
-            <Trash2 className="h-3 w-3" /> Xoá tất cả
+            <Trash2 className="h-3 w-3" /> {t('pages.actives.order.clearAllButton')}
           </button>
         )}
       </div>
 
       {/* Panel tab bar */}
       <div className="flex border-b shrink-0 bg-muted/20">
-        {PANEL_TABS.map(({ key, label, icon: Icon }) => (
+        {PANEL_TABS.map(({ key, labelKey, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setPanelTab(key)}
@@ -1136,7 +1152,7 @@ function InternalOrderPanel({
             }`}
           >
             <Icon className="h-3 w-3" />
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </div>
@@ -1149,26 +1165,26 @@ function InternalOrderPanel({
         <div className="flex-1 overflow-y-auto p-3">
           <div className="grid grid-cols-4 gap-2">
             <div>
-              <label className="text-xs font-medium mb-1 block">Ngày</label>
+              <label className="text-xs font-medium mb-1 block">{t('common.date')}</label>
               <input type="date"
                 className="w-full rounded-lg border border-input px-2 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground"
               />
             </div>
             <div>
-              <label className="text-xs font-medium mb-1 block">Số HĐ</label>
-              <input type="text" placeholder="Số hoá đơn..."
+              <label className="text-xs font-medium mb-1 block">{t('common.invoiceNo')}</label>
+              <input type="text" placeholder={t('pages.actives.order.invoiceNoPlaceholder')}
                 className="w-full rounded-lg border border-input px-2 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div>
-              <label className="text-xs font-medium mb-1 block">Diễn giải</label>
-              <input type="text" placeholder="Diễn giải..." value={detail} onChange={e => setDetail(e.target.value)}
+              <label className="text-xs font-medium mb-1 block">{t('common.description')}</label>
+              <input type="text" placeholder={t('pages.actives.order.detailPlaceholder')} value={detail} onChange={e => setDetail(e.target.value)}
                 className="w-full rounded-lg border border-input px-2 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div>
-              <label className="text-xs font-medium mb-1 block">Ghi chú</label>
-              <input type="text" placeholder="Ghi chú..." value={note} onChange={e => setNoteVal(e.target.value)}
+              <label className="text-xs font-medium mb-1 block">{t('common.note')}</label>
+              <input type="text" placeholder={t('pages.actives.order.notePlaceholder')} value={note} onChange={e => setNoteVal(e.target.value)}
                 className="w-full rounded-lg border border-input px-2 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground placeholder:text-muted-foreground"
               />
             </div>
@@ -1192,13 +1208,18 @@ function InternalOrderPanel({
             <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
               <ShoppingCart className="h-6 w-6 opacity-40" />
             </div>
-            <p className="text-xs">Chọn sản phẩm từ danh sách bên phải</p>
+            <p className="text-xs">{t('pages.actives.order.selectProductHint')}</p>
           </div>
         ) : (
           <table className="w-full text-xs min-w-[540px]">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur border-b z-10">
               <tr>
-                {['STT','Tên hàng','SL','Đơn giá','Giảm %','Giảm tiền','T.Tiền','Ghi chú',''].map(h => (
+                {[
+                  t('common.index'), t('pages.actives.order.colItemName'), t('pages.actives.order.colQty'),
+                  t('common.price'), t('pages.actives.order.colDiscountPercent'), t('pages.actives.order.colDiscountAmount'),
+                  ...(perItemTax ? [t('pages.actives.order.colTax')] : []),
+                  t('pages.actives.order.colLineTotal'), t('common.note'), '',
+                ].map(h => (
                   <th key={h} className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap first:text-center">{h}</th>
                 ))}
               </tr>
@@ -1207,20 +1228,26 @@ function InternalOrderPanel({
               {cart.map((item, idx) => {
                 const c = ci(item.product.Id, idx)
                 const disc = itemDiscount(item)
-                const rowTotal = itemSubtotal(item)
+                // "T.Tiền" = Angular's "Thành tiền", which is the AFTER-tax
+                // amount (getItemAmountAfterTax), not the pre-tax subtotal.
+                const rowTotal = itemAmount(item, perItemTax)
                 return (
                   <tr key={item.product.Id ?? idx} className="hover:bg-muted/20 transition-colors">
                     <td className="px-2 py-1.5 text-center text-muted-foreground">{idx + 1}</td>
                     <td className="px-2 py-1.5 max-w-[140px]">
                       <div className="flex items-center gap-1.5">
                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${DOT_COLORS[c]}`} />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex items-center gap-1">
                           <span className="font-medium text-foreground line-clamp-1">{item.product.Name}</span>
-                          {perItemTax && Number(item.product.Tax) > 0 && (
-                            <span className="ml-1 inline-block px-1 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 text-[9px] font-bold whitespace-nowrap align-middle">
-                              VAT {item.product.Tax}%
-                            </span>
-                          )}
+                          {/* KCT = không chịu thuế (Product.Tax null), CT = chịu thuế — matches order-item-list.component's tax-status-badge, shown regardless of IsTaxPerItemAllowed. */}
+                          <span className={cn(
+                            'shrink-0 rounded-full px-1.5 text-[9px] font-bold leading-[14px] whitespace-nowrap',
+                            item.product.Tax == null
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                          )}>
+                            {item.product.Tax == null ? t('pages.actives.order.taxExemptBadge') : t('pages.actives.order.taxableBadge')}
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -1255,9 +1282,18 @@ function InternalOrderPanel({
                           onUpdateItem(idx, 'discountPct', pct)
                         }} />
                     </td>
+                    {perItemTax && (
+                      <td className="px-2 py-1.5">
+                        <div className="flex items-center w-14 border border-input rounded px-1.5 py-0.5 bg-background">
+                          <PercentInput value={item.tax ?? 0} disabled={item.product.Tax == null}
+                            onChange={v => onUpdateItem(idx, 'tax', v)} />
+                          <span className="text-muted-foreground text-[10px]">%</span>
+                        </div>
+                      </td>
+                    )}
                     <td className="px-2 py-1.5 tabular-nums font-semibold text-foreground whitespace-nowrap">{fmt(rowTotal)}</td>
                     <td className="px-2 py-1.5">
-                      <input type="text" placeholder="Ghi chú..." value={item.note}
+                      <input type="text" placeholder={t('pages.actives.order.notePlaceholder')} value={item.note}
                         onChange={e => onUpdateItem(idx, 'note', e.target.value)}
                         className="w-20 text-xs bg-transparent border border-input rounded px-1.5 py-0.5 focus:outline-none placeholder:text-muted-foreground/50 text-foreground" />
                     </td>
@@ -1278,9 +1314,9 @@ function InternalOrderPanel({
       <div className="border-t px-2.5 pt-2 pb-2 space-y-1.5 shrink-0 bg-muted/20">
         {/* Ghi chú + Diễn giải */}
         <div className="grid grid-cols-2 gap-1.5">
-          <input type="text" placeholder="Ghi chú đơn hàng..." value={note} onChange={e => setNoteVal(e.target.value)}
+          <input type="text" placeholder={t('pages.actives.order.orderNotePlaceholder')} value={note} onChange={e => setNoteVal(e.target.value)}
             className="w-full rounded-lg border border-input px-2.5 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground text-foreground" />
-          <input type="text" placeholder="Diễn giải..." value={detail} onChange={e => setDetail(e.target.value)}
+          <input type="text" placeholder={t('pages.actives.order.detailPlaceholder')} value={detail} onChange={e => setDetail(e.target.value)}
             className="w-full rounded-lg border border-input px-2.5 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground text-foreground" />
         </div>
 
@@ -1301,12 +1337,12 @@ function InternalOrderPanel({
           </div>
 
           <div className="rounded-xl border bg-card px-2.5 py-2 space-y-1">
-            <MoneyRow label="Tiền hàng">
+            <MoneyRow label={t('pages.actives.order.subtotalLabel')}>
               <span className="flex-1 text-xs font-semibold tabular-nums text-foreground text-right">{fmt(subTotal)}</span>
             </MoneyRow>
 
             {settings?.IsDiscount !== false && (
-              <MoneyRow label="Giảm giá">
+              <MoneyRow label={t('pages.actives.order.discountLabel')}>
                 <div className="flex items-center gap-1 flex-1">
                   <NumInput value={money.discountPct} onChange={v => money.setDiscountPct(Math.min(100, Math.max(0, v)))} suffix="%" className="w-12" />
                   <NumInput value={money.discountAmt} onChange={money.setDiscountAmt} className="flex-1" />
@@ -1315,41 +1351,41 @@ function InternalOrderPanel({
             )}
 
             {settings?.IsVoucher && (
-              <MoneyRow label="Voucher">
+              <MoneyRow label={t('pages.actives.order.voucherLabel')}>
                 <NumInput value={money.voucher} onChange={money.setVoucher} className="flex-1" />
               </MoneyRow>
             )}
 
             {settings?.IsTax && !perItemTax && (
-              <MoneyRow label="% Thuế">
+              <MoneyRow label={t('pages.actives.order.taxPercentLabel')}>
                 <NumInput value={money.taxPct} onChange={money.setTaxOverride} suffix="%" className="flex-1" />
               </MoneyRow>
             )}
 
             {settings?.IsTranferCost && (
-              <MoneyRow label="Phí ship">
+              <MoneyRow label={t('pages.actives.order.shippingFeeLabel')}>
                 <NumInput value={money.transferCost} onChange={money.setTransferCost} className="flex-1" />
               </MoneyRow>
             )}
 
             {totalTax > 0 && (
               <div className="flex justify-between text-xs text-blue-500 dark:text-blue-400">
-                <span>Thuế{perItemTax ? '' : ` ${money.taxPct}%`}</span>
+                <span>{t('pages.actives.order.taxLabel')}{perItemTax ? '' : ` ${money.taxPct}%`}</span>
                 <span className="tabular-nums">+{fmt(totalTax)}</span>
               </div>
             )}
             {orderDiscount > 0 && (
               <div className="flex justify-between text-xs text-orange-500">
-                <span>Đã giảm</span><span className="tabular-nums">-{fmt(orderDiscount)}</span>
+                <span>{t('pages.actives.order.discountedLabel')}</span><span className="tabular-nums">-{fmt(orderDiscount)}</span>
               </div>
             )}
 
             <div className="flex justify-between items-center border-t pt-1.5">
-              <span className="text-xs font-bold text-foreground">Tổng cộng</span>
+              <span className="text-xs font-bold text-foreground">{t('pages.actives.order.totalLabel')}</span>
               <span className="text-base font-extrabold tabular-nums text-primary">{fmtCurrency(total)}</span>
             </div>
 
-            <MoneyRow label="Khách đưa">
+            <MoneyRow label={t('pages.actives.order.customerPaidLabel')}>
               <input type="number" min={0} value={payment}
                 onChange={e => money.setPayment(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder={String(Math.round(total))}
@@ -1357,7 +1393,7 @@ function InternalOrderPanel({
             </MoneyRow>
             {change != null && change > 0 && (
               <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                <span>Tiền thừa</span><span className="tabular-nums">{fmtCurrency(change)}</span>
+                <span>{t('pages.actives.order.changeLabel')}</span><span className="tabular-nums">{fmtCurrency(change)}</span>
               </div>
             )}
           </div>
@@ -1368,24 +1404,24 @@ function InternalOrderPanel({
           <>
             {/* Row 1: thoát / lưu / thanh toán */}
             <div className="grid grid-cols-4 gap-1.5">
-              <ActionBtn tone="neutral" icon={X} label="Thoát" onClick={() => onBack?.()} />
-              <ActionBtn tone="sky" icon={Save} label="Lưu & Thoát"
+              <ActionBtn tone="neutral" icon={X} label={t('pages.actives.order.exitButton')} onClick={() => onBack?.()} />
+              <ActionBtn tone="sky" icon={Save} label={t('pages.actives.order.saveAndExitButton')}
                 disabled={saving || cart.length === 0} onClick={() => onSave('save-exit')} />
-              <ActionBtn tone="emerald-strong" icon={Printer} label="TT & In"
+              <ActionBtn tone="emerald-strong" icon={Printer} label={t('pages.actives.order.payAndPrintButton')}
                 disabled={saving || cart.length === 0} onClick={() => onSave('print')} />
-              <ActionBtn tone="emerald" icon={Banknote} label="TT không in"
+              <ActionBtn tone="emerald" icon={Banknote} label={t('pages.actives.order.payNoPrintButton')}
                 disabled={saving || cart.length === 0} onClick={() => onSave('pay')} />
             </div>
             {/* Row 2: các lệnh in + xoá đơn */}
             <div className={cn('grid gap-1.5', hasTableOrder ? 'grid-cols-4' : 'grid-cols-3')}>
-              <ActionBtn tone="neutral" icon={Printer} label="In tạm"
+              <ActionBtn tone="neutral" icon={Printer} label={t('pages.actives.order.printTempButton')}
                 disabled={saving || cart.length === 0} onClick={() => onSave('print-temp')} />
-              <ActionBtn tone="indigo" icon={Printer} label="In bếp"
+              <ActionBtn tone="indigo" icon={Printer} label={t('pages.actives.order.printKitchenButton')}
                 disabled={saving || cart.length === 0} onClick={() => onSave('print-kitchen')} />
-              <ActionBtn tone="indigo" icon={Printer} label="In tem"
+              <ActionBtn tone="indigo" icon={Printer} label={t('pages.actives.order.printLabelButton')}
                 disabled={saving || cart.length === 0} onClick={() => onSave('print-label')} />
               {hasTableOrder && (
-                <ActionBtn tone="rose" icon={Trash2} label="Xoá đơn"
+                <ActionBtn tone="rose" icon={Trash2} label={t('pages.actives.order.deleteOrderButton')}
                   disabled={saving} onClick={() => onSave('cancel-order')} />
               )}
             </div>
@@ -1396,30 +1432,30 @@ function InternalOrderPanel({
           <div className="grid grid-cols-3 gap-1.5">
             <button onClick={() => onSave('temp')} disabled={saving || cart.length === 0}
               className="flex items-center justify-center gap-1 rounded-lg border border-sky-400 px-2 py-2.5 text-xs font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-all disabled:opacity-40">
-              <Save className="h-3.5 w-3.5" /> Lưu tạm
+              <Save className="h-3.5 w-3.5" /> {t('pages.actives.order.saveTempButton')}
             </button>
             <button onClick={() => onSave('print')} disabled={saving || cart.length === 0}
               className="flex items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-2 py-2.5 text-xs font-bold text-white shadow-sm hover:from-emerald-600 hover:to-emerald-700 transition-all disabled:opacity-40 col-span-1">
-              <Printer className="h-3.5 w-3.5" /> TT & In
+              <Printer className="h-3.5 w-3.5" /> {t('pages.actives.order.payAndPrintButton')}
             </button>
             <button onClick={() => onSave('pay')} disabled={saving || cart.length === 0}
               className="flex items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-2 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 transition-all disabled:opacity-40">
-              <Banknote className="h-3.5 w-3.5" /> TT không in
+              <Banknote className="h-3.5 w-3.5" /> {t('pages.actives.order.payNoPrintButton')}
             </button>
           </div>
           {/* Action buttons - row 2 */}
           <div className="grid grid-cols-3 gap-1.5">
             <button onClick={() => onSave('booking')} disabled={saving}
               className="flex items-center justify-center gap-1 rounded-lg border border-orange-400 px-2 py-2.5 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all disabled:opacity-40">
-              <BookOpen className="h-3.5 w-3.5" /> Đặt hàng
+              <BookOpen className="h-3.5 w-3.5" /> {t('pages.actives.order.bookingButton')}
             </button>
             <button onClick={() => onSave('quotation')} disabled={saving}
               className="flex items-center justify-center gap-1 rounded-lg border border-violet-400 px-2 py-2.5 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all disabled:opacity-40">
-              <FileText className="h-3.5 w-3.5" /> Báo giá
+              <FileText className="h-3.5 w-3.5" /> {t('pages.actives.order.quotationButton')}
             </button>
             <button
               className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-all">
-              <RefreshCw className="h-3.5 w-3.5" /> Mở lại
+              <RefreshCw className="h-3.5 w-3.5" /> {t('pages.actives.order.reopenButton')}
             </button>
           </div>
           </>
@@ -1428,7 +1464,7 @@ function InternalOrderPanel({
         {cart.length > 0 && (
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <ChevronRight className="h-3 w-3" />
-            <span>{cart.length} sản phẩm — {cart.reduce((s, c) => s + c.qty, 0)} đơn vị</span>
+            <span>{t('pages.actives.order.cartSummary', { count: cart.length, units: cart.reduce((s, c) => s + c.qty, 0) })}</span>
           </div>
         )}
       </div>
@@ -1437,7 +1473,7 @@ function InternalOrderPanel({
 
       <Dialog open={!!qrAccount} onOpenChange={v => !v && setQrAccount(null)}>
         <DialogContent className="max-w-xs">
-          <DialogHeader><DialogTitle>Quét mã để thanh toán</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('pages.actives.order.scanToPayTitle')}</DialogTitle></DialogHeader>
           <div className="flex flex-col items-center gap-2">
             {accounts.length > 1 && (
               <div className="flex flex-wrap justify-center gap-1">
@@ -1462,10 +1498,10 @@ function InternalOrderPanel({
               {qrAccount?.AccountName && <p className="text-xs text-muted-foreground">{qrAccount.AccountName}</p>}
             </div>
             <div className="w-full rounded-lg bg-muted px-3 py-2 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Số tiền cần thanh toán</span>
+              <span className="text-xs text-muted-foreground">{t('pages.actives.order.amountToPayLabel')}</span>
               <span className="font-bold tabular-nums">{fmt(total)}</span>
             </div>
-            <Button className="w-full" onClick={() => setQrAccount(null)}>Đóng</Button>
+            <Button className="w-full" onClick={() => setQrAccount(null)}>{t('pages.actives.order.closeButton')}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1494,6 +1530,20 @@ const PAYMENT_METHODS = [
   { value: 'CK',    label: 'CK' },
 ]
 
+/** Hoisted to module scope: defining this inside SellInvoiceTab gave it a new
+ * function identity on every keystroke, so React remounted the wrapped input
+ * (losing focus) instead of just re-rendering it. */
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-xs font-medium mb-1 block">
+        {required && <span className="text-destructive mr-0.5">*</span>}{label}
+      </label>
+      {children}
+    </div>
+  )
+}
+
 function SellInvoiceTab({
   form,
   setForm,
@@ -1501,19 +1551,9 @@ function SellInvoiceTab({
   form: InvoiceFormData
   setForm: React.Dispatch<React.SetStateAction<InvoiceFormData>>
 }) {
+  const { t } = useTranslation()
   const set = (key: keyof InvoiceFormData, value: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: value }))
-
-  function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-    return (
-      <div>
-        <label className="text-xs font-medium mb-1 block">
-          {required && <span className="text-destructive mr-0.5">*</span>}{label}
-        </label>
-        {children}
-      </div>
-    )
-  }
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -1521,17 +1561,17 @@ function SellInvoiceTab({
         {/* Toggle */}
         <div className="flex items-center gap-3">
           <Switch checked={form.isInvoice} onCheckedChange={v => set('isInvoice', v)} />
-          <span className="text-sm font-medium">Xuất hoá đơn</span>
+          <span className="text-sm font-medium">{t('pages.actives.order.exportInvoiceToggle')}</span>
         </div>
 
         {/* Row 1: MST + Tên công ty */}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="MST Khách hàng">
+          <Field label={t('common.customerTaxCode')}>
             <div className="flex gap-1.5">
               <Input
                 value={form.taxCode}
                 onChange={e => set('taxCode', e.target.value)}
-                placeholder="MST Khách hàng"
+                placeholder={t('common.customerTaxCode')}
                 className="flex-1"
               />
               <Button variant="default" size="icon" className="shrink-0">
@@ -1539,50 +1579,50 @@ function SellInvoiceTab({
               </Button>
             </div>
           </Field>
-          <Field label="Tên công ty" required>
-            <Input value={form.companyName} onChange={e => set('companyName', e.target.value)} placeholder="Tên công ty" />
+          <Field label={t('common.companyName')} required>
+            <Input value={form.companyName} onChange={e => set('companyName', e.target.value)} placeholder={t('common.companyName')} />
           </Field>
         </div>
 
         {/* Row 2: Địa chỉ full width */}
-        <Field label="Địa chỉ khách hàng" required>
+        <Field label={t('common.customerAddress')} required>
           <Textarea value={form.address} onChange={e => set('address', e.target.value)}
-            placeholder="Địa chỉ khách hàng" rows={2} className="resize-none" />
+            placeholder={t('common.customerAddress')} rows={2} className="resize-none" />
         </Field>
 
         {/* Row 3: Tên KH + CCCD */}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Tên khách hàng" required>
+          <Field label={t('common.customerName')} required>
             <Input value={form.buyerName} onChange={e => set('buyerName', e.target.value)} />
           </Field>
-          <Field label="Căn cước công dân">
-            <Input value={form.cccd} onChange={e => set('cccd', e.target.value)} placeholder="Căn cước công dân" />
+          <Field label={t('common.citizenId')}>
+            <Input value={form.cccd} onChange={e => set('cccd', e.target.value)} placeholder={t('common.citizenId')} />
           </Field>
         </div>
 
         {/* Row 4: SĐT + Email */}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Số điện thoại" required>
-            <Input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="Số điện thoại" />
+          <Field label={t('pages.actives.order.phoneNumberLabel')} required>
+            <Input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder={t('pages.actives.order.phoneNumberLabel')} />
           </Field>
-          <Field label="Email" required>
-            <Input value={form.email} onChange={e => set('email', e.target.value)} placeholder="Email khách hàng" type="email" />
+          <Field label={t('common.email')} required>
+            <Input value={form.email} onChange={e => set('email', e.target.value)} placeholder={t('pages.actives.order.emailPlaceholder')} type="email" />
           </Field>
         </div>
 
         {/* Row 5: Số TK + Tên NH */}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Số tài khoản">
-            <Input value={form.bankAccount} onChange={e => set('bankAccount', e.target.value)} placeholder="Số tài khoản" />
+          <Field label={t('pages.actives.order.bankAccountNumberLabel')}>
+            <Input value={form.bankAccount} onChange={e => set('bankAccount', e.target.value)} placeholder={t('pages.actives.order.bankAccountNumberLabel')} />
           </Field>
-          <Field label="Tên ngân hàng">
-            <Input value={form.bankName} onChange={e => set('bankName', e.target.value)} placeholder="Tên ngân hàng" />
+          <Field label={t('common.bankName')}>
+            <Input value={form.bankName} onChange={e => set('bankName', e.target.value)} placeholder={t('common.bankName')} />
           </Field>
         </div>
 
         {/* Row 6: Phương thức TT */}
         <div className="w-1/2 pr-1.5">
-          <Field label="Phương thức thanh toán">
+          <Field label={t('pages.actives.order.paymentMethodLabel')}>
             <Select value={form.paymentMethod} onValueChange={v => set('paymentMethod', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>

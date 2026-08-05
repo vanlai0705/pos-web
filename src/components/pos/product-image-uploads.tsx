@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Camera, ImageIcon, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils'
 import { getImageUrl } from '@/utils/common'
 
@@ -33,6 +34,7 @@ function withTrailingEmpty(images: ImageSlot[]): ImageSlot[] {
  * picking a file fills a slot and a fresh empty tile appears until the cap.
  */
 export function ProductImageUploads({ images, onChange }: { images: ImageSlot[]; onChange: (images: ImageSlot[]) => void }) {
+  const { t } = useTranslation()
   const inputRefs = useRef<Array<HTMLInputElement | null>>([])
 
   const handlePick = (index: number) => {
@@ -42,7 +44,7 @@ export function ProductImageUploads({ images, onChange }: { images: ImageSlot[];
   const handleFile = (index: number, file: File | null) => {
     if (!file) return
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      toast.error(`Kích thước file tối đa ${MAX_SIZE_MB}Mb`)
+      toast.error(t('components.productImageUploads.maxFileSizeError', { size: MAX_SIZE_MB }))
       return
     }
     const next = [...images]
@@ -74,12 +76,12 @@ export function ProductImageUploads({ images, onChange }: { images: ImageSlot[];
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-background text-primary shadow-sm">
                     <ImageIcon className="h-4 w-4" />
                   </span>
-                  <span className="text-[9px] font-bold uppercase tracking-widest">Chọn ảnh</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest">{t('components.productImageUploads.chooseImage')}</span>
                 </div>
               )}
               {filled && (
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5 text-[10px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
-                  <Camera className="h-3 w-3" /> Thay đổi
+                  <Camera className="h-3 w-3" /> {t('components.productImageUploads.changeImage')}
                 </div>
               )}
               <input

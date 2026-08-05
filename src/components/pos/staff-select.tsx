@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Pencil, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils'
 import { withDomainPath } from '@/utils/domain-route'
 import {
@@ -21,9 +22,11 @@ interface StaffSelectProps {
 export function StaffSelect({
   value,
   onChange,
-  placeholder = 'Nhân viên...',
+  placeholder,
   className,
 }: StaffSelectProps) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? t('components.staffSelect.placeholder')
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -91,7 +94,7 @@ export function StaffSelect({
       setForm({ ...emptyStaff(), ...detail })
       setDialogOpen(true)
     } catch {
-      toast.error('Không thể tải thông tin nhân viên')
+      toast.error(t('components.staffSelect.loadDetailError'))
     }
   }
 
@@ -102,13 +105,13 @@ export function StaffSelect({
 
   const handleSave = async () => {
     if (!form.Name?.trim()) {
-      toast.error('Vui lòng nhập tên nhân viên')
+      toast.error(t('components.staffSelect.nameRequired'))
       return
     }
     const isNew = !form.Id
     try {
       const saved = await saveMember({ model: form, file: null }).unwrap()
-      toast.success(isNew ? 'Đã thêm nhân viên' : 'Đã cập nhật nhân viên')
+      toast.success(isNew ? t('components.staffSelect.addSuccess') : t('components.staffSelect.updateSuccess'))
       setDialogOpen(false)
       runSearch(keyword)
       const savedId = saved?.Id ?? form.Id
@@ -119,7 +122,7 @@ export function StaffSelect({
         onChange({ ...value, Name: form.Name, Surname: form.Surname, FullName: fullName } as TPosUser)
       }
     } catch {
-      toast.error('Không thể lưu nhân viên')
+      toast.error(t('components.staffSelect.saveError'))
     }
   }
 
@@ -134,7 +137,7 @@ export function StaffSelect({
         className="flex items-center gap-2 w-full rounded-lg border border-input px-2.5 py-1.5 bg-background hover:bg-muted/30 transition-colors text-left"
       >
         <span className={cn('flex-1 text-xs truncate', !displayName && 'text-muted-foreground')}>
-          {displayName ?? placeholder}
+          {displayName ?? resolvedPlaceholder}
         </span>
         {displayName ? (
           <X className="h-3 w-3 text-muted-foreground/50 hover:text-destructive shrink-0" onClick={handleClear} />
@@ -152,22 +155,22 @@ export function StaffSelect({
               type="text"
               value={keyword}
               onChange={e => handleSearch(e.target.value)}
-              placeholder="Tìm nhân viên..."
+              placeholder={t('common.searchEmployee')}
               className="flex-1 min-w-0 text-xs bg-transparent px-2 py-1 focus:outline-none text-foreground placeholder:text-muted-foreground"
             />
-            <button type="button" onClick={openAdd} title="Thêm nhân viên"
+            <button type="button" onClick={openAdd} title={t('components.staffSelect.addStaff')}
               className="shrink-0 rounded-md p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
               <Plus className="h-3.5 w-3.5" />
             </button>
-            <button type="button" onClick={openList} title="Danh sách nhân viên"
+            <button type="button" onClick={openList} title={t('components.staffSelect.staffListTitle')}
               className="shrink-0 rounded-md px-1.5 py-1 text-[10px] font-semibold text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors whitespace-nowrap">
-              Danh sách
+              {t('components.staffSelect.staffList')}
             </button>
           </div>
           <div className="max-h-48 overflow-y-auto">
-            {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Đang tải...</div>}
+            {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">{t('common.loading')}</div>}
             {!isFetching && items.length === 0 && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">Không tìm thấy</div>
+              <div className="px-3 py-2 text-xs text-muted-foreground">{t('components.staffSelect.notFound')}</div>
             )}
             {items.map(u => (
               <div key={u.Id} className="w-full flex items-center justify-between hover:bg-muted transition-colors group">
@@ -179,7 +182,7 @@ export function StaffSelect({
                   <span className="font-medium truncate">{u.FullName || u.Name}</span>
                   {u.Surname && <span className="text-muted-foreground shrink-0">{u.Surname}</span>}
                 </button>
-                <button type="button" onClick={e => openEdit(e, u.Id)} title="Sửa"
+                <button type="button" onClick={e => openEdit(e, u.Id)} title={t('components.staffSelect.editStaff')}
                   className="shrink-0 mr-1.5 rounded p-1 text-muted-foreground/0 group-hover:text-muted-foreground hover:!text-foreground hover:bg-background transition-colors">
                   <Pencil className="h-3 w-3" />
                 </button>

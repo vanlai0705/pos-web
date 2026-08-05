@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,11 +25,11 @@ export const RECEIPT_PAYMENT_FOR = {
   NONE: 0, LIABILITY_CUSTOMER: 1, LIABILITY_SUPPLIER: 2, SALARY_PAY: 3,
 } as const
 
-const OBJECT_TYPE_OPTIONS = [
-  { value: OBJECT_TYPE.Another, label: 'Khác' },
-  { value: OBJECT_TYPE.Customer, label: 'Khách hàng' },
-  { value: OBJECT_TYPE.Supplier, label: 'Nhà cung cấp' },
-  { value: OBJECT_TYPE.User, label: 'Nhân viên' },
+const getObjectTypeOptions = (t: (key: string) => string) => [
+  { value: OBJECT_TYPE.Another, label: t('components.receiptPaymentDialog.objectTypeOther') },
+  { value: OBJECT_TYPE.Customer, label: t('common.customer') },
+  { value: OBJECT_TYPE.Supplier, label: t('common.supplier') },
+  { value: OBJECT_TYPE.User, label: t('common.user') },
 ]
 
 export interface ReceiptPayment {
@@ -80,8 +81,8 @@ export function emptyReceiptPayment(type: number): ReceiptPayment {
   }
 }
 
-function errMsg(e: any) {
-  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || 'Không thể xử lý yêu cầu'
+function errMsg(e: any, t: (key: string) => string) {
+  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || t('components.receiptPaymentDialog.processError')
 }
 
 /**
@@ -89,8 +90,9 @@ function errMsg(e: any) {
  * `Type`, which also scopes the reason list.
  */
 export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, editId, initial, disableObjectType, onSaved }: Props) {
+  const { t } = useTranslation()
   const isReceipt = type === RECEIPT_PAYMENT_TYPE.RECEIPT
-  const header = isReceipt ? 'Phiếu thu' : 'Phiếu chi'
+  const header = isReceipt ? t('components.receiptPaymentDialog.receiptTitle') : t('components.receiptPaymentDialog.paymentTitle')
   const [form, setForm] = useState<ReceiptPayment>(emptyReceiptPayment(type))
 
   const [fetchDetail] = useLazyGenericGetQuery()
@@ -108,7 +110,7 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
           Date: d.Date ? dayjs(d.Date).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
         })
       })
-      .catch(e => toast.error(errMsg(e)))
+      .catch(e => toast.error(errMsg(e, t)))
     // `initial` is intentionally not a dependency: it is an inline object at
     // every call site, and re-running would wipe what the user has typed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,8 +137,8 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
     }))
 
   const handleSave = async () => {
-    if (!form.ReceiptPaymentReason?.Id) { toast.error('Vui lòng chọn lý do'); return }
-    if (!Number(form.Amount)) { toast.error('Vui lòng nhập số tiền'); return }
+    if (!form.ReceiptPaymentReason?.Id) { toast.error(t('components.receiptPaymentDialog.reasonRequired')); return }
+    if (!Number(form.Amount)) { toast.error(t('components.receiptPaymentDialog.amountRequired')); return }
     const payload: ReceiptPayment = {
       ...form,
       Type: type,
@@ -151,58 +153,68 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
         method: 'POST',
         body: buildModelFormData(payload),
       }).unwrap()
-      toast.success(form.Id ? 'Cập nhật thành công' : `Tạo ${header.toLowerCase()} thành công`)
+      if (form.Id) {
+        toast.success(t('components.receiptPaymentDialog.updateSuccess'))
+      } else {
+        toast.success(isReceipt
+          ? t('components.receiptPaymentDialog.createReceiptSuccess')
+          : t('components.receiptPaymentDialog.createPaymentSuccess'))
+      }
       onOpenChange(false)
       onSaved()
-    } catch (e) { toast.error(errMsg(e)) }
+    } catch (e) { toast.error(errMsg(e, t)) }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <FormDialogContent className="max-w-3xl">
         <FormDialogHeader>
-          <DialogTitle>{form.Id ? `Sửa ${header.toLowerCase()}` : header}</DialogTitle>
+          <DialogTitle>
+            {form.Id
+              ? (isReceipt ? t('components.receiptPaymentDialog.editReceiptTitle') : t('components.receiptPaymentDialog.editPaymentTitle'))
+              : header}
+          </DialogTitle>
         </FormDialogHeader>
 
         <FormDialogBody className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label>Ngày</Label>
+              <Label>{t('common.date')}</Label>
               <Input type="date" value={form.Date ?? ''} onChange={e => setForm(f => ({ ...f, Date: e.target.value }))} />
             </div>
             <div className="space-y-1">
-              <Label>Số phiếu</Label>
-              <Input value={form.Name ?? ''} disabled placeholder="Tự động" />
+              <Label>{t('common.voucherNo')}</Label>
+              <Input value={form.Name ?? ''} disabled placeholder={t('components.receiptPaymentDialog.autoPlaceholder')} />
             </div>
             <div className="space-y-1">
-              <Label>Loại quỹ</Label>
-              <LookupSelect endpoint="fundType/filter-simple" placeholder="Chọn loại quỹ"
+              <Label>{t('components.receiptPaymentDialog.fundTypeLabel')}</Label>
+              <LookupSelect endpoint="fundType/filter-simple" placeholder={t('components.receiptPaymentDialog.selectFundTypePlaceholder')}
                 value={form.FundType} onChange={v => setForm(f => ({ ...f, FundType: v }))} />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2 space-y-1">
-              <Label>Lý do <span className="text-destructive">*</span></Label>
-              <LookupSelect endpoint="receiptpaymentreason/filter-simple" placeholder="Chọn lý do"
+              <Label>{t('components.receiptPaymentDialog.reasonLabel')} <span className="text-destructive">*</span></Label>
+              <LookupSelect endpoint="receiptpaymentreason/filter-simple" placeholder={t('components.receiptPaymentDialog.selectReasonPlaceholder')}
                 params={{ Type: type }}
                 value={form.ReceiptPaymentReason}
                 onChange={v => setForm(f => ({ ...f, ReceiptPaymentReason: v, Detail: (v?.Name as string) ?? '' }))} />
             </div>
             <div className="space-y-1">
-              <Label>Chứng từ gốc</Label>
+              <Label>{t('components.receiptPaymentDialog.originDocumentLabel')}</Label>
               <Input value={form.OriginDocument ?? ''} onChange={e => setForm(f => ({ ...f, OriginDocument: e.target.value }))} />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label>Đối tượng</Label>
+              <Label>{t('components.receiptPaymentDialog.objectTypeLabel')}</Label>
               <Select value={String(form.ObjectType ?? OBJECT_TYPE.Another)} disabled={disableObjectType}
                 onValueChange={v => setObjectType(Number(v))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {OBJECT_TYPE_OPTIONS.map(o => <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>)}
+                  {getObjectTypeOptions(t).map(o => <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -210,25 +222,25 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
             <div className="space-y-1">
               <Label>&nbsp;</Label>
               {form.ObjectType === OBJECT_TYPE.Customer && (
-                <LookupSelect endpoint="customers/filter-simple" placeholder="Chọn khách hàng" disabled={disableObjectType}
+                <LookupSelect endpoint="customers/filter-simple" placeholder={t('components.receiptPaymentDialog.selectCustomerPlaceholder')} disabled={disableObjectType}
                   value={form.Customer} onChange={v => pickParty('Customer', v)} />
               )}
               {form.ObjectType === OBJECT_TYPE.Supplier && (
-                <LookupSelect endpoint="suppliers/filter-simple" placeholder="Chọn nhà cung cấp" disabled={disableObjectType}
+                <LookupSelect endpoint="suppliers/filter-simple" placeholder={t('components.receiptPaymentDialog.selectSupplierPlaceholder')} disabled={disableObjectType}
                   value={form.Supplier} onChange={v => pickParty('Supplier', v)} />
               )}
               {form.ObjectType === OBJECT_TYPE.User && (
-                <LookupSelect endpoint="users/filter-simple" placeholder="Chọn nhân viên" disabled={disableObjectType}
+                <LookupSelect endpoint="users/filter-simple" placeholder={t('components.receiptPaymentDialog.selectEmployeePlaceholder')} disabled={disableObjectType}
                   value={form.User} onChange={v => pickParty('User', v)} />
               )}
               {form.ObjectType === OBJECT_TYPE.Another && (
-                <Input placeholder="Tên đối tượng" value={form.ObjectName ?? ''}
+                <Input placeholder={t('components.receiptPaymentDialog.objectNamePlaceholder')} value={form.ObjectName ?? ''}
                   onChange={e => setForm(f => ({ ...f, ObjectName: e.target.value }))} />
               )}
             </div>
 
             <div className="space-y-1">
-              <Label>Địa chỉ</Label>
+              <Label>{t('common.address')}</Label>
               {/* Only free-text objects allow editing; the rest inherit the party's address. */}
               <Input value={form.Address ?? ''} disabled={form.ObjectType !== OBJECT_TYPE.Another}
                 onChange={e => setForm(f => ({ ...f, Address: e.target.value }))} />
@@ -237,7 +249,7 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
 
           <div className="grid grid-cols-3 items-end gap-3 rounded-xl border bg-muted/30 p-3">
             <div className="space-y-1">
-              <Label>Số tiền <span className="text-destructive">*</span></Label>
+              <Label>{t('components.receiptPaymentDialog.amountLabel')} <span className="text-destructive">*</span></Label>
               <NumberInput
                 min={0}
                 max={999999999}
@@ -246,25 +258,25 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
               />
             </div>
             <div className="space-y-1">
-              <Label>Cửa hàng</Label>
-              <LookupSelect endpoint="shop/filter-simple" placeholder="Chọn cửa hàng"
+              <Label>{t('components.receiptPaymentDialog.shopLabel')}</Label>
+              <LookupSelect endpoint="shop/filter-simple" placeholder={t('components.receiptPaymentDialog.selectShopPlaceholder')}
                 value={form.Shop} onChange={v => setForm(f => ({ ...f, Shop: v }))} />
             </div>
             <label className="flex cursor-pointer select-none items-center gap-2 py-2">
               <Switch checked={!!form.IsTransfer} onCheckedChange={v => setForm(f => ({ ...f, IsTransfer: v }))} />
-              <span className="text-sm font-medium">Chuyển khoản</span>
+              <span className="text-sm font-medium">{t('common.transfer')}</span>
             </label>
           </div>
 
           <div className="space-y-1">
-            <Label>Ghi chú</Label>
+            <Label>{t('common.note')}</Label>
             <Textarea rows={2} value={form.Note ?? ''} onChange={e => setForm(f => ({ ...f, Note: e.target.value }))} />
           </div>
         </FormDialogBody>
 
         <FormDialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Huỷ</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+          <Button onClick={handleSave} disabled={saving}>{saving ? t('components.receiptPaymentDialog.savingText') : t('common.save')}</Button>
         </FormDialogFooter>
       </FormDialogContent>
     </Dialog>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils'
 import { useLazyFilterReportQuery } from '@/store/slice/users/api/api'
 
@@ -29,8 +30,10 @@ interface LookupSelectProps<T extends LookupItem> {
  * lookups the user never touches.
  */
 export function LookupSelect<T extends LookupItem>({
-  endpoint, value, onChange, placeholder = 'Chọn...', params, subtitle, disabled, className,
+  endpoint, value, onChange, placeholder, params, subtitle, disabled, className,
 }: LookupSelectProps<T>) {
+  const { t } = useTranslation()
+  const resolvedPlaceholder = placeholder ?? t('components.lookupSelect.selectPlaceholder')
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
@@ -80,7 +83,7 @@ export function LookupSelect<T extends LookupItem>({
         )}
       >
         <span className={cn('flex-1 truncate', !value && 'text-muted-foreground')}>
-          {value?.Name || placeholder}
+          {value?.Name || resolvedPlaceholder}
         </span>
         {value && !disabled ? (
           <X
@@ -99,14 +102,14 @@ export function LookupSelect<T extends LookupItem>({
               ref={inputRef}
               value={keyword}
               onChange={e => handleSearch(e.target.value)}
-              placeholder="Tìm..."
+              placeholder={t('components.lookupSelect.searchPlaceholder')}
               className="w-full bg-transparent px-2 py-1 text-sm focus:outline-none"
             />
           </div>
           <div className="max-h-56 overflow-y-auto">
-            {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Đang tải...</div>}
+            {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">{t('common.loading')}</div>}
             {!isFetching && items.length === 0 && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">Không tìm thấy</div>
+              <div className="px-3 py-2 text-xs text-muted-foreground">{t('components.lookupSelect.noResults')}</div>
             )}
             {items.map(item => (
               <button

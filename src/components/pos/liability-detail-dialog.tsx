@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { DataPagination } from '@/components/ui/data-pagination'
@@ -22,6 +23,7 @@ interface Props {
  * supplier's balance — mirrors Angular's LiabilitiesDetailComponent 1:1.
  */
 export function LiabilityDetailDialog({ open, onOpenChange, endpoint, customerId, supplierId }: Props) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(15)
 
@@ -40,27 +42,27 @@ export function LiabilityDetailDialog({ open, onOpenChange, endpoint, customerId
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Chi tiết công nợ</DialogTitle>
+          <DialogTitle>{t('components.liabilityDetailDialog.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="max-h-[60vh] overflow-y-auto rounded-lg border">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
               <tr className="h-9">
-                <th className="w-10 px-2">STT</th>
-                <th className="px-2">Ngày</th>
-                <th className="px-2 text-left">Số phiếu</th>
-                <th className="px-2 text-left">Diễn giải</th>
-                <th className="px-2 text-right">Tổng cộng</th>
-                <th className="px-2 text-right">Tiền thanh toán</th>
+                <th className="w-10 px-2">{t('common.index')}</th>
+                <th className="px-2">{t('common.date')}</th>
+                <th className="px-2 text-left">{t('common.voucherNo')}</th>
+                <th className="px-2 text-left">{t('common.description')}</th>
+                <th className="px-2 text-right">{t('components.liabilityDetailDialog.totalAmount')}</th>
+                <th className="px-2 text-right">{t('components.liabilityDetailDialog.paymentAmount')}</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={6} className="p-4 text-center text-xs text-muted-foreground">Đang tải...</td></tr>
+                <tr><td colSpan={6} className="p-4 text-center text-xs text-muted-foreground">{t('common.loading')}</td></tr>
               )}
               {!isLoading && items.length === 0 && (
-                <tr><td colSpan={6} className="p-4 text-center text-xs text-muted-foreground">Không có phát sinh</td></tr>
+                <tr><td colSpan={6} className="p-4 text-center text-xs text-muted-foreground">{t('components.liabilityDetailDialog.noTransactions')}</td></tr>
               )}
               {items.map((item, index) => (
                 <tr key={index} className="border-t">
@@ -79,7 +81,7 @@ export function LiabilityDetailDialog({ open, onOpenChange, endpoint, customerId
         <DataPagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} onPageSizeChange={setPageSize} />
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Đóng</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('components.liabilityDetailDialog.close')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

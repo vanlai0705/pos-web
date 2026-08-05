@@ -119,7 +119,26 @@ const TITLE_TO_KEY: Record<string, string> = {
   "Thuế": "menu.tax",
   "In hóa đơn": "menu.invoicePrint",
   "Xuất hóa đơn": "menu.invoiceExport",
-  "Hóa đơn điện tử": "menu.eInvoice"
+  "Hóa đơn điện tử": "menu.eInvoice",
+  // Full-form titles the real API menu actually sends (as opposed to the
+  // abbreviated forms above) — same destination, just an alias.
+  "Báo giá khách hàng": "menu.quotation",
+  "Danh mục phòng bàn": "menu.tables",
+  "Danh mục mặt hàng": "menu.product",
+  "Danh mục khách hàng": "menu.customers",
+  "Quản lý hóa đơn điện tử": "menu.eInvoice",
+  "Danh mục nhà cung cấp": "menu.suppliers",
+  "Danh sách phiếu thu": "menu.receipt",
+  "Danh sách phiếu chi": "menu.payment",
+  "Lý do thưởng phạt": "menu.rewardPunishmentReasons",
+  "Nhóm nhà cung cấp": "menu.supplierGroups",
+  // Genuinely new menu items not covered by any existing key.
+  "Chuyển quỹ": "menu.cashTransfer",
+  "Tạo phiếu thu": "menu.createReceipt",
+  "Tạo phiếu chi": "menu.createPayment",
+  "Dữ liệu ban đầu": "menu.initialData",
+  "Thông tin chung": "menu.generalInfo",
+  "Cài đặt máy in": "menu.printerSettings"
 }
 
 function normalizeText(text: string) {

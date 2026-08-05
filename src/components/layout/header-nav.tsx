@@ -16,6 +16,23 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 
+/**
+ * Shared click handler for every nav link in this file: a plain left-click
+ * still does SPA client-side routing (preventDefault + navigate), but ctrl/
+ * cmd/shift/middle-click fall through untouched so the browser's own "open in
+ * new tab" — both via keyboard-modified click and the right-click context
+ * menu, since these are real `<a href>` now — keeps working.
+ */
+function navClickHandler(navigate: ReturnType<typeof useNavigate>, href: string | undefined, onDone?: () => void) {
+  return (e: React.MouseEvent) => {
+    if (!href) { e.preventDefault(); return }
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
+    e.preventDefault()
+    navigate(withDomainPath(href))
+    onDone?.()
+  }
+}
+
 // ─── Recursive dropdown child (supports sub-menus) ───────────────────────────
 
 function DropdownChildItem({ child, onClose }: { child: TNavChildren; onClose: () => void }) {
@@ -58,16 +75,18 @@ function DropdownChildItem({ child, onClose }: { child: TNavChildren; onClose: (
 
   return (
     <div className="px-1">
-      <button
-        onClick={() => { child.href && navigate(withDomainPath(child.href)); onClose() }}
+      <a
+        href={child.href ? withDomainPath(child.href) : undefined}
+        onClick={navClickHandler(navigate, child.href, onClose)}
         className={cn(
           'flex w-full items-center gap-2 px-2 py-1.5 text-sm rounded-sm text-left hover:bg-accent transition-colors',
           isActive && 'bg-accent/70 font-medium',
+          !child.href && 'pointer-events-none opacity-50',
         )}
       >
         <ChildIcon className="size-4 flex-none text-muted-foreground" />
         <span className="truncate">{child.title}</span>
-      </button>
+      </a>
     </div>
   )
 }
@@ -119,20 +138,22 @@ function NavDropdownItem({ item, isActive }: { item: NavItem; isActive: boolean 
 function NavLinkItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
   const navigate = useNavigate()
   const Icon = Icons[item.icon as keyof typeof Icons] ?? Icons.arrowRight
+  const disabled = !item.href || item.disabled
 
   return (
-    <button
-      disabled={!item.href || item.disabled}
-      onClick={() => item.href && navigate(withDomainPath(item.href))}
+    <a
+      href={item.href ? withDomainPath(item.href) : undefined}
+      aria-disabled={disabled}
+      onClick={disabled ? e => e.preventDefault() : navClickHandler(navigate, item.href)}
       className={cn(
         'flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
         isActive ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white',
-        (!item.href || item.disabled) && 'cursor-not-allowed opacity-40',
+        disabled && 'cursor-not-allowed opacity-40 pointer-events-none',
       )}
     >
       <Icon className="size-4 flex-none" />
       <span>{item.title}</span>
-    </button>
+    </a>
   )
 }
 
@@ -185,13 +206,11 @@ function MoreMenu({ items }: { items: NavItem[] }) {
                             : Icons.arrowRight
                           const subActive = isRouteActive(location.pathname, sub.href)
                           return (
-                            <DropdownMenuItem
-                              key={sub.title}
-                              onClick={() => sub.href && navigate(withDomainPath(sub.href))}
-                              className={cn('pl-8 gap-2', subActive && 'bg-accent font-medium')}
-                            >
-                              <SubIcon className="size-3.5 text-muted-foreground" />
-                              {sub.title}
+                            <DropdownMenuItem key={sub.title} asChild className={cn('pl-8 gap-2', subActive && 'bg-accent font-medium')}>
+                              <a href={sub.href ? withDomainPath(sub.href) : undefined} onClick={navClickHandler(navigate, sub.href)}>
+                                <SubIcon className="size-3.5 text-muted-foreground" />
+                                {sub.title}
+                              </a>
                             </DropdownMenuItem>
                           )
                         })}
@@ -200,13 +219,11 @@ function MoreMenu({ items }: { items: NavItem[] }) {
                   }
 
                   return (
-                    <DropdownMenuItem
-                      key={child.title}
-                      onClick={() => child.href && navigate(withDomainPath(child.href))}
-                      className={cn('pl-5 gap-2', childActive && 'bg-accent font-medium')}
-                    >
-                      <ChildIcon className="size-4 text-muted-foreground" />
-                      {child.title}
+                    <DropdownMenuItem key={child.title} asChild className={cn('pl-5 gap-2', childActive && 'bg-accent font-medium')}>
+                      <a href={child.href ? withDomainPath(child.href) : undefined} onClick={navClickHandler(navigate, child.href)}>
+                        <ChildIcon className="size-4 text-muted-foreground" />
+                        {child.title}
+                      </a>
                     </DropdownMenuItem>
                   )
                 })}
@@ -218,13 +235,11 @@ function MoreMenu({ items }: { items: NavItem[] }) {
           const isActive =
             isRouteActive(location.pathname, item.href)
           return (
-            <DropdownMenuItem
-              key={item.title}
-              onClick={() => item.href && navigate(withDomainPath(item.href))}
-              className={cn('gap-2', isActive && 'bg-accent font-medium')}
-            >
-              <Icon className="size-4 text-muted-foreground" />
-              {item.title}
+            <DropdownMenuItem key={item.title} asChild className={cn('gap-2', isActive && 'bg-accent font-medium')}>
+              <a href={item.href ? withDomainPath(item.href) : undefined} onClick={navClickHandler(navigate, item.href)}>
+                <Icon className="size-4 text-muted-foreground" />
+                {item.title}
+              </a>
             </DropdownMenuItem>
           )
         })}

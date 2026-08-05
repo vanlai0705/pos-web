@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { FileSpreadsheet, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -21,8 +22,8 @@ interface Props {
   onImported: () => void
 }
 
-function errMsg(e: any) {
-  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || 'Không thể xử lý yêu cầu'
+function errMsg(e: any, t: (key: string) => string) {
+  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || t('components.excelImportDialog.processError')
 }
 
 /**
@@ -40,6 +41,7 @@ function errMsg(e: any) {
  *     mapping — the preview step never sends parsed rows back.
  */
 export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, importUrl, onImported }: Props) {
+  const { t } = useTranslation()
   const [step, setStep] = useState<'upload' | 'map' | 'preview'>('upload')
   const [mapped, setMapped] = useState<ExcelMapped | null>(null)
   const [previewRows, setPreviewRows] = useState<any[][] | null>(null)
@@ -66,7 +68,7 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
         ExcelMappedItems: (data.ExcelMappedItems ?? []).map(i => ({ ...i, Value: i.Value ?? null })),
       })
       setStep('map')
-    } catch (e) { toast.error(errMsg(e)) }
+    } catch (e) { toast.error(errMsg(e, t)) }
   }
 
   const setColumn = (id: number | undefined, value: string) =>
@@ -82,17 +84,17 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
       const res = await request({ url: dataUrl, method: 'POST', body: mapped }).unwrap()
       setPreviewRows((res?.Data ?? []) as any[][])
       setStep('preview')
-    } catch (e) { toast.error(errMsg(e)) }
+    } catch (e) { toast.error(errMsg(e, t)) }
   }
 
   const handleImport = async () => {
     if (!mapped) return
     try {
       await request({ url: importUrl, method: 'POST', body: mapped }).unwrap()
-      toast.success('Nhập Excel thành công')
+      toast.success(t('components.excelImportDialog.importSuccess'))
       onImported()
       close()
-    } catch (e) { toast.error(errMsg(e)) }
+    } catch (e) { toast.error(errMsg(e, t)) }
   }
 
   const headerOptions = mapped?.ExcelHeader ?? []
@@ -103,32 +105,32 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Nhập Excel
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> {t('components.excelImportDialog.title')}
           </DialogTitle>
         </DialogHeader>
 
         {step === 'upload' && (
           <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-12">
             <Upload className="h-8 w-8 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">Chọn file Excel (.xlsx) để nhập dữ liệu</p>
+            <p className="text-sm text-muted-foreground">{t('components.excelImportDialog.selectFilePrompt')}</p>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
             <Button size="sm" disabled={busy} onClick={() => fileInputRef.current?.click()}>
-              {busy ? 'Đang tải lên...' : 'Chọn file'}
+              {busy ? t('components.excelImportDialog.uploading') : t('components.excelImportDialog.chooseFile')}
             </Button>
           </div>
         )}
 
         {step === 'map' && (
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Chọn cột Excel tương ứng với từng trường dữ liệu.</p>
+            <p className="text-xs text-muted-foreground">{t('components.excelImportDialog.mapInstruction')}</p>
             <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
                   <tr className="h-9">
-                    <th className="w-10 px-2">STT</th>
-                    <th className="px-2 text-left">Tên cột dữ liệu</th>
-                    <th className="px-2 text-left">Cột Excel</th>
+                    <th className="w-10 px-2">{t('common.index')}</th>
+                    <th className="px-2 text-left">{t('components.excelImportDialog.dataColumnName')}</th>
+                    <th className="px-2 text-left">{t('components.excelImportDialog.excelColumn')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -142,7 +144,7 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
                           onChange={e => setColumn(item.Id, e.target.value)}
                           className="h-8 w-full rounded-md border bg-background px-2 text-sm"
                         >
-                          <option value="">— Không chọn —</option>
+                          <option value="">{t('components.excelImportDialog.noSelection')}</option>
                           {headerOptions.map(h => (
                             <option key={h.Value} value={h.Value}>{h.Name}</option>
                           ))}
@@ -158,7 +160,9 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
 
         {step === 'preview' && (
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Xem trước {previewRows?.length ?? 0} dòng dữ liệu sẽ được nhập.</p>
+            <p className="text-xs text-muted-foreground">
+              {t('components.excelImportDialog.previewRowsCount', { count: previewRows?.length ?? 0 })}
+            </p>
             <div className="max-h-[50vh] overflow-auto rounded-lg border">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted/50 text-muted-foreground">
@@ -181,19 +185,19 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
         )}
 
         <DialogFooter>
-          {step === 'upload' && <Button variant="outline" onClick={close}>Đóng</Button>}
+          {step === 'upload' && <Button variant="outline" onClick={close}>{t('components.excelImportDialog.close')}</Button>}
           {step === 'map' && (
             <>
-              <Button variant="outline" onClick={close}>Huỷ</Button>
-              <Button variant="outline" onClick={() => setStep('upload')}>Chọn file khác</Button>
-              <Button variant="outline" disabled={busy} onClick={handlePreview}>Xem trước</Button>
-              <Button disabled={busy} onClick={handleImport}>{busy ? 'Đang nhập...' : 'Nhập dữ liệu'}</Button>
+              <Button variant="outline" onClick={close}>{t('common.cancel')}</Button>
+              <Button variant="outline" onClick={() => setStep('upload')}>{t('components.excelImportDialog.chooseAnotherFile')}</Button>
+              <Button variant="outline" disabled={busy} onClick={handlePreview}>{t('components.excelImportDialog.previewButton')}</Button>
+              <Button disabled={busy} onClick={handleImport}>{busy ? t('components.excelImportDialog.importing') : t('components.excelImportDialog.importData')}</Button>
             </>
           )}
           {step === 'preview' && (
             <>
-              <Button variant="outline" onClick={() => setStep('map')}>Quay lại</Button>
-              <Button disabled={busy} onClick={handleImport}>{busy ? 'Đang nhập...' : 'Xác nhận nhập'}</Button>
+              <Button variant="outline" onClick={() => setStep('map')}>{t('components.excelImportDialog.back')}</Button>
+              <Button disabled={busy} onClick={handleImport}>{busy ? t('components.excelImportDialog.importing') : t('components.excelImportDialog.confirmImport')}</Button>
             </>
           )}
         </DialogFooter>

@@ -2,6 +2,7 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -34,6 +35,7 @@ export function MultiSelect<T extends Record<string, any>>({
   disabled = false,
   getOptionDisabled
 }: MultiSelectProps<T>) {
+  const { t } = useTranslation();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [open, setOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<T[]>(value);
@@ -67,14 +69,22 @@ export function MultiSelect<T extends Record<string, any>>({
             (s) => String(s[labelKey]).toLowerCase() === trimmed
           );
           if (alreadySelected) {
-            toast.warning(`Serial "${inputValue.trim()}" đã được chọn.`);
+            toast.warning(
+              t("components.multiSelect.serialAlreadySelected", {
+                serial: inputValue.trim(),
+              })
+            );
           } else {
-            toast.error(`Serial "${inputValue.trim()}" không có trong kho.`);
+            toast.error(
+              t("components.multiSelect.serialNotInStock", {
+                serial: inputValue.trim(),
+              })
+            );
           }
         }
       }
     },
-    [disabled, inputValue, selectables, labelKey, selected, onChange]
+    [disabled, inputValue, selectables, labelKey, selected, onChange, t]
   );
 
   const handlePaste = React.useCallback(
@@ -115,11 +125,14 @@ export function MultiSelect<T extends Record<string, any>>({
 
       if (unmatched.length > 0) {
         toast.warning(
-          `Không tìm thấy ${unmatched.length} serials trong kho: ${unmatched.join(", ")}`
+          t("components.multiSelect.serialsNotFoundInStock", {
+            count: unmatched.length,
+            serials: unmatched.join(", "),
+          })
         );
       }
     },
-    [disabled, selected, selectables, labelKey, valueKey, onChange]
+    [disabled, selected, selectables, labelKey, valueKey, onChange, t]
   );
 
   // Đồng bộ khi value thay đổi từ props

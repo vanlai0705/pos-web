@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Armchair,
   BarChart3,
@@ -28,11 +29,16 @@ function elapsed(dateStr?: string) {
 // ─── Table card ───────────────────────────────────────────────────────────────
 
 function TableCard({ table, onClick }: { table: TPosTable; onClick: () => void }) {
+  const { t } = useTranslation()
   const occupied = !!table.OrderId
   const isQrOrder = occupied && !!table.IsAnonymous
   const time = elapsed(table.CreationTime)
   const theme = isQrOrder ? 'qr' : occupied ? 'occupied' : 'empty'
-  const label = isQrOrder ? 'Đặt qua QR' : occupied ? 'Đã gọi món' : 'Bàn trống'
+  const label = isQrOrder
+    ? t('pages.actives.tablesOrder.qrOrder')
+    : occupied
+      ? t('pages.actives.tablesOrder.occupiedTable')
+      : t('pages.actives.tablesOrder.emptyTable')
   const chairClass = {
     empty: 'border-slate-200 bg-slate-50',
     occupied: 'border-teal-700 bg-teal-700/80',
@@ -65,7 +71,7 @@ function TableCard({ table, onClick }: { table: TPosTable; onClick: () => void }
             <p className="text-[10px] font-medium leading-none opacity-80">{time}</p>
           ) : null}
           {table.IsPrinted ? (
-            <p className="text-[10px] font-medium leading-none opacity-80">In tạm tính</p>
+            <p className="text-[10px] font-medium leading-none opacity-80">{t('pages.actives.tablesOrder.provisionalPrint')}</p>
           ) : null}
         </div>
       </div>
@@ -81,6 +87,7 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
   onSelect: (id: number) => void
   loading: boolean
 }) {
+  const { t } = useTranslation()
   return (
     <aside className="hidden w-[184px] shrink-0 border-r border-slate-200 bg-slate-50/95 text-slate-700 md:flex md:flex-col">
       <div className="border-b border-slate-200 px-5 py-4">
@@ -96,7 +103,7 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
           }`}
         >
           <LayoutGrid className="h-4 w-4" />
-          Sơ đồ bàn
+          {t('pages.actives.tablesOrder.floorPlan')}
         </button>
         <div className="ml-[29px] border-l border-slate-300 py-1 pl-3">
           {loading ? (
@@ -111,7 +118,7 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
                   selected === 0 ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Tất cả khu vực
+                {t('pages.actives.tablesOrder.allAreas')}
               </button>
               <button
                 onClick={() => onSelect(-1)}
@@ -119,7 +126,7 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
                   selected === -1 ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Đang dùng
+                {t('pages.actives.tablesOrder.inUse')}
               </button>
               {areas.map(area => (
                 <button
@@ -137,15 +144,15 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
         </div>
         <button className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-600 hover:bg-white">
           <CalendarDays className="h-4 w-4" />
-          Đặt bàn
+          {t('pages.actives.tablesOrder.bookTable')}
         </button>
         <button className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-600 hover:bg-white">
           <BarChart3 className="h-4 w-4" />
-          Báo cáo
+          {t('pages.actives.tablesOrder.reports')}
         </button>
         <button className="flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-600 hover:bg-white">
           <Users className="h-4 w-4" />
-          Nhân viên
+          {t('pages.actives.tablesOrder.staff')}
         </button>
       </nav>
     </aside>
@@ -155,6 +162,7 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function TablesOrderPage() {
+  const { t } = useTranslation()
   const [selectedAreaId, setSelectedAreaId] = useState(0)
   const [activeTable, setActiveTable] = useState<TPosTable | null>(null)
 
@@ -181,15 +189,15 @@ export default function TablesOrderPage() {
     )
   }
 
-  const occupied = allTables.filter(t => !!t.OrderId).length
-  const empty = allTables.filter(t => !t.OrderId).length
-  const qrOrders = allTables.filter(t => !!t.OrderId && !!t.IsAnonymous).length
+  const occupied = allTables.filter(tbl => !!tbl.OrderId).length
+  const empty = allTables.filter(tbl => !tbl.OrderId).length
+  const qrOrders = allTables.filter(tbl => !!tbl.OrderId && !!tbl.IsAnonymous).length
   const servedOrders = occupied - qrOrders
   const selectedAreaName = selectedAreaId === -1
-    ? 'Bàn đang dùng'
+    ? t('pages.actives.tablesOrder.usingTables')
     : selectedAreaId > 0
-      ? areas.find(area => area.Id === selectedAreaId)?.Name ?? 'Khu vực'
-      : 'Tất cả khu vực'
+      ? areas.find(area => area.Id === selectedAreaId)?.Name ?? t('pages.actives.tablesOrder.area')
+      : t('pages.actives.tablesOrder.allAreas')
 
   return (
     <div className="absolute inset-0 flex overflow-hidden bg-slate-100">
@@ -204,47 +212,47 @@ export default function TablesOrderPage() {
         <header className="flex h-12 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-800">{selectedAreaName}</p>
-            <p className="text-[11px] text-slate-400 md:hidden">Sơ đồ bàn nhà hàng</p>
+            <p className="text-[11px] text-slate-400 md:hidden">{t('pages.actives.tablesOrder.restaurantFloorPlan')}</p>
           </div>
           <div className="ml-auto hidden items-center gap-5 md:flex">
             <span className="flex items-center gap-1.5 text-xs text-slate-600">
               <span className="h-2 w-2 rounded-full bg-slate-300" />
-              Bàn trống ({empty})
+              {t('pages.actives.tablesOrder.emptyTable')} ({empty})
             </span>
             <span className="flex items-center gap-1.5 text-xs text-slate-600">
               <span className="h-2 w-2 rounded-full bg-teal-700" />
-              Đã gọi món ({servedOrders})
+              {t('pages.actives.tablesOrder.occupiedTable')} ({servedOrders})
             </span>
             <span className="flex items-center gap-1.5 text-xs text-slate-600">
               <span className="h-2 w-2 rounded-full bg-orange-500" />
-              Đặt qua QR ({qrOrders})
+              {t('pages.actives.tablesOrder.qrOrder')} ({qrOrders})
             </span>
           </div>
           <div className="ml-auto flex items-center gap-1 md:ml-2">
             <button
               onClick={() => refetch()}
               className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-              title="Tải lại"
+              title={t('common.reload')}
             >
               <RefreshCw className="h-4 w-4" />
             </button>
-            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title="Tìm kiếm">
+            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title={t('common.search')}>
               <Search className="h-4 w-4" />
             </button>
-            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title="Phóng to">
+            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title={t('common.zoomIn')}>
               <ZoomIn className="h-4 w-4" />
             </button>
-            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title="Thu nhỏ">
+            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title={t('common.zoomOut')}>
               <ZoomOut className="h-4 w-4" />
             </button>
-            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title="Toàn màn hình">
+            <button className="hidden h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 md:flex" title={t('common.fullscreen')}>
               <Maximize2 className="h-4 w-4" />
             </button>
           </div>
         </header>
 
         <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-100 bg-white px-4 py-2 md:hidden">
-          {[{ id: 0, name: 'Tất cả' }, { id: -1, name: 'Đang dùng' }, ...areas.map(area => ({ id: area.Id, name: area.Name }))].map(area => (
+          {[{ id: 0, name: t('common.all') }, { id: -1, name: t('pages.actives.tablesOrder.inUse') }, ...areas.map(area => ({ id: area.Id, name: area.Name }))].map(area => (
             <button
               key={area.id}
               onClick={() => setSelectedAreaId(area.id)}
@@ -272,7 +280,7 @@ export default function TablesOrderPage() {
           ) : allTables.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-sm text-slate-400">
               <Armchair className="mb-3 h-10 w-10 text-slate-300" />
-              Không tìm thấy bàn
+              {t('pages.actives.tablesOrder.noTablesFound')}
             </div>
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(132px,132px))] justify-center gap-x-14 gap-y-10 md:justify-start lg:gap-x-20 lg:gap-y-12">

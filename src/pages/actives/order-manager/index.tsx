@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ClipboardList, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, StatusBadge, fm
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 
 function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () => void }) {
+  const { t } = useTranslation()
   const items = order.Items ?? []
   const subTotal = items.reduce((s, i) => s + (i.Total ?? 0), 0)
 
@@ -30,28 +32,28 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
       {/* Customer info */}
       <div className="px-4 py-3 border-b space-y-1 text-sm">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Khách hàng</span>
+          <span className="text-muted-foreground">{t('common.customer')}</span>
           <span className="font-medium">{order.Customer?.Name ?? '—'}</span>
         </div>
         {order.Customer?.Phone && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">SĐT</span>
+            <span className="text-muted-foreground">{t('pages.actives.orderManager.phoneLabel')}</span>
             <span>{order.Customer.Phone}</span>
           </div>
         )}
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Nhân viên</span>
+          <span className="text-muted-foreground">{t('pages.actives.orderManager.employeeLabel')}</span>
           <span>{order.User?.Name ?? '—'}</span>
         </div>
         {order.Stock?.Name && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Kho</span>
+            <span className="text-muted-foreground">{t('pages.actives.orderManager.warehouseLabel')}</span>
             <span>{order.Stock.Name}</span>
           </div>
         )}
         {order.FundType?.Name && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">TT thanh toán</span>
+            <span className="text-muted-foreground">{t('pages.actives.orderManager.paymentMethodLabel')}</span>
             <span>{order.FundType.Name}</span>
           </div>
         )}
@@ -62,15 +64,15 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-background border-b">
             <tr>
-              <th className="text-left px-3 py-2 text-muted-foreground font-medium">Tên hàng</th>
-              <th className="text-right px-3 py-2 text-muted-foreground font-medium">SL</th>
-              <th className="text-right px-3 py-2 text-muted-foreground font-medium">Đơn giá</th>
-              <th className="text-right px-3 py-2 text-muted-foreground font-medium">T.Tiền</th>
+              <th className="text-left px-3 py-2 text-muted-foreground font-medium">{t('pages.actives.orderManager.itemNameHeader')}</th>
+              <th className="text-right px-3 py-2 text-muted-foreground font-medium">{t('pages.actives.orderManager.qtyHeader')}</th>
+              <th className="text-right px-3 py-2 text-muted-foreground font-medium">{t('common.price')}</th>
+              <th className="text-right px-3 py-2 text-muted-foreground font-medium">{t('pages.actives.orderManager.amountHeader')}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {items.length === 0
-              ? <tr><td colSpan={4} className="text-center py-6 text-muted-foreground text-xs">Không có mặt hàng</td></tr>
+              ? <tr><td colSpan={4} className="text-center py-6 text-muted-foreground text-xs">{t('pages.actives.orderManager.noItemsText')}</td></tr>
               : items.map((item, idx) => (
                 <tr key={idx} className="hover:bg-muted/20">
                   <td className="px-3 py-2">
@@ -90,17 +92,17 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
       {/* Totals */}
       <div className="border-t px-4 py-3 space-y-1.5 text-sm bg-muted/10">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Tiền hàng</span>
+          <span className="text-muted-foreground">{t('pages.actives.orderManager.subTotalLabel')}</span>
           <MoneyTag value={order.SubTotal ?? subTotal} />
         </div>
         {(order.Discount ?? 0) > 0 && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Giảm giá</span>
+            <span className="text-muted-foreground">{t('pages.actives.orderManager.discountLabel')}</span>
             <MoneyTag value={order.Discount} />
           </div>
         )}
         <div className="flex justify-between font-semibold text-base border-t pt-1.5">
-          <span>Tổng cộng</span>
+          <span>{t('pages.actives.orderManager.grandTotalLabel')}</span>
           <MoneyTag value={order.Total ?? order.SubTotal ?? subTotal} />
         </div>
       </div>
@@ -109,7 +111,7 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
       {order.Status?.Id === 1 && (
         <div className="px-4 py-3 border-t flex gap-2">
           <Button variant="destructive" size="sm" onClick={onCancel} className="flex-1">
-            <X className="h-3.5 w-3.5 mr-1" /> Huỷ đơn
+            <X className="h-3.5 w-3.5 mr-1" /> {t('pages.actives.orderManager.cancelOrderButton')}
           </Button>
         </div>
       )}
@@ -118,6 +120,7 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
 }
 
 export default function OrderManagerPage() {
+  const { t } = useTranslation()
   const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [selected, setSelected] = useState<TPosOrder | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -150,19 +153,19 @@ export default function OrderManagerPage() {
 
   const handleCancel = async () => {
     if (!selected?.Id) return
-    if (!window.confirm(`Huỷ đơn hàng ${selected.Name ?? selected.Code}?`)) return
+    if (!window.confirm(t('pages.actives.orderManager.confirmCancelOrder', { name: selected.Name ?? selected.Code }))) return
     try {
       await cancelOrder(selected.Id).unwrap()
-      toast.success('Đã huỷ đơn hàng')
+      toast.success(t('pages.actives.orderManager.cancelOrderSuccess'))
       setSelected(null)
       refetch()
-    } catch { toast.error('Không thể huỷ đơn hàng') }
+    } catch { toast.error(t('pages.actives.orderManager.cancelOrderError')) }
   }
 
   return (
     <div className="space-y-4">
-      <ListPageHeader title="Quản lý bán hàng" icon={ClipboardList}>
-        <SearchBar value={keyword} onChange={setKeyword} placeholder="Tìm số phiếu, khách hàng..." />
+      <ListPageHeader title={t('pages.actives.orderManager.title')} icon={ClipboardList}>
+        <SearchBar value={keyword} onChange={setKeyword} placeholder={t('pages.actives.orderManager.searchPlaceholder')} />
         <DateRangeFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
       </ListPageHeader>
 
@@ -174,7 +177,15 @@ export default function OrderManagerPage() {
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/40 sticky top-0">
                 <tr>
-                  {['STT', 'Số phiếu', 'Ngày', 'Khách hàng', 'Nhân viên', 'Tiền hàng', 'TT'].map(h => (
+                  {[
+                    t('common.index'),
+                    t('common.voucherNo'),
+                    t('common.date'),
+                    t('common.customer'),
+                    t('pages.actives.orderManager.employeeLabel'),
+                    t('pages.actives.orderManager.subTotalLabel'),
+                    t('common.statusShort'),
+                  ].map(h => (
                     <th key={h} className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -187,7 +198,7 @@ export default function OrderManagerPage() {
                     ))}</tr>
                   ))
                   : items.length === 0
-                    ? <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Không có đơn hàng nào</td></tr>
+                    ? <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">{t('pages.actives.orderManager.noOrdersText')}</td></tr>
                     : items.map((item, idx) => (
                       <tr
                         key={item.Id ?? idx}

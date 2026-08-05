@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FileDown, Image as ImageIcon, MoreHorizontal, Plus, Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { TreeSidebar, type TreeSidebarNode } from '@/components/layout/tree-sidebar'
 import { Button } from '@/components/ui/button'
@@ -57,6 +58,7 @@ function formatDate(value?: string) {
 }
 
 export default function CustomersPage() {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [statusId, setStatusId] = useState<number | ''>('')
@@ -92,8 +94,8 @@ export default function CustomersPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const sidebarGroups = useMemo<CustomerGroupNode[]>(
-    () => [{ Id: 0, Name: 'Tất cả nhóm' }, ...(groups as CustomerGroupNode[])],
-    [groups],
+    () => [{ Id: 0, Name: t('pages.actives.customers.allGroups') }, ...(groups as CustomerGroupNode[])],
+    [groups, t],
   )
 
   useEffect(() => {
@@ -112,13 +114,13 @@ export default function CustomersPage() {
       setCustomerForm({ ...emptyCustomer(), ...detail })
       setCustomerModal(true)
     } catch {
-      toast.error('Không thể tải thông tin khách hàng')
+      toast.error(t('pages.actives.customers.cannotLoadCustomerDetail'))
     }
-  }, [getCustomerDetail])
+  }, [getCustomerDetail, t])
 
   const saveCustomerForm = async () => {
     if (!customerForm.Name?.trim()) {
-      toast.error('Vui lòng nhập tên khách hàng')
+      toast.error(t('pages.actives.customers.pleaseEnterCustomerName'))
       return
     }
 
@@ -126,11 +128,11 @@ export default function CustomersPage() {
 
     try {
       await saveCustomer(payload).unwrap()
-      toast.success(customerForm.Id ? 'Đã cập nhật khách hàng' : 'Đã thêm khách hàng')
+      toast.success(customerForm.Id ? t('pages.actives.customers.customerUpdated') : t('pages.actives.customers.customerAdded'))
       setCustomerModal(false)
       refetch()
     } catch {
-      toast.error('Không thể lưu khách hàng')
+      toast.error(t('pages.actives.customers.cannotSaveCustomer'))
     }
   }
 
@@ -141,21 +143,21 @@ export default function CustomersPage() {
       await updateCustomerStatus({ id: customer.Id, statusId: nextStatus }).unwrap()
       refetch()
     } catch {
-      toast.error('Không thể cập nhật trạng thái')
+      toast.error(t('pages.actives.customers.cannotUpdateStatus'))
     }
-  }, [refetch, updateCustomerStatus])
+  }, [refetch, t, updateCustomerStatus])
 
   const deleteCustomer = useCallback(async (customer: TPosCustomer) => {
     if (!customer.Id) return
-    if (!window.confirm(`Xóa khách hàng "${customer.Name}"?`)) return
+    if (!window.confirm(t('pages.actives.customers.confirmDeleteCustomer', { name: customer.Name }))) return
     try {
       await updateCustomerStatus({ id: customer.Id, statusId: STATUS_DELETED }).unwrap()
-      toast.success('Đã xóa khách hàng')
+      toast.success(t('pages.actives.customers.customerDeleted'))
       refetch()
     } catch {
-      toast.error('Không thể xóa khách hàng')
+      toast.error(t('pages.actives.customers.cannotDeleteCustomer'))
     }
-  }, [refetch, updateCustomerStatus])
+  }, [refetch, t, updateCustomerStatus])
 
   const openAddGroup = () => {
     setGroupForm({ Name: '' })
@@ -175,32 +177,32 @@ export default function CustomersPage() {
 
   const saveCustomerGroup = async () => {
     if (!groupForm.Name?.trim()) {
-      toast.error('Vui lòng nhập tên nhóm khách hàng')
+      toast.error(t('pages.actives.customers.pleaseEnterGroupName'))
       return
     }
     try {
       await saveGroup(groupForm).unwrap()
-      toast.success(groupForm.Id ? 'Cập nhật nhóm khách hàng thành công' : 'Thêm nhóm khách hàng thành công')
+      toast.success(groupForm.Id ? t('pages.actives.customers.groupUpdated') : t('pages.actives.customers.groupAdded'))
       setGroupModal(false)
       refetchGroups()
       refetch()
     } catch {
-      toast.error('Không thể lưu nhóm khách hàng')
+      toast.error(t('pages.actives.customers.cannotSaveGroup'))
     }
   }
 
   const deleteCustomerGroup = async (group: CustomerGroupNode) => {
-    if (!window.confirm(`Xóa nhóm khách hàng "${group.Name}"?`)) return
+    if (!window.confirm(t('pages.actives.customers.confirmDeleteGroup', { name: group.Name }))) return
     try {
       await updateGroupStatus({ id: group.Id, statusId: STATUS_DELETED }).unwrap()
-      toast.success('Xóa nhóm khách hàng thành công')
+      toast.success(t('pages.actives.customers.groupDeleted'))
       if (groupId === group.Id) {
         setGroupId(0)
         setPage(1)
       }
       refetchGroups()
     } catch {
-      toast.error('Không thể xóa nhóm khách hàng')
+      toast.error(t('pages.actives.customers.cannotDeleteGroup'))
     }
   }
 
@@ -216,28 +218,28 @@ export default function CustomersPage() {
         })}`,
       }).unwrap()
       downloadBlob(blob, 'khach-hang.xlsx')
-      toast.success('Xuất Excel thành công')
+      toast.success(t('pages.actives.customers.exportExcelSuccess'))
     } catch {
-      toast.error('Không thể xuất Excel')
+      toast.error(t('pages.actives.customers.cannotExportExcel'))
     }
   }
 
   const columns = useMemo<ColumnDef<TPosCustomer>[]>(() => [
     {
       id: 'stt',
-      header: 'STT',
+      header: t('common.index'),
       meta: { className: 'w-14 text-center' },
       cell: ({ row }) => <span className="text-slate-400">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
     },
     {
       id: 'code',
-      header: 'Mã',
+      header: t('common.code'),
       meta: { cellClassName: 'whitespace-nowrap' },
       cell: ({ row }) => <CodeTag value={row.original.CustomerCode || row.original.Code} />,
     },
     {
       id: 'name',
-      header: 'Tên',
+      header: t('common.name'),
       accessorFn: row => row.Name ?? '',
       cell: ({ row }) => {
         const customer = row.original
@@ -254,13 +256,13 @@ export default function CustomersPage() {
     },
     {
       id: 'company',
-      header: 'Tên ĐV',
+      header: t('pages.actives.customers.companyNameShort'),
       meta: { cellClassName: 'max-w-[160px] truncate text-xs text-slate-600' },
       cell: ({ row }) => row.original.CompanyName || '-',
     },
     {
       id: 'group',
-      header: 'Nhóm khách hàng',
+      header: t('pages.actives.customers.customerGroup'),
       cell: ({ row }) => {
         const customer = row.original
         const groupImage = imgUrl((customer.CustomerGroup as any)?.Image?.Url)
@@ -274,37 +276,37 @@ export default function CustomersPage() {
     },
     {
       id: 'phone',
-      header: 'Điện thoại',
+      header: t('common.phone'),
       accessorFn: row => row.Phone ?? '',
       cell: ({ row }) => row.original.Phone || '-',
     },
     {
       id: 'address',
-      header: 'Địa chỉ',
+      header: t('common.address'),
       meta: { cellClassName: 'max-w-[190px] truncate text-xs text-slate-500' },
       cell: ({ row }) => row.original.Address || '-',
     },
     {
       id: 'email',
-      header: 'Email',
+      header: t('common.email'),
       meta: { cellClassName: 'max-w-[170px] truncate text-xs text-slate-500' },
       cell: ({ row }) => row.original.Email || '-',
     },
     {
       id: 'birthday',
-      header: 'Sinh nhật',
+      header: t('common.birthday'),
       meta: { className: 'text-center whitespace-nowrap' },
       cell: ({ row }) => formatDate(row.original.Birthday),
     },
     {
       id: 'status',
-      header: 'Trạng thái',
+      header: t('common.status'),
       meta: { className: 'w-28 text-center' },
       cell: ({ row }) => <StatusBadge status={row.original.Status} />,
     },
     {
       id: 'actions',
-      header: 'Thao tác',
+      header: t('common.actions'),
       meta: { className: 'w-28 text-center' },
       cell: ({ row }) => {
         const customer = row.original
@@ -317,13 +319,13 @@ export default function CustomersPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openEditCustomer(customer.Id)}>Chi tiết / sửa</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEditCustomer(customer.Id)}>{t('common.detailEdit')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => toggleCustomerStatus(customer)}>
-                  {customer.Status?.Id === STATUS_ACTIVE ? 'Tạm khóa' : 'Kích hoạt'}
+                  {customer.Status?.Id === STATUS_ACTIVE ? t('pages.actives.customers.tempLock') : t('common.activate')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteCustomer(customer)}>
-                  Xóa
+                  {t('pages.actives.customers.delete')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -331,18 +333,18 @@ export default function CustomersPage() {
         )
       },
     },
-  ], [deleteCustomer, openEditCustomer, page, toggleCustomerStatus])
+  ], [deleteCustomer, openEditCustomer, page, t, toggleCustomerStatus])
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
         <TreeSidebar
-          title="Nhóm khách hàng"
+          title={t('pages.actives.customers.customerGroup')}
           items={sidebarGroups}
           selectedId={groupId}
           searchText={groupSearch}
-          searchPlaceholder="Tìm kiếm nhóm..."
-          emptyText="Không tìm thấy nhóm khách hàng"
+          searchPlaceholder={t('pages.actives.customers.searchGroupPlaceholder')}
+          emptyText={t('pages.actives.customers.groupNotFound')}
           onSearchTextChange={setGroupSearch}
           onSelect={group => {
             setGroupId(group.Id)
@@ -359,7 +361,7 @@ export default function CustomersPage() {
         <section className="flex min-w-0 flex-1 flex-col gap-3">
           <ListToolbar
             searchValue={keyword}
-            searchPlaceholder="Tìm kiếm khách hàng..."
+            searchPlaceholder={t('pages.actives.customers.searchCustomerPlaceholder')}
             onSearchChange={value => {
               setKeyword(value)
               setPage(1)
@@ -373,24 +375,24 @@ export default function CustomersPage() {
                 }}
                 className="h-10 min-w-[150px] rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">Tất cả TT</option>
-                <option value={STATUS_ACTIVE}>Hoạt động</option>
-                <option value={STATUS_LOCKED}>Tạm khóa</option>
+                <option value="">{t('pages.actives.customers.allStatusesShort')}</option>
+                <option value={STATUS_ACTIVE}>{t('common.active')}</option>
+                <option value={STATUS_LOCKED}>{t('pages.actives.customers.tempLock')}</option>
               </select>
             )}
             actions={(
               <>
                 <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
                   <Upload className="h-4 w-4" />
-                  Nhập
+                  {t('common.import')}
                 </ToolbarButton>
                 <ToolbarButton tone="neutral" onClick={exportExcel}>
                   <FileDown className="h-4 w-4" />
-                  Xuất
+                  {t('common.export')}
                 </ToolbarButton>
                 <ToolbarButton tone="primary" onClick={openAddCustomer}>
                   <Plus className="h-4 w-4" />
-                  Thêm khách hàng
+                  {t('pages.actives.customers.addCustomer')}
                 </ToolbarButton>
               </>
             )}
@@ -405,7 +407,7 @@ export default function CustomersPage() {
             pageSize={PAGE_SIZE}
             onPageChange={setPage}
             onRowDoubleClick={customer => openEditCustomer(customer.Id)}
-            emptyText="Không có khách hàng nào"
+            emptyText={t('pages.actives.customers.noCustomers')}
           />
         </section>
       </div>
@@ -422,29 +424,29 @@ export default function CustomersPage() {
 
       <Dialog open={groupModal} onOpenChange={setGroupModal}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>{groupForm.Id ? 'Sửa nhóm khách hàng' : 'Thêm nhóm khách hàng'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{groupForm.Id ? t('pages.actives.customers.editGroupTitle') : t('pages.actives.customers.addGroupTitle')}</DialogTitle></DialogHeader>
           <div className="grid gap-3">
-            <Field label="Tên nhóm" required>
+            <Field label={t('common.groupName')} required>
               <Input value={groupForm.Name || ''} onChange={event => setGroupForm(current => ({ ...current, Name: event.target.value }))} />
             </Field>
-            <Field label="Đánh mã khách hàng">
-              <Input value={groupForm.CustomerCode || ''} onChange={event => setGroupForm(current => ({ ...current, CustomerCode: event.target.value }))} placeholder="VD: KH001" />
+            <Field label={t('pages.actives.customers.customerCodeLabel')}>
+              <Input value={groupForm.CustomerCode || ''} onChange={event => setGroupForm(current => ({ ...current, CustomerCode: event.target.value }))} placeholder={t('pages.actives.customers.customerCodePlaceholder')} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Chiết khấu (%)">
+              <Field label={t('pages.actives.customers.discountPercent')}>
                 <NumberInput value={groupForm.DiscountPercent ?? 0} onChange={v => setGroupForm(current => ({ ...current, DiscountPercent: v }))} />
               </Field>
-              <Field label="Điểm">
+              <Field label={t('common.points')}>
                 <NumberInput value={groupForm.Point ?? 0} onChange={v => setGroupForm(current => ({ ...current, Point: v }))} />
               </Field>
             </div>
-            <Field label="Ghi chú">
+            <Field label={t('common.note')}>
               <Textarea rows={2} value={groupForm.Note || ''} onChange={event => setGroupForm(current => ({ ...current, Note: event.target.value }))} />
             </Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setGroupModal(false)}>Hủy</Button>
-            <Button onClick={saveCustomerGroup} disabled={savingGroup}>{savingGroup ? 'Đang lưu...' : 'Lưu'}</Button>
+            <Button variant="outline" onClick={() => setGroupModal(false)}>{t('common.cancel')}</Button>
+            <Button onClick={saveCustomerGroup} disabled={savingGroup}>{savingGroup ? t('pages.actives.customers.saving') : t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

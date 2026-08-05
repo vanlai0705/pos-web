@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, FileDown, MoreHorizontal, Plus, QrCode, RefreshCw, Table2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { TreeSidebar, type TreeSidebarNode } from '@/components/layout/tree-sidebar'
 import { Button } from '@/components/ui/button'
@@ -80,6 +81,7 @@ const emptyAreaForm = (): AreaForm => ({ Name: '', IsActive: true, StockId: 0, U
 const emptyTableForm = (): TableForm => ({ Name: '', PricingMode: 1, AreaId: 0, Note: '' })
 
 export default function TablesManagePage() {
+  const { t } = useTranslation()
   const [areas, setAreas] = useState<Area[]>([])
   const [tables, setTables] = useState<RestaurantTable[]>([])
   const [selectedAreaId, setSelectedAreaId] = useState(0)
@@ -123,11 +125,11 @@ export default function TablesManagePage() {
       }).unwrap()
       setAreas((response?.Data?.Items || []) as Area[])
     } catch {
-      toast.error('Không thể tải khu vực')
+      toast.error(t('pages.actives.tables.loadAreasError'))
     } finally {
       setAreasLoading(false)
     }
-  }, [areaSearch, request])
+  }, [areaSearch, request, t])
 
   const loadTables = useCallback(async (nextPage: number, keywordValue: string, areaId: number) => {
     setTablesLoading(true)
@@ -146,11 +148,11 @@ export default function TablesManagePage() {
     } catch {
       setTables([])
       setTotal(0)
-      toast.error('Không thể tải danh sách bàn')
+      toast.error(t('pages.actives.tables.loadTablesError'))
     } finally {
       setTablesLoading(false)
     }
-  }, [request])
+  }, [request, t])
 
   const loadOptions = useCallback(async () => {
     try {
@@ -161,9 +163,9 @@ export default function TablesManagePage() {
       setStocks((stockRes?.Data?.Items || []) as SimpleOption[])
       setUsers((userRes?.Data?.Items || []) as SimpleOption[])
     } catch {
-      toast.error('Không thể tải dữ liệu chọn khu vực')
+      toast.error(t('pages.actives.tables.loadOptionsError'))
     }
-  }, [request])
+  }, [request, t])
 
   useEffect(() => {
     loadAreas('')
@@ -201,21 +203,21 @@ export default function TablesManagePage() {
       })
       setAreaModal(true)
     } catch {
-      toast.error('Không lấy được chi tiết khu vực')
+      toast.error(t('pages.actives.tables.areaDetailError'))
     }
   }
 
   const saveArea = async () => {
     if (!areaForm.Name.trim()) {
-      toast.error('Vui lòng nhập tên khu vực')
+      toast.error(t('pages.actives.tables.areaNameRequired'))
       return
     }
     if (!areaForm.StockId) {
-      toast.error('Vui lòng chọn kho bán hàng')
+      toast.error(t('pages.actives.tables.stockRequired'))
       return
     }
     if (areaForm.UserIds.length === 0) {
-      toast.error('Vui lòng chọn ít nhất 1 nhân viên')
+      toast.error(t('pages.actives.tables.staffRequired'))
       return
     }
 
@@ -236,26 +238,26 @@ export default function TablesManagePage() {
         method: isUpdate ? 'PUT' : 'POST',
         body: buildModelFormData(payload),
       }).unwrap()
-      toast.success(isUpdate ? 'Cập nhật khu vực thành công' : 'Tạo khu vực thành công')
+      toast.success(isUpdate ? t('pages.actives.tables.areaUpdateSuccess') : t('pages.actives.tables.areaCreateSuccess'))
       setAreaModal(false)
       await loadAreas()
     } catch {
-      toast.error('Không thể lưu khu vực')
+      toast.error(t('pages.actives.tables.areaSaveError'))
     } finally {
       setSaving(false)
     }
   }
 
   const deleteArea = async (area: Area) => {
-    if (!window.confirm(`Xóa khu vực "${area.Name || area.Code}"?`)) return
+    if (!window.confirm(t('pages.actives.tables.deleteAreaConfirm', { name: area.Name || area.Code }))) return
     try {
       await request({ url: `area/delete${query({ id: area.Id })}`, method: 'DELETE' }).unwrap()
-      toast.success('Xóa khu vực thành công')
+      toast.success(t('pages.actives.tables.areaDeleteSuccess'))
       if (selectedAreaId === area.Id) setSelectedAreaId(0)
       await loadAreas()
       await loadTables(1, keyword, selectedAreaId === area.Id ? 0 : selectedAreaId)
     } catch {
-      toast.error('Không thể xóa khu vực')
+      toast.error(t('pages.actives.tables.areaDeleteError'))
     }
   }
 
@@ -277,17 +279,17 @@ export default function TablesManagePage() {
       })
       setTableModal(true)
     } catch {
-      toast.error('Không lấy được chi tiết bàn')
+      toast.error(t('pages.actives.tables.tableDetailError'))
     }
   }
 
   const saveTable = async () => {
     if (!tableForm.Name.trim()) {
-      toast.error('Vui lòng nhập tên phòng bàn')
+      toast.error(t('pages.actives.tables.tableNameRequired'))
       return
     }
     if (!tableForm.AreaId) {
-      toast.error('Vui lòng chọn khu vực')
+      toast.error(t('pages.actives.tables.areaSelectRequired'))
       return
     }
 
@@ -312,24 +314,24 @@ export default function TablesManagePage() {
         method: isUpdate ? 'PUT' : 'POST',
         body: buildModelFormData(payload),
       }).unwrap()
-      toast.success(isUpdate ? 'Cập nhật bàn thành công' : 'Tạo bàn thành công')
+      toast.success(isUpdate ? t('pages.actives.tables.tableUpdateSuccess') : t('pages.actives.tables.tableCreateSuccess'))
       setTableModal(false)
       await loadTables(page, keyword, selectedAreaId)
     } catch {
-      toast.error('Không thể lưu bàn')
+      toast.error(t('pages.actives.tables.tableSaveError'))
     } finally {
       setSaving(false)
     }
   }
 
   const deleteTable = async (table: RestaurantTable) => {
-    if (!window.confirm(`Xóa bàn "${table.Name || table.Code}"?`)) return
+    if (!window.confirm(t('pages.actives.tables.deleteTableConfirm', { name: table.Name || table.Code }))) return
     try {
       await request({ url: `tables/delete${query({ id: table.Id })}`, method: 'DELETE' }).unwrap()
-      toast.success('Xóa bàn thành công')
+      toast.success(t('pages.actives.tables.tableDeleteSuccess'))
       await loadTables(page, keyword, selectedAreaId)
     } catch {
-      toast.error('Không thể xóa bàn')
+      toast.error(t('pages.actives.tables.tableDeleteError'))
     }
   }
 
@@ -343,7 +345,7 @@ export default function TablesManagePage() {
 
   const submitBatch = async () => {
     if (batchRows.some(row => !row.AreaId || !row.FromNumber || !row.ToNumber || !row.StartNameWith.trim())) {
-      toast.error('Vui lòng nhập đủ từ số, đến số và tiền tố')
+      toast.error(t('pages.actives.tables.batchFieldsRequired'))
       return
     }
     try {
@@ -357,11 +359,11 @@ export default function TablesManagePage() {
           startNameWith: row.StartNameWith,
         })),
       }).unwrap()
-      toast.success('Đã thêm nhanh bàn')
+      toast.success(t('pages.actives.tables.batchCreateSuccess'))
       setBatchMode(false)
       await loadTables(1, keyword, selectedAreaId)
     } catch {
-      toast.error('Không thể thêm nhanh bàn')
+      toast.error(t('pages.actives.tables.batchCreateError'))
     }
   }
 
@@ -370,7 +372,7 @@ export default function TablesManagePage() {
       const blob = await downloadFile({ url: 'tables/get-qr-image-files' }).unwrap()
       downloadBlob(blob, 'tat-ca-qr-ban.zip')
     } catch {
-      toast.error('Không thể tải tất cả QR')
+      toast.error(t('pages.actives.tables.downloadAllQrError'))
     }
   }
 
@@ -384,13 +386,13 @@ export default function TablesManagePage() {
       setPreviewFileName(`${table.Name || 'qr'}.png`.replace(/[^\w.\- ]/g, ''))
       setPreviewOpen(true)
     } catch {
-      toast.error('Không thể tải QR')
+      toast.error(t('pages.actives.tables.downloadQrError'))
     }
   }
 
   const exportExcel = () => {
     const rows = [
-      ['#', 'Tên bàn', 'Khu vực', 'Ghi chú'],
+      ['#', t('pages.actives.tables.tableName'), t('pages.actives.tables.area'), t('common.note')],
       ...tables.map((table, index) => [
         index + 1,
         table.Name || '',
@@ -399,7 +401,7 @@ export default function TablesManagePage() {
       ]),
     ]
     const csv = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
-    downloadBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `Danh_sach_ban_${selectedArea?.Name || 'Tat_ca'}.csv`)
+    downloadBlob(new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' }), `Danh_sach_ban_${selectedArea?.Name || 'Tat_ca'}.csv`)
   }
 
   const areaTree = useMemo(() => areas, [areas])
@@ -413,7 +415,7 @@ export default function TablesManagePage() {
     },
     {
       id: 'name',
-      header: 'Tên bàn',
+      header: t('pages.actives.tables.tableName'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2 font-semibold text-slate-800">
           <Table2 className="h-4 w-4 text-indigo-500" />
@@ -423,7 +425,7 @@ export default function TablesManagePage() {
     },
     {
       id: 'area',
-      header: 'Khu vực',
+      header: t('pages.actives.tables.area'),
       cell: ({ row }) => (
         <span className="inline-flex rounded-md bg-blue-500 px-2 py-1 text-xs font-semibold text-white">
           {row.original.Area?.Name || selectedArea?.Name || '-'}
@@ -432,13 +434,13 @@ export default function TablesManagePage() {
     },
     {
       id: 'note',
-      header: 'Ghi chú',
+      header: t('common.note'),
       meta: { cellClassName: 'text-xs text-slate-500' },
       cell: ({ row }) => row.original.Notes || row.original.Note || '-',
     },
     {
       id: 'actions',
-      header: 'Thao tác',
+      header: t('common.actions'),
       meta: { className: 'w-24 text-right' },
       cell: ({ row }) => {
         const table = row.original
@@ -451,10 +453,10 @@ export default function TablesManagePage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openEditTable(table)}>Sửa bàn</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => previewQr(table)}>Xem / tải QR</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEditTable(table)}>{t('pages.actives.tables.editTable')}</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => previewQr(table)}>{t('pages.actives.tables.viewDownloadQr')}</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteTable(table)}>Xóa bàn</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteTable(table)}>{t('pages.actives.tables.deleteTable')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -467,13 +469,13 @@ export default function TablesManagePage() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
         <TreeSidebar
-          title="Khu vực bàn"
+          title={t('pages.actives.tables.areaSidebarTitle')}
           items={areaTree}
           selectedId={selectedAreaId}
           searchText={areaSearch}
           loading={areasLoading}
-          searchPlaceholder="Tìm khu vực..."
-          emptyText="Không tìm thấy khu vực"
+          searchPlaceholder={t('pages.actives.tables.searchArea')}
+          emptyText={t('pages.actives.tables.areaNotFound')}
           onSearchTextChange={value => {
             setAreaSearch(value)
             loadAreas(value)
@@ -487,13 +489,13 @@ export default function TablesManagePage() {
         <section className="flex min-w-0 flex-1 flex-col gap-3">
           <ListToolbar
             searchValue={keyword}
-            searchPlaceholder="Tìm kiếm bàn..."
+            searchPlaceholder={t('pages.actives.tables.searchTable')}
             onSearchChange={setKeyword}
             actions={(
               <>
                 <ToolbarButton tone="primary" onClick={openCreateTable}>
                   <Plus className="h-4 w-4" />
-                  Thêm bàn
+                  {t('pages.actives.tables.addTable')}
                 </ToolbarButton>
                 <ToolbarButton tone="neutral" onClick={() => loadTables(page, keyword, selectedAreaId)}>
                   <RefreshCw className="h-4 w-4" />
@@ -501,15 +503,15 @@ export default function TablesManagePage() {
                 </ToolbarButton>
                 <ToolbarButton tone="neutral" disabled={tables.length === 0} onClick={exportExcel}>
                   <FileDown className="h-4 w-4" />
-                  Xuất excel
+                  {t('common.exportExcel')}
                 </ToolbarButton>
                 <ToolbarButton tone="neutral" onClick={prepareBatchRows}>
                   <Zap className="h-4 w-4 text-orange-500" />
-                  Thêm nhanh
+                  {t('pages.actives.tables.quickAdd')}
                 </ToolbarButton>
                 <ToolbarButton tone="neutral" disabled={downloading} onClick={downloadAllQr}>
                   <QrCode className="h-4 w-4 text-cyan-600" />
-                  Tải tất cả QR
+                  {t('pages.actives.tables.downloadAllQr')}
                 </ToolbarButton>
               </>
             )}
@@ -534,7 +536,7 @@ export default function TablesManagePage() {
                 setPage(nextPage)
                 loadTables(nextPage, keyword, selectedAreaId)
               }}
-              emptyText="Chưa có bàn trong khu vực này"
+              emptyText={t('pages.actives.tables.noTablesInArea')}
             />
           )}
         </section>
@@ -567,15 +569,15 @@ export default function TablesManagePage() {
         if (!open && previewUrl) URL.revokeObjectURL(previewUrl)
       }}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>QR bàn</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('pages.actives.tables.qrCodeTitle')}</DialogTitle></DialogHeader>
           <div className="flex justify-center">
             {previewUrl ? <img src={previewUrl} className="h-80 w-80 rounded-lg border object-contain" /> : null}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPreviewOpen(false)}>Đóng</Button>
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>{t('pages.actives.tables.close')}</Button>
             <Button disabled={!previewBlob} onClick={() => previewBlob && downloadBlob(previewBlob, previewFileName)}>
               <Download className="mr-2 h-4 w-4" />
-              Tải ảnh
+              {t('pages.actives.tables.downloadImage')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -603,21 +605,22 @@ function AreaModal({
   onClose: () => void
   onSave: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <Dialog open={open} onOpenChange={value => !value && onClose()}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle>{form.Id ? 'Chỉnh sửa khu vực' : 'Thêm mới khu vực'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{form.Id ? t('pages.actives.tables.editAreaTitle') : t('pages.actives.tables.addAreaTitle')}</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <Field label="Tên khu vực" required>
-            <Input value={form.Name} onChange={event => setForm(current => ({ ...current, Name: event.target.value }))} placeholder="Nhập tên khu vực" />
+          <Field label={t('pages.actives.tables.areaNameLabel')} required>
+            <Input value={form.Name} onChange={event => setForm(current => ({ ...current, Name: event.target.value }))} placeholder={t('pages.actives.tables.areaNamePlaceholder')} />
           </Field>
-          <Field label="Kho bán hàng" required>
+          <Field label={t('pages.actives.tables.stockLabel')} required>
             <select value={form.StockId || ''} onChange={event => setForm(current => ({ ...current, StockId: Number(event.target.value) }))} className="h-9 w-full rounded-md border bg-white px-3 text-sm">
-              <option value="">Chọn kho</option>
+              <option value="">{t('pages.actives.tables.selectStockOption')}</option>
               {stocks.map(stock => <option key={stock.Id} value={stock.Id}>{stock.Name}</option>)}
             </select>
           </Field>
-          <Field label="Nhân viên phụ trách" required>
+          <Field label={t('pages.actives.tables.staffLabel')} required>
             <div className="grid max-h-44 gap-2 overflow-auto rounded-md border bg-slate-50 p-2 sm:grid-cols-2">
               {users.map(user => {
                 const checked = form.UserIds.includes(user.Id)
@@ -639,17 +642,17 @@ function AreaModal({
               })}
             </div>
           </Field>
-          <Field label="Ghi chú">
+          <Field label={t('common.note')}>
             <Textarea rows={2} value={form.Note} onChange={event => setForm(current => ({ ...current, Note: event.target.value }))} />
           </Field>
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
             <Switch checked={form.IsActive} onCheckedChange={value => setForm(current => ({ ...current, IsActive: value }))} />
-            Hoạt động
+            {t('common.active')}
           </label>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button onClick={onSave} disabled={saving}>{saving ? 'Đang lưu...' : form.Id ? 'Cập nhật' : 'Lưu'}</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? t('pages.actives.tables.saving') : form.Id ? t('pages.actives.tables.update') : t('common.save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -675,17 +678,22 @@ function TableModal({
   onClose: () => void
   onSave: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <Dialog open={open} onOpenChange={value => !value && onClose()}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{form.Id ? 'Chỉnh sửa phòng bàn' : 'Thêm mới phòng bàn'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{form.Id ? t('pages.actives.tables.editTableTitle') : t('pages.actives.tables.addTableTitle')}</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <Field label="Tên phòng bàn" required>
-            <Input value={form.Name} onChange={event => setForm(current => ({ ...current, Name: event.target.value }))} placeholder="Nhập tên phòng bàn" />
+          <Field label={t('pages.actives.tables.tableNameLabel')} required>
+            <Input value={form.Name} onChange={event => setForm(current => ({ ...current, Name: event.target.value }))} placeholder={t('pages.actives.tables.tableNamePlaceholder')} />
           </Field>
-          <Field label="Cách tính giờ">
+          <Field label={t('pages.actives.tables.pricingModeLabel')}>
             <div className="flex flex-wrap gap-3 text-sm">
-              {[{ id: 1, name: 'Theo giờ' }, { id: 2, name: 'Theo bảng giá' }, { id: 3, name: 'Theo khu vực' }].map(item => (
+              {[
+                { id: 1, name: t('pages.actives.tables.pricingByHour') },
+                { id: 2, name: t('pages.actives.tables.pricingByPriceList') },
+                { id: 3, name: t('pages.actives.tables.pricingByArea') },
+              ].map(item => (
                 <label key={item.id} className="flex items-center gap-1">
                   <input type="radio" checked={form.PricingMode === item.id} onChange={() => setForm(current => ({ ...current, PricingMode: item.id }))} />
                   {item.name}
@@ -694,20 +702,20 @@ function TableModal({
             </div>
           </Field>
           {selectedAreaId === 0 ? (
-            <Field label="Khu vực" required>
+            <Field label={t('pages.actives.tables.area')} required>
               <select value={form.AreaId || ''} onChange={event => setForm(current => ({ ...current, AreaId: Number(event.target.value) }))} className="h-9 w-full rounded-md border bg-white px-3 text-sm">
-                <option value="">Chọn khu vực</option>
+                <option value="">{t('pages.actives.tables.selectAreaOption')}</option>
                 {areas.map(area => <option key={area.Id} value={area.Id}>{area.Name}</option>)}
               </select>
             </Field>
           ) : null}
-          <Field label="Ghi chú">
+          <Field label={t('common.note')}>
             <Textarea rows={3} value={form.Note} onChange={event => setForm(current => ({ ...current, Note: event.target.value }))} />
           </Field>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button onClick={onSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? t('pages.actives.tables.saving') : t('common.save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -725,6 +733,7 @@ function BatchPanel({
   onSubmit: () => void
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const update = (index: number, key: keyof BatchRow, value: string) => {
     setRows(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, [key]: value } : row))
   }
@@ -732,18 +741,18 @@ function BatchPanel({
   return (
     <div className="rounded-lg border bg-white p-4 shadow-sm">
       <div className="mb-4 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
-        <strong>Thêm nhiều bàn vào hệ thống một lúc.</strong>
-        <div className="mt-1 text-blue-800">Ví dụ: Từ 1 đến 9, bắt đầu bằng B sẽ sinh B01-B09.</div>
+        <strong>{t('pages.actives.tables.batchIntro')}</strong>
+        <div className="mt-1 text-blue-800">{t('pages.actives.tables.batchExample')}</div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border text-sm">
           <thead className="bg-slate-100">
             <tr>
               <th className="border px-2 py-2">#</th>
-              <th className="border px-2 py-2">Khu vực</th>
-              <th className="border px-2 py-2">Bàn từ số</th>
-              <th className="border px-2 py-2">Bàn đến số</th>
-              <th className="border px-2 py-2">Bắt đầu bằng</th>
+              <th className="border px-2 py-2">{t('pages.actives.tables.area')}</th>
+              <th className="border px-2 py-2">{t('pages.actives.tables.tableFromNumber')}</th>
+              <th className="border px-2 py-2">{t('pages.actives.tables.tableToNumber')}</th>
+              <th className="border px-2 py-2">{t('pages.actives.tables.startNameWith')}</th>
             </tr>
           </thead>
           <tbody>
@@ -760,8 +769,8 @@ function BatchPanel({
         </table>
       </div>
       <div className="mt-4 flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose}>Thoát</Button>
-        <Button onClick={onSubmit}>Thực hiện</Button>
+        <Button variant="outline" onClick={onClose}>{t('pages.actives.tables.exit')}</Button>
+        <Button onClick={onSubmit}>{t('pages.actives.tables.execute')}</Button>
       </div>
     </div>
   )

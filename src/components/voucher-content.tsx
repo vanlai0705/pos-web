@@ -17,6 +17,7 @@ import html2canvas from "html2canvas"
 import jsPDF from "jspdf"
 import { useRef } from "react"
 import { useReactToPrint } from "react-to-print"
+import { useTranslation } from "react-i18next"
 import * as XLSX from "xlsx"
 import "./voucher-print.css"
 import { COMPANY_PRINT_LINES } from "@/constants"
@@ -79,6 +80,7 @@ export const VoucherContent = ({
     importedGoodsData: importedGoodsDataProp,
     renderButtons,
 }: VoucherContentProps) => {
+    const { t } = useTranslation()
     const documentRef = useRef<HTMLDivElement>(null)
     const { data: importedGoodsDataInternal } = useGetImportedGoodsQuery({ all: true })
     const importedGoodsData = importedGoodsDataProp ?? importedGoodsDataInternal
@@ -96,8 +98,8 @@ export const VoucherContent = ({
     const typeOptions = variant === "inbound" ? InbouceType : OutboundType
     const typeLabel = typeOptions.find((item) => Number(item.value) === type)?.label
 
-    const warehouseLabel = variant === "inbound" ? "Nhập tại kho" : "Xuất tại kho"
-    const secondPersonLabel = variant === "inbound" ? "Người giao hàng" : "Người nhận hàng"
+    const warehouseLabel = variant === "inbound" ? t("components.voucherContent.inboundWarehouseLabel") : t("components.voucherContent.outboundWarehouseLabel")
+    const secondPersonLabel = variant === "inbound" ? t("components.voucherContent.delivererLabel") : t("components.voucherContent.receiverLabel")
 
     const entityName = variant === "inbound"
         ? (entity as TSupplierItem)?.name || ""
@@ -115,7 +117,7 @@ export const VoucherContent = ({
         ? (entity as TSupplierItem)?.contact_name || ""
         : (entity as TCustomerItem)?.phone || ""
 
-    const contactLabel = variant === "inbound" ? "Họ tên người liên hệ" : "Số điện thoại"
+    const contactLabel = variant === "inbound" ? t("components.voucherContent.contactNameLabel") : t("components.voucherContent.contactPhoneLabel")
 
     const reason =
         "note" in data
@@ -147,10 +149,10 @@ export const VoucherContent = ({
                 (component) => Number(component.value) === WAREHOUSE_TYPES.COMPONENT
             )?.label || ""
         } else if (itemTypeNum === 3) {
-            itemTypeLabel = "Hàng Hóa Nhập Khẩu"
+            itemTypeLabel = t("components.voucherContent.importedGoodsTypeLabel")
         } else {
             const productStatus = (product as TProductItem)?.status
-            itemTypeLabel = productStatus === INVENTORY_ITEM_TYPES.SEMI_FINISHED_PRODUCT ? "Bán Thành Phẩm" : "Thành Phẩm"
+            itemTypeLabel = productStatus === INVENTORY_ITEM_TYPES.SEMI_FINISHED_PRODUCT ? t("components.voucherContent.semiFinishedProductLabel") : t("components.voucherContent.finishedProductLabel")
         }
 
         return {
@@ -267,18 +269,18 @@ export const VoucherContent = ({
         const sheetData: Array<Array<string | number>> = [
             [...COMPANY_PRINT_LINES],
             [],
-            [`PHIẾU ${typeLabel?.toUpperCase() || ""}`],
+            [`${t("components.voucherContent.voucherTitlePrefix")} ${typeLabel?.toUpperCase() || ""}`],
             [exportDate.format("[Ngày] DD [tháng] MM [năm] YYYY")],
-            [`Số: ${code || "[Mới]"}`],
+            [`${t("components.voucherContent.numberPrefix")}: ${code || t("components.voucherContent.newCodePlaceholder")}`],
             [],
-            ["Tên đơn vị", entityName],
-            ["MST đơn vị", entityTaxCode],
+            [t("components.voucherContent.entityNameLabel"), entityName],
+            [t("components.voucherContent.entityTaxCodeLabel"), entityTaxCode],
             [contactLabel, contactField],
             [warehouseLabel, warehouse?.name || ""],
-            ["Địa chỉ", entityAddress],
-            ["Lý do", reason],
+            [t("common.address"), entityAddress],
+            [t("common.reason"), reason],
             [],
-            ["STT", "Loại thành phẩm", "Tên hàng hoá", "Mã VTHH", "Số Serial", "Đơn vị tính", "Số lượng", "Đơn giá", "Thành tiền"],
+            [t("common.index"), t("components.voucherContent.productTypeColumn"), t("components.voucherContent.itemNameColumn"), t("components.voucherContent.itemCodeColumn"), t("components.voucherContent.serialNumberColumn"), t("components.voucherContent.unitColumn"), t("common.quantity"), t("common.price"), t("common.amount")],
         ]
 
         inbound_detail.forEach((item, idx) => {
@@ -299,8 +301,8 @@ export const VoucherContent = ({
         })
 
         sheetData.push([])
-        sheetData.push(["", "", "", "", "", "", "Tổng cộng", "", total_amount])
-        sheetData.push(["", "", "", "", "", "", "Viết bằng chữ", "", numberToVietnamese(total_amount)])
+        sheetData.push(["", "", "", "", "", "", t("components.voucherContent.totalLabel"), "", total_amount])
+        sheetData.push(["", "", "", "", "", "", t("components.voucherContent.writtenInWordsLabel"), "", numberToVietnamese(total_amount)])
 
         const worksheet = XLSX.utils.aoa_to_sheet(sheetData)
         worksheet["!cols"] = [
@@ -382,9 +384,9 @@ export const VoucherContent = ({
                                         }),
                                         new TableCell({
                                             children: [
-                                                new Paragraph({ text: "Mẫu số: 01 - VT" }),
-                                                new Paragraph({ text: "(Ban hành theo Thông tư số 133/2016/TT-BTC" }),
-                                                new Paragraph({ text: "Ngày 26/08/2016 của Bộ Tài chính)" }),
+                                                new Paragraph({ text: t("components.voucherContent.formNumberLabel") }),
+                                                new Paragraph({ text: t("components.voucherContent.circularLine1") }),
+                                                new Paragraph({ text: t("components.voucherContent.circularLine2") }),
                                             ],
                                             borders: noBorders,
                                             width: { size: 30, type: WidthType.PERCENTAGE },
@@ -397,7 +399,7 @@ export const VoucherContent = ({
 
                         // Title
                         new Paragraph({
-                            children: [new TextRun({ text: `PHIẾU ${typeLabel?.toUpperCase()}`, bold: true, size: 36 })],
+                            children: [new TextRun({ text: `${t("components.voucherContent.voucherTitlePrefix")} ${typeLabel?.toUpperCase()}`, bold: true, size: 36 })],
                             alignment: AlignmentType.CENTER,
                         }),
                         new Paragraph({
@@ -405,18 +407,18 @@ export const VoucherContent = ({
                             alignment: AlignmentType.CENTER,
                         }),
                         new Paragraph({
-                            text: `Số: ${code || "[Mới]"}`,
+                            text: `${t("components.voucherContent.numberPrefix")}: ${code || t("components.voucherContent.newCodePlaceholder")}`,
                             alignment: AlignmentType.CENTER,
                         }),
                         new Paragraph(""),
 
                         // Info section
-                        new Paragraph(`- Tên đơn vị: ${entityName}`),
-                        new Paragraph(`- MST đơn vị: ${entityTaxCode}`),
+                        new Paragraph(`- ${t("components.voucherContent.entityNameLabel")}: ${entityName}`),
+                        new Paragraph(`- ${t("components.voucherContent.entityTaxCodeLabel")}: ${entityTaxCode}`),
                         new Paragraph(`- ${contactLabel}: ${contactField}`),
                         new Paragraph(`- ${warehouseLabel}: ${warehouse?.name || ""}`),
-                        new Paragraph(`- Địa chỉ: ${entityAddress}`),
-                        new Paragraph(`- Lý do: ${reason}`),
+                        new Paragraph(`- ${t("common.address")}: ${entityAddress}`),
+                        new Paragraph(`- ${t("common.reason")}: ${reason}`),
                         new Paragraph(""),
 
                         // BẢNG DỮ LIỆU CHÍNH (Áp dụng margins cấp độ Table)
@@ -427,14 +429,14 @@ export const VoucherContent = ({
                                 // Hàng tiêu đề (Headers)
                                 new TableRow({
                                     children: [
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "STT1", bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 8, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Loại", bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 10, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Tên hàng hoá", bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 18, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Mã VTHH", bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 10, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Số Serial", bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 18, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Số lượng", bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 10, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Đơn giá", bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 13, type: WidthType.PERCENTAGE } }),
-                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Thành tiền", bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 13, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: t("components.voucherContent.sttColumnWord"), bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 8, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: t("components.voucherContent.typeColumnWord"), bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 10, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: t("components.voucherContent.itemNameColumn"), bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 18, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: t("components.voucherContent.itemCodeColumn"), bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 10, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: t("components.voucherContent.serialNumberColumn"), bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 18, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: t("common.quantity"), bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 10, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: t("common.price"), bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 13, type: WidthType.PERCENTAGE } }),
+                                        new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: t("common.amount"), bold: true, size: 16 })], alignment: AlignmentType.CENTER })], borders, verticalAlign: VerticalAlign.CENTER, width: { size: 13, type: WidthType.PERCENTAGE } }),
                                     ],
                                 }),
                                 ...tableRows,
@@ -442,7 +444,7 @@ export const VoucherContent = ({
                                 new TableRow({
                                     children: [
                                         new TableCell({
-                                            children: [new Paragraph({ children: [new TextRun({ text: "Tổng cộng", bold: true, size: 16 })], alignment: AlignmentType.RIGHT })],
+                                            children: [new Paragraph({ children: [new TextRun({ text: t("components.voucherContent.totalLabel"), bold: true, size: 16 })], alignment: AlignmentType.RIGHT })],
                                             borders,
                                             verticalAlign: VerticalAlign.CENTER,
                                             width: { size: 74, type: WidthType.PERCENTAGE },
@@ -460,7 +462,7 @@ export const VoucherContent = ({
                         }),
                         new Paragraph(""),
 
-                        new Paragraph(`- Tổng số tiền (Viết bằng chữ): ${numberToVietnamese(total_amount)}`),
+                        new Paragraph(`- ${t("components.voucherContent.totalAmountInWordsLabel")}: ${numberToVietnamese(total_amount)}`),
                         new Paragraph(""),
 
                         // Signature section
@@ -471,8 +473,8 @@ export const VoucherContent = ({
                                     children: [
                                         new TableCell({
                                             children: [
-                                                new Paragraph({ text: "Người lập phiếu", alignment: AlignmentType.CENTER }),
-                                                new Paragraph({ text: "(Ký, họ và tên)", alignment: AlignmentType.CENTER }),
+                                                new Paragraph({ text: t("components.voucherContent.preparerLabel"), alignment: AlignmentType.CENTER }),
+                                                new Paragraph({ text: t("components.voucherContent.signatureHint"), alignment: AlignmentType.CENTER }),
                                                 new Paragraph(""), new Paragraph(""), new Paragraph(""),
                                             ],
                                             borders: noBorders,
@@ -480,23 +482,23 @@ export const VoucherContent = ({
                                         new TableCell({
                                             children: [
                                                 new Paragraph({ text: secondPersonLabel, alignment: AlignmentType.CENTER }),
-                                                new Paragraph({ text: "(Ký, họ và tên)", alignment: AlignmentType.CENTER }),
+                                                new Paragraph({ text: t("components.voucherContent.signatureHint"), alignment: AlignmentType.CENTER }),
                                                 new Paragraph(""), new Paragraph(""), new Paragraph(""),
                                             ],
                                             borders: noBorders,
                                         }),
                                         new TableCell({
                                             children: [
-                                                new Paragraph({ text: "Thủ kho", alignment: AlignmentType.CENTER }),
-                                                new Paragraph({ text: "(Ký, họ và tên)", alignment: AlignmentType.CENTER }),
+                                                new Paragraph({ text: t("components.voucherContent.warehouseKeeperLabel"), alignment: AlignmentType.CENTER }),
+                                                new Paragraph({ text: t("components.voucherContent.signatureHint"), alignment: AlignmentType.CENTER }),
                                                 new Paragraph(""), new Paragraph(""), new Paragraph(""),
                                             ],
                                             borders: noBorders,
                                         }),
                                         new TableCell({
                                             children: [
-                                                new Paragraph({ text: "Giám Đốc", alignment: AlignmentType.CENTER }),
-                                                new Paragraph({ text: "(Ký, họ và tên)", alignment: AlignmentType.CENTER }),
+                                                new Paragraph({ text: t("components.voucherContent.directorLabel"), alignment: AlignmentType.CENTER }),
+                                                new Paragraph({ text: t("components.voucherContent.signatureHint"), alignment: AlignmentType.CENTER }),
                                                 new Paragraph(""), new Paragraph(""), new Paragraph(""),
                                             ],
                                             borders: noBorders,
@@ -537,34 +539,34 @@ export const VoucherContent = ({
                             </div>
                             <div className="space-y-2">
                                 <div className="border-2 p-2 text-center">
-                                    <p className="font-bold text-sm">Mẫu số: 01 - VT</p>
-                                    <p className="text-xs">(Ban hành theo Thông tư số 133/2016/TT-BTC</p>
-                                    <p className="text-xs">Ngày 26/08/2016 của Bộ Tài chính)</p>
+                                    <p className="font-bold text-sm">{t("components.voucherContent.formNumberLabel")}</p>
+                                    <p className="text-xs">{t("components.voucherContent.circularLine1")}</p>
+                                    <p className="text-xs">{t("components.voucherContent.circularLine2")}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div className="border-b-4 p-4 text-center">
-                        <h2 className="text-2xl font-bold">PHIẾU {typeLabel?.toUpperCase()}</h2>
+                        <h2 className="text-2xl font-bold">{t("components.voucherContent.voucherTitlePrefix")} {typeLabel?.toUpperCase()}</h2>
                         <p className="text-sm font-semibold">
                             {created_at
                                 ? dayjs(created_at).format("[Ngày] DD [tháng] MM [năm] YYYY")
                                 : dayjs().format("[Ngày] DD [tháng] MM [năm] YYYY")}
                         </p>
-                        <p className="text-xs">Số: {code || "[Mới]"}</p>
+                        <p className="text-xs">{t("components.voucherContent.numberPrefix")}: {code || t("components.voucherContent.newCodePlaceholder")}</p>
                     </div>
 
                     <div className="border-b-4 p-4">
                         <div className="space-y-2 text-sm">
                             <p>
-                                <span className="font-bold">- Tên đơn vị: </span>{entityName}
+                                <span className="font-bold">- {t("components.voucherContent.entityNameLabel")}: </span>{entityName}
                             </p>
                             <p>
-                                <span className="font-bold">- MST đơn vị: </span>{entityTaxCode}
+                                <span className="font-bold">- {t("components.voucherContent.entityTaxCodeLabel")}: </span>{entityTaxCode}
                             </p>
                             <p>
-                                <span className="font-bold">- Địa chỉ: </span>{entityAddress}
+                                <span className="font-bold">- {t("common.address")}: </span>{entityAddress}
                             </p>
                             <p>
                                 <span className="font-bold">- {contactLabel}: </span>{contactField}
@@ -574,7 +576,7 @@ export const VoucherContent = ({
                             </p>
 
                             <p>
-                                <span className="font-bold">- Lý do: </span>{reason}
+                                <span className="font-bold">- {t("common.reason")}: </span>{reason}
                             </p>
                         </div>
                     </div>
@@ -583,15 +585,15 @@ export const VoucherContent = ({
                         <table className="w-full border-collapse text-xs">
                             <thead>
                                 <tr className="border-b-2">
-                                    <th className="border-r p-2 text-left font-bold w-12">STT</th>
-                                    <th className="border-r p-2 text-left font-bold w-32">Loại thành phẩm</th>
-                                    <th className="border-r p-2 text-left font-bold">Tên hàng hoá</th>
-                                    <th className="border-r p-2 text-left font-bold">Mã VTHH</th>
-                                    <th className="border-r p-2 text-left font-bold">Số Serial</th>
-                                    <th className="border-r p-2 text-center font-bold w-24">Đơn vị tính</th>
-                                    <th className="border-r p-2 text-center font-bold w-24">Số lượng</th>
-                                    <th className="border-r p-2 text-right font-bold w-28">Đơn giá</th>
-                                    <th className="p-2 text-right font-bold w-32">Thành tiền</th>
+                                    <th className="border-r p-2 text-left font-bold w-12">{t("common.index")}</th>
+                                    <th className="border-r p-2 text-left font-bold w-32">{t("components.voucherContent.productTypeColumn")}</th>
+                                    <th className="border-r p-2 text-left font-bold">{t("components.voucherContent.itemNameColumn")}</th>
+                                    <th className="border-r p-2 text-left font-bold">{t("components.voucherContent.itemCodeColumn")}</th>
+                                    <th className="border-r p-2 text-left font-bold">{t("components.voucherContent.serialNumberColumn")}</th>
+                                    <th className="border-r p-2 text-center font-bold w-24">{t("components.voucherContent.unitColumn")}</th>
+                                    <th className="border-r p-2 text-center font-bold w-24">{t("common.quantity")}</th>
+                                    <th className="border-r p-2 text-right font-bold w-28">{t("common.price")}</th>
+                                    <th className="p-2 text-right font-bold w-32">{t("common.amount")}</th>
                                 </tr>
                                 <tr className="text-center">
                                     <th className="border-r p-1 font-bold">A</th>
@@ -634,7 +636,7 @@ export const VoucherContent = ({
                                 })}
                                 <tr className="border-t-2">
                                     <td colSpan={8} className="border-r p-2 text-right font-bold">
-                                        Tổng Cộng
+                                        {t("components.voucherContent.totalLabel")}
                                     </td>
                                     <td className="p-2 text-right font-bold text-red-600">{formatAmount(total_amount)}</td>
                                 </tr>
@@ -644,27 +646,27 @@ export const VoucherContent = ({
 
                     <div className="p-4 border-b-4">
                         <p className="text-sm text-red-600 font-bold mb-2">
-                            - Tổng số tiền (Viết bằng chữ): {numberToVietnamese(total_amount)}
+                            - {t("components.voucherContent.totalAmountInWordsLabel")}: {numberToVietnamese(total_amount)}
                         </p>
                     </div>
 
                     <div className="p-6">
                         <div className="grid grid-cols-4 gap-4 text-center text-sm">
                             <div>
-                                <p className="font-bold">Người lập phiếu</p>
-                                <p className="text-xs mb-12">(Ký, họ và tên)</p>
+                                <p className="font-bold">{t("components.voucherContent.preparerLabel")}</p>
+                                <p className="text-xs mb-12">{t("components.voucherContent.signatureHint")}</p>
                             </div>
                             <div>
                                 <p className="font-bold">{secondPersonLabel}</p>
-                                <p className="text-xs mb-12">(Ký, họ và tên)</p>
+                                <p className="text-xs mb-12">{t("components.voucherContent.signatureHint")}</p>
                             </div>
                             <div>
-                                <p className="font-bold">Thủ kho</p>
-                                <p className="text-xs mb-12">(Ký, họ và tên)</p>
+                                <p className="font-bold">{t("components.voucherContent.warehouseKeeperLabel")}</p>
+                                <p className="text-xs mb-12">{t("components.voucherContent.signatureHint")}</p>
                             </div>
                             <div>
-                                <p className="font-bold">Giám Đốc</p>
-                                <p className="text-xs mb-12">(Ký, họ và tên)</p>
+                                <p className="font-bold">{t("components.voucherContent.directorLabel")}</p>
+                                <p className="text-xs mb-12">{t("components.voucherContent.signatureHint")}</p>
                             </div>
                         </div>
                     </div>

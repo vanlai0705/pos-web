@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Crown } from 'lucide-react'
 import { useFilterRoyalCustomersQuery, useGetCustomerGroupsSimpleQuery } from '@/store/slice/users/api/api'
 import type { TPosCustomer } from '@/store/slice/users/types/pos-types'
@@ -7,6 +8,7 @@ import { ListPageHeader, SearchBar, fmtDate, PAGE_SIZE } from '../shared'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 
 export default function CustomerRoyalPage() {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -27,17 +29,17 @@ export default function CustomerRoyalPage() {
   const columns: ColumnDef<TPosCustomer>[] = [
     {
       id: 'stt',
-      header: 'STT',
+      header: t('common.index'),
       cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span>,
     },
     {
       id: 'code',
-      header: 'Mã',
+      header: t('common.code'),
       cell: ({ row }) => <CodeTag value={row.original.Code} />,
     },
     {
       id: 'name',
-      header: 'Tên khách hàng',
+      header: t('common.customerName'),
       cell: ({ row }) => (
         <div>
           <div className="font-medium">{row.original.Name}</div>
@@ -49,46 +51,46 @@ export default function CustomerRoyalPage() {
     },
     {
       id: 'group',
-      header: 'Nhóm',
+      header: t('common.group'),
       cell: ({ row }) => <span className="text-xs">{row.original.CustomerGroup?.Name ?? '—'}</span>,
     },
     {
       id: 'phone',
-      header: 'Điện thoại',
+      header: t('common.phone'),
       cell: ({ row }) => row.original.Phone ?? '—',
     },
     {
       id: 'address',
-      header: 'Địa chỉ',
+      header: t('common.address'),
       cell: ({ row }) => (
         <span className="text-xs max-w-[160px] truncate block">{row.original.Address ?? '—'}</span>
       ),
     },
     {
       id: 'email',
-      header: 'Email',
+      header: t('common.email'),
       cell: ({ row }) => <span className="text-xs">{row.original.Email ?? '—'}</span>,
     },
     {
       id: 'birthday',
-      header: 'Sinh nhật',
+      header: t('common.birthday'),
       cell: ({ row }) => <span className="whitespace-nowrap">{fmtDate(row.original.Birthday)}</span>,
     },
     {
       id: 'totalAmount',
-      header: 'Doanh số',
+      header: t('common.revenue'),
       cell: ({ row }) => <MoneyTag value={row.original.TotalAmount} />,
     },
     {
       id: 'totalOrder',
-      header: 'Số đơn',
+      header: t('common.orderCount'),
       cell: ({ row }) => (
         <span className="tabular-nums">{row.original.TotalOrder?.toLocaleString('vi-VN') ?? '—'}</span>
       ),
     },
     {
       id: 'point',
-      header: 'Điểm',
+      header: t('common.points'),
       cell: ({ row }) => (
         <span className="tabular-nums text-amber-600 dark:text-amber-400 font-medium">
           {row.original.Point?.toLocaleString('vi-VN') ?? '—'}
@@ -99,14 +101,14 @@ export default function CustomerRoyalPage() {
 
   return (
     <div className="space-y-4">
-      <ListPageHeader title="Khách hàng thân thiết" icon={Crown}>
-        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder="Tìm khách hàng..." />
+      <ListPageHeader title={t('pages.actives.customerRoyal.pageTitle')} icon={Crown}>
+        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder={t('common.searchCustomer')} />
         <select
           value={groupId}
           onChange={e => { setGroupId(e.target.value === '' ? '' : Number(e.target.value)); setPage(1) }}
           className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="">Tất cả nhóm</option>
+          <option value="">{t('pages.actives.customerRoyal.allGroups')}</option>
           {groups.map(g => <option key={g.Id} value={g.Id}>{g.Name}</option>)}
         </select>
       </ListPageHeader>
@@ -119,7 +121,7 @@ export default function CustomerRoyalPage() {
         page={page}
         pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
-        emptyText="Không có khách hàng thân thiết"
+        emptyText={t('pages.actives.customerRoyal.emptyText')}
       />
     </div>
   )
