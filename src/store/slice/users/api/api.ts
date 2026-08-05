@@ -48,6 +48,7 @@ import {
   TPosNotificationListResponse,
   TPosFilterNotificationResponse,
   TPosOrder,
+  TPosOrderItem,
   TPosKitchenPrintGroup,
   TPosOrderFilterParams,
   TReportData,
@@ -799,6 +800,12 @@ export const userApiSlice = createApi({
       transformResponse: (res: TPosResponse<TPosOrder>) => res.Data,
     }),
 
+    /** Read-only line-item preview for the booking/quotation picker dialogs. */
+    getOrderItems: builder.query<TPosOrderItem[], number>({
+      query: (orderId) => ({ url: `orders/get-list-order-item?orderId=${orderId}` }),
+      transformResponse: (res: TPosResponse<TPosOrderItem[]>) => res.Data ?? [],
+    }),
+
     cancelOrder: builder.mutation<void, number>({
       query: (orderId) => ({ url: `orders/cancel?orderId=${orderId}`, method: "POST", body: {} }),
     }),
@@ -1287,6 +1294,7 @@ export const {
   useFilterOrdersQuery,
   useLazyFilterOrdersQuery,
   useGetOrderDetailQuery,
+  useLazyGetOrderItemsQuery,
   useLazyGetOrderDetailQuery,
   useCancelOrderMutation,
   useSaveOrderMutation,
