@@ -50,6 +50,22 @@ export function printDatas(printerUrl: string | undefined, api: string, printerN
   })
 }
 
+/** Lists the printers installed on the machine the bridge runs on (mirrors
+ * pos_web's PrintService.getInstalledPrinters) — used to populate the printer
+ * picker instead of asking the user to type an exact driver name. */
+export async function getInstalledPrinters(printerUrl: string | undefined): Promise<string[]> {
+  if (!printerUrl) return []
+  try {
+    const res = await fetch(`${printerUrl}/Printer/GetInstalledPrinters`)
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? data : (data?.Data ?? data?.data ?? [])
+  } catch (e) {
+    console.warn('[print-bridge] unreachable —', printerUrl, e)
+    return []
+  }
+}
+
 export interface PrinterSetting {
   PrinterIp?: string
   PrinterPort?: number

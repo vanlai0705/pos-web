@@ -25,6 +25,10 @@ export function useNavItems(): NavItem[] {
       icon: 'dashboard',
     }
 
-    return [dashboard, ...posMenuToNavItems(posMenu)]
+    // The API's menu (posMenu) carries raw Vietnamese Name/ShortName fields —
+    // route them through the same title→i18n-key lookup as the static
+    // fallback below, otherwise every header/sidebar item stays untranslated
+    // regardless of the selected language.
+    return [dashboard, ...translateNavItems(posMenuToNavItems(posMenu), t)]
   }, [posMenu, t, i18n.resolvedLanguage])
 }

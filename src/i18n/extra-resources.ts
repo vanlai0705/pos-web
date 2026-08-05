@@ -211,7 +211,13 @@ export const extraResources: Record<string, any> = {
       tax: "Thuế",
       invoicePrint: "In hóa đơn",
       invoiceExport: "Xuất hóa đơn",
-      eInvoice: "Hóa đơn điện tử"
+      eInvoice: "Hóa đơn điện tử",
+      cashTransfer: "Chuyển quỹ",
+      createReceipt: "Tạo phiếu thu",
+      createPayment: "Tạo phiếu chi",
+      initialData: "Dữ liệu ban đầu",
+      generalInfo: "Thông tin chung",
+      printerSettings: "Cài đặt máy in"
     },
     metrics: {
       openingBalance: "Tồn đầu kỳ",
@@ -513,7 +519,13 @@ export const extraResources: Record<string, any> = {
       tax: "Tax",
       invoicePrint: "Invoice printing",
       invoiceExport: "Invoice export",
-      eInvoice: "E-invoices"
+      eInvoice: "E-invoices",
+      cashTransfer: "Fund transfer",
+      createReceipt: "Create receipt",
+      createPayment: "Create payment",
+      initialData: "Initial data",
+      generalInfo: "General information",
+      printerSettings: "Printer settings"
     },
     metrics: {
       openingBalance: "Opening balance",
@@ -821,7 +833,13 @@ extraResources.km = {
     tax: "ពន្ធ",
     invoicePrint: "បោះពុម្ពវិក្កយបត្រ",
     invoiceExport: "នាំចេញវិក្កយបត្រ",
-    eInvoice: "វិក្កយបត្រអេឡិចត្រូនិក"
+    eInvoice: "វិក្កយបត្រអេឡិចត្រូនិក",
+    cashTransfer: "ផ្ទេរមូលនិធិ",
+    createReceipt: "បង្កើតប័ណ្ណទទួលប្រាក់",
+    createPayment: "បង្កើតប័ណ្ណចំណាយ",
+    initialData: "ទិន្នន័យដំបូង",
+    generalInfo: "ព័ត៌មានទូទៅ",
+    printerSettings: "ការកំណត់ម៉ាស៊ីនបោះពុម្ព"
   },
   metrics: {
     openingBalance: "សមតុល្យដើមគ្រា",
@@ -1125,7 +1143,13 @@ extraResources.zh = {
     tax: "税费",
     invoicePrint: "发票打印",
     invoiceExport: "发票导出",
-    eInvoice: "电子发票"
+    eInvoice: "电子发票",
+    cashTransfer: "资金调拨",
+    createReceipt: "创建收款单",
+    createPayment: "创建付款单",
+    initialData: "初始数据",
+    generalInfo: "基本信息",
+    printerSettings: "打印机设置"
   },
   metrics: {
     openingBalance: "期初余额",

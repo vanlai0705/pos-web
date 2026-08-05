@@ -1,18 +1,19 @@
-import { useEffect, useState, useCallback } from "react"
-import { Printer, RefreshCw, Cpu } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Check, List, Play, RefreshCw } from "lucide-react"
 import {
+  useGetAreasQuery,
+  useGetProductGroupsQuery,
+  useGetSettingOrderQuery,
   useGetSettingPrinterQuery,
   useUpdateSettingPrinterMutation,
 } from "@/store/slice/users/api/api"
-import type { TPosSettingPrinter, TPosInvoicePrinter, TPosKitchenPrinter } from "@/store/slice/users/types"
+import type { TPosArea, TPosInvoicePrinter, TPosKitchenPrinter, TPosProductGroup, TPosSettingPrinter } from "@/store/slice/users/types"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
-import { PageHeader, SettingCard, SaveBar } from "../components"
+import { cn } from "@/utils"
+import { printData } from "@/utils/print-service"
+import { PrinterPickerDialog } from "./printer-picker-dialog"
 
 // ─── GUID utils ───────────────────────────────────────────────────────────────
 
@@ -31,74 +32,52 @@ function getOrCreateGuid() {
   return g
 }
 
-// ─── Printer row ─────────────────────────────────────────────────────────────
+// ─── Kitchen printer grid helpers (mirrors Angular's build*/clone helpers) ─────
 
-interface PrinterRowProps {
-  label: string
-  value: TPosInvoicePrinter | TPosKitchenPrinter
-  onChange: (v: TPosInvoicePrinter | TPosKitchenPrinter) => void
+function cloneKitchenPrinters(items: TPosKitchenPrinter[]): TPosKitchenPrinter[] {
+  return items.map(item => ({ ...item, Area: item.Area ? { ...item.Area } : undefined, ProductGroup: item.ProductGroup ? { ...item.ProductGroup } : undefined }))
 }
 
-function PrinterRow({ label, value, onChange }: PrinterRowProps) {
-  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    onChange({ ...value, [key]: key === "PrinterPort" ? Number(e.target.value) : e.target.value })
+function buildKitchenPrintersGrid(areas: TPosArea[], groups: TPosProductGroup[], existing: TPosKitchenPrinter[]): TPosKitchenPrinter[] {
+  const map = new Map<string, TPosKitchenPrinter>()
+  existing.forEach(item => map.set(`${item.Area?.Id ?? 0}_${item.ProductGroup?.Id ?? 0}`, item))
 
-  return (
-    <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">In tem</span>
-          <Switch
-            checked={value.IsPrintLabel ?? false}
-            onCheckedChange={v => onChange({ ...value, IsPrintLabel: v })}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <div className="col-span-3 sm:col-span-1 space-y-1">
-          <Label className="text-xs">Tên máy in</Label>
-          <Input
-            value={value.PrinterName ?? ""}
-            onChange={set("PrinterName")}
-            placeholder="PrinterName"
-            className="h-8 text-xs"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">IP máy in</Label>
-          <Input
-            value={value.PrinterIp ?? ""}
-            onChange={set("PrinterIp")}
-            placeholder="192.168.1.x"
-            className="h-8 text-xs"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Cổng</Label>
-          <Input
-            type="number"
-            value={value.PrinterPort ?? ""}
-            onChange={set("PrinterPort")}
-            placeholder="9100"
-            className="h-8 text-xs"
-          />
-        </div>
-      </div>
-    </div>
-  )
+  const result: TPosKitchenPrinter[] = []
+  areas.forEach(area => {
+    groups.forEach(group => {
+      const cur = map.get(`${area.Id}_${group.Id}`)
+      result.push({
+        IsPrintLabel: cur?.IsPrintLabel ?? false,
+        Area: { Id: area.Id, Name: area.Name },
+        ProductGroup: { Id: group.Id, Name: group.Name },
+        PrinterIp: cur?.PrinterIp ?? "",
+        PrinterPort: cur?.PrinterPort ?? 0,
+        PrinterName: cur?.PrinterName ?? "",
+      })
+    })
+  })
+  return result
 }
 
-// ─── Mode labels ─────────────────────────────────────────────────────────────
+function buildKitchenPrintersByGroups(groups: TPosProductGroup[]): TPosKitchenPrinter[] {
+  return groups.map(group => ({
+    IsPrintLabel: false,
+    Area: undefined,
+    ProductGroup: { Id: group.Id, Name: group.Name },
+    PrinterIp: "",
+    PrinterPort: 0,
+    PrinterName: "",
+  }))
+}
+
+// ─── Mode options ───────────────────────────────────────────────────────────────
 
 const INVOICE_MODE_OPTIONS = [
-  { value: 0, label: "Không sử dụng theo khu vực" },
+  { value: 0, label: "Không sử dụng" },
   { value: 1, label: "Chỉ in hoá đơn theo khu vực" },
   { value: 2, label: "In một liên tại quầy và một liên theo khu vực" },
   { value: 3, label: "In tạm tính theo khu vực và in hoá đơn tại quầy" },
 ]
-
-// ─── Default form ─────────────────────────────────────────────────────────────
 
 const defaultForm: TPosSettingPrinter = {
   EnableKitchenPrintByArea: false,
@@ -109,199 +88,300 @@ const defaultForm: TPosSettingPrinter = {
   TempBillPrinter: {},
 }
 
+// ─── Printer table row ──────────────────────────────────────────────────────────
+
+interface PrinterTableRowProps {
+  index?: number
+  /** Rendered verbatim — callers resolve their own empty-state fallback text
+   * ("Chưa gán khu vực" vs "Chưa gán loại đồ") since it differs by column. */
+  areaLabel?: string
+  groupLabel?: string
+  value: TPosKitchenPrinter | TPosInvoicePrinter
+  onChange: (v: TPosKitchenPrinter | TPosInvoicePrinter) => void
+  onPick: () => void
+}
+
+function PrinterTableRow({ index, areaLabel, groupLabel, value, onChange, onPick }: PrinterTableRowProps) {
+  const set = (key: "PrinterName" | "PrinterIp" | "PrinterPort") => (e: React.ChangeEvent<HTMLInputElement>) =>
+    onChange({ ...value, [key]: key === "PrinterPort" ? Number(e.target.value) : e.target.value })
+
+  const handleTest = () => {
+    if (!value.PrinterIp || !value.PrinterPort) { toast.warning("Vui lòng nhập IP và PORT máy in"); return }
+    if (!value.PrinterName) { toast.warning("Vui lòng chọn tên máy in"); return }
+    printData(`http://${value.PrinterIp}:${value.PrinterPort}`, "setting/print-test", value.PrinterName, {})
+  }
+
+  return (
+    <tr className="border-b last:border-b-0 hover:bg-muted/30">
+      {index != null && (
+        <td className="px-2 py-2 text-center">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{index}</span>
+        </td>
+      )}
+      {areaLabel != null && <td className="px-2 py-2 text-sm">{areaLabel}</td>}
+      {groupLabel != null && <td className="px-2 py-2 text-sm">{groupLabel}</td>}
+      <td className="px-2 py-2">
+        <input value={value.PrinterName ?? ""} onChange={set("PrinterName")} placeholder="Nhập tên máy in"
+          className="w-full rounded-md border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+      </td>
+      <td className="px-2 py-2">
+        <input value={value.PrinterIp ?? ""} onChange={set("PrinterIp")} placeholder="VD: 192.168.1.10"
+          className="w-36 rounded-md border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+      </td>
+      <td className="px-2 py-2">
+        <input type="number" value={value.PrinterPort ?? ""} onChange={set("PrinterPort")} placeholder="9100"
+          className="w-20 rounded-md border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+      </td>
+      <td className="px-2 py-2 text-center">
+        <button type="button" onClick={() => onChange({ ...value, IsPrintLabel: !value.IsPrintLabel })}
+          className={cn(
+            "inline-flex h-7 w-7 items-center justify-center rounded-md border transition-colors",
+            value.IsPrintLabel ? "border-primary bg-primary text-primary-foreground" : "border-input text-muted-foreground/40",
+          )}>
+          <Check className="h-4 w-4" />
+        </button>
+      </td>
+      <td className="px-2 py-2">
+        <div className="flex flex-col items-stretch gap-1">
+          <Button type="button" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onPick}>
+            <List className="h-3.5 w-3.5" /> Kiểm tra
+          </Button>
+          <Button type="button" size="sm" variant="secondary" className="h-7 gap-1 px-2 text-xs" onClick={handleTest}>
+            <Play className="h-3.5 w-3.5" /> Test
+          </Button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function SettingPrinterPage() {
   const [guid] = useState(() => getOrCreateGuid())
-  const [activeTab, setActiveTab] = useState<"kitchen" | "invoice">("invoice")
+  const [activeTab, setActiveTab] = useState<"kitchen" | "invoice">("kitchen")
+  const [picker, setPicker] = useState<{ onSelect: (name: string) => void } | null>(null)
 
   const { data, isLoading } = useGetSettingPrinterQuery({ guid })
+  const { data: settingOrder } = useGetSettingOrderQuery()
+  const { data: areas = [] } = useGetAreasQuery()
+  const { data: productGroups = [] } = useGetProductGroupsQuery()
   const [update, { isLoading: saving }] = useUpdateSettingPrinterMutation()
   const [form, setForm] = useState<TPosSettingPrinter>(defaultForm)
+
+  const kitchenBeforeAreaMode = useRef<TPosKitchenPrinter[]>([])
 
   useEffect(() => {
     if (data) setForm({ ...defaultForm, ...data })
   }, [data])
 
-  const resetGuid = useCallback(() => {
+  // Reconciles the area×group grid against the current master data every
+  // time settings or master data (re)load — mirrors Angular's
+  // ensureKitchenPrintersByAreaMode, which runs unconditionally (not just
+  // when the grid is empty) so a newly added/removed area or product group
+  // is reflected on the very next load, not only after re-toggling the
+  // checkbox by hand.
+  useEffect(() => {
+    if (!data || !areas.length || !productGroups.length) return
+    setForm(f => {
+      if (!f.EnableKitchenPrintByArea) return f
+      return { ...f, KitchenPrinters: buildKitchenPrintersGrid(areas, productGroups, f.KitchenPrinters) }
+    })
+  }, [data, areas, productGroups])
+
+  const resetGuid = () => {
     const newGuid = generateGuid()
     localStorage.setItem(GUID_KEY, newGuid)
     window.location.reload()
-  }, [])
+  }
 
   const handleSave = async () => {
     try {
       await update({ guid, data: form }).unwrap()
-      toast.success("Lưu thành công", { description: "Cài đặt máy in đã được cập nhật." })
+      toast.success("Cài đặt máy in đã được lưu")
     } catch {
-      toast.error("Lỗi", { description: "Không thể lưu cài đặt." })
+      toast.error("Không thể lưu cài đặt máy in")
     }
   }
 
-  // Helpers
-  const updateKitchen = (i: number) => (v: TPosKitchenPrinter | TPosInvoicePrinter) =>
-    setForm(f => {
-      const arr = [...(f.KitchenPrinters ?? [])]
-      arr[i] = v as TPosKitchenPrinter
-      return { ...f, KitchenPrinters: arr }
-    })
+  const toggleKitchenByArea = (enabled: boolean) => {
+    // Matches Angular: flip the flag but don't touch KitchenPrinters until
+    // areas/productGroups have loaded — the reconcile effect above builds
+    // the grid as soon as they arrive.
+    if (!areas.length || !productGroups.length) {
+      toast.warning("Đang tải khu vực và nhóm sản phẩm, vui lòng thử lại")
+      setForm(f => ({ ...f, EnableKitchenPrintByArea: enabled }))
+      return
+    }
+    if (enabled) {
+      kitchenBeforeAreaMode.current = cloneKitchenPrinters(form.KitchenPrinters)
+      setForm(f => ({ ...f, EnableKitchenPrintByArea: true, KitchenPrinters: buildKitchenPrintersGrid(areas, productGroups, []) }))
+      return
+    }
+    const restored = kitchenBeforeAreaMode.current.length
+      ? cloneKitchenPrinters(kitchenBeforeAreaMode.current)
+      : buildKitchenPrintersByGroups(productGroups)
+    setForm(f => ({ ...f, EnableKitchenPrintByArea: false, KitchenPrinters: restored }))
+  }
 
-  const updateInvoice = (i: number) => (v: TPosInvoicePrinter | TPosKitchenPrinter) =>
-    setForm(f => {
-      const arr = [...(f.InvoicePrinters ?? [])]
-      arr[i] = v as TPosInvoicePrinter
-      return { ...f, InvoicePrinters: arr }
-    })
+  const updateKitchen = (i: number) => (v: TPosKitchenPrinter) =>
+    setForm(f => { const arr = [...f.KitchenPrinters]; arr[i] = v; return { ...f, KitchenPrinters: arr } })
+
+  const updateInvoiceArea = (i: number) => (v: TPosInvoicePrinter) =>
+    setForm(f => { const arr = [...f.InvoicePrinters]; arr[i] = v; return { ...f, InvoicePrinters: arr } })
+
+  const openPicker = (onSelect: (name: string) => void) => {
+    if (!settingOrder?.PrinterUrl) {
+      toast.warning("Vui lòng nhập đường dẫn máy in ở cài đặt đơn hàng")
+      return
+    }
+    setPicker({ onSelect })
+  }
 
   if (isLoading) return <Skeleton className="h-96 w-full" />
 
-  const kitchenPrinters = form.KitchenPrinters ?? []
-  const invoicePrinters = form.InvoicePrinters ?? []
   const showAreaMode = form.InvoicePrintByAreaMode !== 0
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Cài đặt máy in"
-        description="Cấu hình máy in hoá đơn và máy in bếp theo từng thiết bị"
-        icon={<Printer className="h-5 w-5" />}
-      />
+      <div>
+        <h1 className="text-lg font-bold">Cài đặt máy in</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Quản lý máy in chế biến và máy in hóa đơn theo khu vực</p>
+      </div>
 
-      {/* Device info */}
-      <SettingCard title="Thông tin thiết bị" icon={<Cpu className="h-4 w-4 text-primary" />}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">GUID thiết bị</p>
-            <p className="text-xs font-mono text-foreground mt-0.5 truncate">{guid}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Mỗi máy tính/thiết bị có một GUID riêng để cấu hình máy in độc lập.
-            </p>
+      {/* Option panel + device GUID */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3">
+        <div className="flex flex-wrap items-center gap-5">
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input type="checkbox" checked={form.EnableKitchenPrintByArea}
+              onChange={e => toggleKitchenByArea(e.target.checked)}
+              className="h-4 w-4 rounded border-input" />
+            In chế biến theo khu vực
+          </label>
+          <div className="flex items-center gap-2">
+            <label htmlFor="InvoicePrintByAreaMode" className="text-sm font-medium whitespace-nowrap">In hóa đơn theo khu vực</label>
+            <select
+              id="InvoicePrintByAreaMode"
+              value={form.InvoicePrintByAreaMode}
+              onChange={e => setForm(f => ({ ...f, InvoicePrintByAreaMode: Number(e.target.value) }))}
+              className="rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {INVOICE_MODE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
           </div>
-          <Button variant="outline" size="sm" onClick={resetGuid} className="flex-none gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
-            Reset GUID
-          </Button>
         </div>
-      </SettingCard>
-
-      {/* In bếp theo khu vực */}
-      <SettingCard title="Cấu hình in bếp" icon={<Printer className="h-4 w-4 text-primary" />}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">In chế biến theo khu vực</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Phân chia máy in bếp theo khu vực phục vụ</p>
-          </div>
-          <Switch
-            checked={form.EnableKitchenPrintByArea}
-            onCheckedChange={v => setForm(f => ({ ...f, EnableKitchenPrintByArea: v }))}
-          />
-        </div>
-      </SettingCard>
-
-      {/* In hóa đơn theo khu vực */}
-      <SettingCard title="Cấu hình in hoá đơn" icon={<Printer className="h-4 w-4 text-primary" />}>
-        <div className="space-y-1.5">
-          <Label htmlFor="InvoicePrintByAreaMode">In hoá đơn theo khu vực</Label>
-          <select
-            id="InvoicePrintByAreaMode"
-            value={form.InvoicePrintByAreaMode}
-            onChange={e => setForm(f => ({ ...f, InvoicePrintByAreaMode: Number(e.target.value) }))}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {INVOICE_MODE_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-      </SettingCard>
+        <Button variant="outline" size="sm" onClick={resetGuid} className="flex-none gap-1.5">
+          <RefreshCw className="h-3.5 w-3.5" /> Reset GUID
+        </Button>
+      </div>
 
       {/* Tabs */}
       <div className="flex rounded-lg border overflow-hidden w-fit">
-        {(["invoice", "kitchen"] as const).map(tab => (
+        {(["kitchen", "invoice"] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent"
-            }`}
+            className={cn(
+              "px-4 py-2 text-sm font-medium transition-colors",
+              activeTab === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+            )}
           >
-            {tab === "invoice" ? "Máy in hoá đơn" : "Máy in bếp"}
+            {tab === "kitchen" ? "Máy in chế biến" : "Máy in hóa đơn"}
           </button>
         ))}
       </div>
 
-      {/* Invoice printers tab */}
-      {activeTab === "invoice" && (
-        <SettingCard title="Máy in hoá đơn" icon={<Printer className="h-4 w-4 text-primary" />}>
-          {!showAreaMode ? (
-            // Mode 0: fixed BillPrinter + TempBillPrinter
-            <div className="space-y-3">
-              <PrinterRow
-                label="Máy in hoá đơn"
-                value={form.BillPrinter ?? {}}
-                onChange={v => setForm(f => ({ ...f, BillPrinter: v as TPosInvoicePrinter }))}
-              />
-              <PrinterRow
-                label="Máy in yêu cầu thanh toán (tạm tính)"
-                value={form.TempBillPrinter ?? {}}
-                onChange={v => setForm(f => ({ ...f, TempBillPrinter: v as TPosInvoicePrinter }))}
-              />
-            </div>
-          ) : (
-            // Mode 1/2/3: per-area invoice printers
-            <div className="space-y-3">
-              {invoicePrinters.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Chưa có máy in theo khu vực. Thiết lập khu vực trong menu Quản lý để tự động tạo.
-                </p>
+      {/* Table */}
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-muted/40 text-xs font-semibold text-muted-foreground">
+              {activeTab === "kitchen" ? (
+                <tr>
+                  <th className="px-2 py-2 text-center w-12">#</th>
+                  {form.EnableKitchenPrintByArea && <th className="px-2 py-2">Khu vực</th>}
+                  <th className="px-2 py-2">Loại đồ</th>
+                  <th className="px-2 py-2">Máy in</th>
+                  <th className="px-2 py-2 w-36">IP</th>
+                  <th className="px-2 py-2 w-20">PORT</th>
+                  <th className="px-2 py-2 text-center w-16">In tem</th>
+                  <th className="px-2 py-2 w-24">Kiểm tra máy in</th>
+                </tr>
+              ) : (
+                <tr>
+                  <th className="px-2 py-2">{showAreaMode ? "Khu vực" : "Loại máy in"}</th>
+                  <th className="px-2 py-2">Máy in</th>
+                  <th className="px-2 py-2 w-36">IP</th>
+                  <th className="px-2 py-2 w-20">PORT</th>
+                  <th className="px-2 py-2 text-center w-16">In tem</th>
+                  <th className="px-2 py-2 w-24">Kiểm tra</th>
+                </tr>
               )}
-              {invoicePrinters.map((p, i) => (
-                <div key={i}>
-                  {p.Area && (
-                    <Badge variant="outline" className="mb-1.5 text-xs">{p.Area.Name}</Badge>
-                  )}
-                  <PrinterRow
-                    label={p.Area?.Name ?? `Khu vực ${i + 1}`}
-                    value={p}
-                    onChange={updateInvoice(i)}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </SettingCard>
-      )}
-
-      {/* Kitchen printers tab */}
-      {activeTab === "kitchen" && (
-        <SettingCard title="Máy in bếp / chế biến" icon={<Printer className="h-4 w-4 text-primary" />}>
-          {kitchenPrinters.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Chưa có cấu hình máy in bếp. Thiết lập nhóm sản phẩm và khu vực để tự động tạo.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {kitchenPrinters.map((p, i) => (
-                <div key={i}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    {p.Area && <Badge variant="outline" className="text-xs">{p.Area.Name}</Badge>}
-                    {p.ProductGroup && <Badge variant="secondary" className="text-xs">{p.ProductGroup.Name}</Badge>}
-                  </div>
-                  <PrinterRow
-                    label={[p.Area?.Name, p.ProductGroup?.Name].filter(Boolean).join(" — ") || `Máy in ${i + 1}`}
-                    value={p}
+            </thead>
+            <tbody>
+              {activeTab === "kitchen" && (
+                form.KitchenPrinters.length === 0 ? (
+                  <tr><td colSpan={form.EnableKitchenPrintByArea ? 8 : 7} className="px-2 py-8 text-center text-sm text-muted-foreground italic">Không có dữ liệu</td></tr>
+                ) : form.KitchenPrinters.map((item, i) => (
+                  <PrinterTableRow
+                    key={i}
+                    index={i + 1}
+                    areaLabel={form.EnableKitchenPrintByArea ? (item.Area?.Name || "Chưa gán khu vực") : undefined}
+                    groupLabel={item.ProductGroup?.Name || "Chưa gán loại đồ"}
+                    value={item}
                     onChange={updateKitchen(i)}
+                    onPick={() => openPicker(name => updateKitchen(i)({ ...item, PrinterName: name }))}
                   />
-                </div>
-              ))}
-            </div>
-          )}
-        </SettingCard>
-      )}
+                ))
+              )}
 
-      <SaveBar onSave={handleSave} loading={saving} />
+              {activeTab === "invoice" && !showAreaMode && (
+                <>
+                  <PrinterTableRow
+                    groupLabel="Máy in hoá đơn (sử dụng máy in mặc định nếu để trống)"
+                    value={form.BillPrinter ?? {}}
+                    onChange={v => setForm(f => ({ ...f, BillPrinter: v as TPosInvoicePrinter }))}
+                    onPick={() => openPicker(name => setForm(f => ({ ...f, BillPrinter: { ...(f.BillPrinter ?? {}), PrinterName: name } })))}
+                  />
+                  <PrinterTableRow
+                    groupLabel="Máy in yêu cầu thanh toán (sử dụng máy in mặc định nếu để trống)"
+                    value={form.TempBillPrinter ?? {}}
+                    onChange={v => setForm(f => ({ ...f, TempBillPrinter: v as TPosInvoicePrinter }))}
+                    onPick={() => openPicker(name => setForm(f => ({ ...f, TempBillPrinter: { ...(f.TempBillPrinter ?? {}), PrinterName: name } })))}
+                  />
+                </>
+              )}
+
+              {activeTab === "invoice" && showAreaMode && (
+                form.InvoicePrinters.length === 0 ? (
+                  <tr><td colSpan={6} className="px-2 py-8 text-center text-sm text-muted-foreground italic">Không có dữ liệu</td></tr>
+                ) : form.InvoicePrinters.map((item, i) => (
+                  <PrinterTableRow
+                    key={i}
+                    areaLabel={item.Area?.Name || "Chưa gán khu vực"}
+                    value={item}
+                    onChange={updateInvoiceArea(i)}
+                    onPick={() => openPicker(name => updateInvoiceArea(i)({ ...item, PrinterName: name }))}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={saving} className="min-w-[120px]">Cập nhật</Button>
+      </div>
+
+      {picker && (
+        <PrinterPickerDialog
+          open
+          onOpenChange={open => { if (!open) setPicker(null) }}
+          printerUrl={settingOrder?.PrinterUrl}
+          onSelect={name => picker.onSelect(name)}
+        />
+      )}
     </div>
   )
 }

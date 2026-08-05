@@ -125,6 +125,13 @@ interface CartItem {
   price: number
   discountPct: number
   note: string
+  /**
+   * Per-line tax percent, seeded from the product's own Tax when added to
+   * the cart (Angular's `createOrderItem`) and independently editable after
+   * that via the Thuế column. `null` means the product itself is untaxable
+   * ("KCT") — the column stays disabled and this never becomes a number.
+   */
+  tax: number | null
 }
 
 function itemDiscount(item: CartItem) {
@@ -136,9 +143,10 @@ function itemSubtotal(item: CartItem) {
   return Math.max(0, item.price * item.qty - itemDiscount(item))
 }
 
-/** Per-item tax percent — 0 unless the shop enables per-item tax. */
+/** Per-item tax percent — 0 unless the shop enables per-item tax; the line's
+ * own Tax wins over the product's (matches Angular's `getTaxPercentItem`). */
 function itemTaxPct(item: CartItem, perItemTax: boolean) {
-  return perItemTax ? Number(item.product.Tax ?? 0) || 0 : 0
+  return perItemTax ? Number(item.tax ?? item.product.Tax) || 0 : 0
 }
 
 function itemTaxAmount(item: CartItem, perItemTax: boolean) {
@@ -497,6 +505,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
           price: it.Price ?? it.Product?.Price ?? 0,
           discountPct: it.DiscountPercent ?? 0,
           note: it.Note ?? '',
+          tax: it.Tax ?? it.Product?.Tax ?? null,
         })))
         if (order.Note) setNote(order.Note)
         if (order.Detail) setDetail(order.Detail)
@@ -513,7 +522,10 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
         next[idx] = { ...next[idx], qty: next[idx].qty + 1 }
         return next
       }
-      return [...prev, { product, qty: 1, price: product.Price ?? 0, discountPct: 0, note: '' }]
+      // Angular's createOrderItem: a tax-exempt product (Tax === null/undefined)
+      // stays null forever on this line; anything else seeds a real number.
+      const tax = product.Tax == null ? null : Number(product.Tax) || 0
+      return [...prev, { product, qty: 1, price: product.Price ?? 0, discountPct: 0, note: '', tax }]
     })
   }, [])
 
@@ -531,7 +543,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
     setCart(prev => prev.filter((_, i) => i !== idx))
   }, [])
 
-  const updateItem = useCallback((idx: number, field: 'discountPct' | 'note' | 'price' | 'qty', value: number | string) => {
+  const updateItem = useCallback((idx: number, field: 'discountPct' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => {
     setCart(prev => {
       const next = [...prev]
       next[idx] = { ...next[idx], [field]: value }
@@ -976,11 +988,11 @@ function MoneyRow({ label, children }: { label: string; children: React.ReactNod
 }
 
 /** Per-line discount %, kept clearable and clamped to 0–100. */
-function PercentInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function PercentInput({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled?: boolean }) {
   const draft = useNumberDraft(value, onChange, { min: 0, max: 100 })
   return (
-    <input type="number" min={0} max={100} {...draft}
-      className="w-full text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-center" />
+    <input type="number" min={0} max={100} disabled={disabled} {...draft}
+      className="w-full text-xs bg-transparent focus:outline-none tabular-nums text-foreground text-center disabled:cursor-not-allowed disabled:opacity-50" />
   )
 }
 
@@ -1007,7 +1019,7 @@ interface InternalOrderPanelProps {
   onQty: (idx: number, delta: number) => void
   onRemove: (idx: number) => void
   onClear: () => void
-  onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price' | 'qty', value: number | string) => void
+  onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => void
   onSave: (action: OrderAction) => void
   saving: boolean
   settings?: TPosSettingOrder
@@ -1198,7 +1210,11 @@ function InternalOrderPanel({
           <table className="w-full text-xs min-w-[540px]">
             <thead className="sticky top-0 bg-muted/80 backdrop-blur border-b z-10">
               <tr>
-                {['STT','Tên hàng','SL','Đơn giá','Giảm %','Giảm tiền','T.Tiền','Ghi chú',''].map(h => (
+                {[
+                  'STT', 'Tên hàng', 'SL', 'Đơn giá', 'Giảm %', 'Giảm tiền',
+                  ...(perItemTax ? ['Thuế'] : []),
+                  'T.Tiền', 'Ghi chú', '',
+                ].map(h => (
                   <th key={h} className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap first:text-center">{h}</th>
                 ))}
               </tr>
@@ -1207,20 +1223,26 @@ function InternalOrderPanel({
               {cart.map((item, idx) => {
                 const c = ci(item.product.Id, idx)
                 const disc = itemDiscount(item)
-                const rowTotal = itemSubtotal(item)
+                // "T.Tiền" = Angular's "Thành tiền", which is the AFTER-tax
+                // amount (getItemAmountAfterTax), not the pre-tax subtotal.
+                const rowTotal = itemAmount(item, perItemTax)
                 return (
                   <tr key={item.product.Id ?? idx} className="hover:bg-muted/20 transition-colors">
                     <td className="px-2 py-1.5 text-center text-muted-foreground">{idx + 1}</td>
                     <td className="px-2 py-1.5 max-w-[140px]">
                       <div className="flex items-center gap-1.5">
                         <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${DOT_COLORS[c]}`} />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex items-center gap-1">
                           <span className="font-medium text-foreground line-clamp-1">{item.product.Name}</span>
-                          {perItemTax && Number(item.product.Tax) > 0 && (
-                            <span className="ml-1 inline-block px-1 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 text-[9px] font-bold whitespace-nowrap align-middle">
-                              VAT {item.product.Tax}%
-                            </span>
-                          )}
+                          {/* KCT = không chịu thuế (Product.Tax null), CT = chịu thuế — matches order-item-list.component's tax-status-badge, shown regardless of IsTaxPerItemAllowed. */}
+                          <span className={cn(
+                            'shrink-0 rounded-full px-1.5 text-[9px] font-bold leading-[14px] whitespace-nowrap',
+                            item.product.Tax == null
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                          )}>
+                            {item.product.Tax == null ? 'KCT' : 'CT'}
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -1255,6 +1277,15 @@ function InternalOrderPanel({
                           onUpdateItem(idx, 'discountPct', pct)
                         }} />
                     </td>
+                    {perItemTax && (
+                      <td className="px-2 py-1.5">
+                        <div className="flex items-center w-14 border border-input rounded px-1.5 py-0.5 bg-background">
+                          <PercentInput value={item.tax ?? 0} disabled={item.product.Tax == null}
+                            onChange={v => onUpdateItem(idx, 'tax', v)} />
+                          <span className="text-muted-foreground text-[10px]">%</span>
+                        </div>
+                      </td>
+                    )}
                     <td className="px-2 py-1.5 tabular-nums font-semibold text-foreground whitespace-nowrap">{fmt(rowTotal)}</td>
                     <td className="px-2 py-1.5">
                       <input type="text" placeholder="Ghi chú..." value={item.note}
@@ -1494,6 +1525,20 @@ const PAYMENT_METHODS = [
   { value: 'CK',    label: 'CK' },
 ]
 
+/** Hoisted to module scope: defining this inside SellInvoiceTab gave it a new
+ * function identity on every keystroke, so React remounted the wrapped input
+ * (losing focus) instead of just re-rendering it. */
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-xs font-medium mb-1 block">
+        {required && <span className="text-destructive mr-0.5">*</span>}{label}
+      </label>
+      {children}
+    </div>
+  )
+}
+
 function SellInvoiceTab({
   form,
   setForm,
@@ -1503,17 +1548,6 @@ function SellInvoiceTab({
 }) {
   const set = (key: keyof InvoiceFormData, value: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: value }))
-
-  function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-    return (
-      <div>
-        <label className="text-xs font-medium mb-1 block">
-          {required && <span className="text-destructive mr-0.5">*</span>}{label}
-        </label>
-        {children}
-      </div>
-    )
-  }
 
   return (
     <div className="flex-1 overflow-y-auto">
