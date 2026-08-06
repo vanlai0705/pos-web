@@ -38,7 +38,6 @@ import SettingStockPage from "./pages/setting/stock"
 import SettingInvoicePage from "./pages/setting/invoice"
 import NotificationsPage from "./pages/notifications"
 import SettingPrinterPage from "./pages/setting/printer"
-import SettingNotificationPage from "./pages/setting/notification"
 import ProductGroupsPage from "./pages/managers/product-groups"
 import CustomerGroupsPage from "./pages/managers/customer-groups"
 import SupplierGroupsPage from "./pages/managers/supplier-groups"
@@ -278,7 +277,6 @@ function renderPrivateAppRoutes() {
         <Route path="order" element={<SettingOrderPage />} />
         <Route path="product" element={<SettingProductPage />} />
         <Route path="stock" element={<SettingStockPage />} />
-        <Route path="notification" element={<SettingNotificationPage />} />
         <Route path="invoice" element={<SettingInvoicePage />} />
         <Route path="printer" element={<SettingPrinterPage />} />
       </Route>

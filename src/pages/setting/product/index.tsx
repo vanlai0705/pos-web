@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { Package, Printer, Barcode } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { useGetSettingProductQuery, useUpdateSettingProductMutation } from "@/store/slice/users/api/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
@@ -19,6 +20,7 @@ const defaultForm: TPosSettingProduct = {
 }
 
 export default function SettingProductPage() {
+  const { t } = useTranslation()
   const { data, isLoading } = useGetSettingProductQuery()
   const [update, { isLoading: saving }] = useUpdateSettingProductMutation()
   const [form, setForm] = useState<TPosSettingProduct>(defaultForm)
@@ -33,9 +35,9 @@ export default function SettingProductPage() {
   const handleSave = async () => {
     try {
       await update(form).unwrap()
-      toast.success("Lưu thành công", { description: "Cài đặt mặt hàng đã được cập nhật." })
+      toast.success(t('pages.setting.product.saveSuccessTitle'), { description: t('pages.setting.product.saveSuccessDescription') })
     } catch {
-      toast.error("Lỗi", { description: "Không thể lưu cài đặt." })
+      toast.error(t('pages.setting.product.saveErrorTitle'), { description: t('pages.setting.product.saveErrorDescription') })
     }
   }
 
@@ -44,50 +46,50 @@ export default function SettingProductPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Cài đặt mặt hàng"
-        description="Quy tắc quản lý sản phẩm, mã vạch và đơn vị tính"
+        title={t('pages.setting.product.pageTitle')}
+        description={t('pages.setting.product.pageDescription')}
         icon={<Package className="h-5 w-5" />}
       />
 
-      <SettingCard title="Quy tắc sản phẩm" icon={<Package className="h-4 w-4 text-primary" />}>
+      <SettingCard title={t('pages.setting.product.productRulesSection')} icon={<Package className="h-4 w-4 text-primary" />}>
         <ToggleRow
           id="IsUsingProductCode"
-          label="Sử dụng mã sản phẩm"
+          label={t('pages.setting.product.useProductCode')}
           checked={form.IsUsingProductCode}
           onCheckedChange={toggle("IsUsingProductCode")}
         />
         <ToggleRow
           id="IsGenerateProductCode"
-          label="Tự động sinh mã sản phẩm"
+          label={t('pages.setting.product.autoGenerateProductCode')}
           checked={form.IsGenerateProductCode}
           onCheckedChange={toggle("IsGenerateProductCode")}
           disabled={!form.IsUsingProductCode}
         />
         <ToggleRow
           id="IsDupplicateName"
-          label="Cho phép trùng tên mặt hàng"
+          label={t('pages.setting.product.allowDuplicateProductName')}
           checked={form.IsDupplicateName}
           onCheckedChange={toggle("IsDupplicateName")}
         />
         <ToggleRow
           id="IsMultiUnit"
-          label="Sử dụng nhiều đơn vị tính"
-          description="Một sản phẩm có thể có nhiều đơn vị (hộp, cái, thùng…)"
+          label={t('pages.setting.product.useMultiUnit')}
+          description={t('pages.setting.product.multiUnitDescription')}
           checked={form.IsMultiUnit}
           onCheckedChange={toggle("IsMultiUnit")}
         />
       </SettingCard>
 
-      <SettingCard title="Cài đặt mã vạch" icon={<Barcode className="h-4 w-4 text-primary" />}>
+      <SettingCard title={t('pages.setting.product.barcodeSettingsSection')} icon={<Barcode className="h-4 w-4 text-primary" />}>
         <ToggleRow
           id="IsUsingBarcode"
-          label="Sử dụng mã vạch"
+          label={t('pages.setting.product.useBarcode')}
           checked={form.IsUsingBarcode}
           onCheckedChange={toggle("IsUsingBarcode")}
         />
         <ToggleRow
           id="IsGenerateBarcode"
-          label="Tự động sinh mã vạch"
+          label={t('pages.setting.product.autoGenerateBarcode')}
           checked={form.IsGenerateBarcode}
           onCheckedChange={toggle("IsGenerateBarcode")}
           disabled={!form.IsUsingBarcode}
@@ -95,31 +97,31 @@ export default function SettingProductPage() {
         <div className="border-t pt-3">
           <NumberRow
             id="BarcodeLength"
-            label="Chiều dài mã vạch"
+            label={t('pages.setting.product.barcodeLength')}
             value={form.BarcodeLength}
             onChange={v => setForm(f => ({ ...f, BarcodeLength: v }))}
             min={1}
             max={100}
-            suffix="ký tự"
+            suffix={t('pages.setting.product.characterUnit')}
           />
         </div>
       </SettingCard>
 
-      <SettingCard title="Máy in mã vạch" icon={<Printer className="h-4 w-4 text-primary" />}>
+      <SettingCard title={t('pages.setting.product.barcodePrinterSection')} icon={<Printer className="h-4 w-4 text-primary" />}>
         <TextRow
           id="PrinterUrl"
-          label="Đường dẫn máy in"
-          description="Đường dẫn đến dịch vụ máy in cục bộ"
+          label={t('pages.setting.product.printerUrl')}
+          description={t('pages.setting.product.printerUrlDescription')}
           value={form.PrinterUrl ?? ""}
           onChange={v => setForm(f => ({ ...f, PrinterUrl: v }))}
           placeholder="http://localhost:8000"
         />
         <TextRow
           id="BarcodePrinterName"
-          label="Tên máy in mã vạch"
+          label={t('pages.setting.product.barcodePrinterName')}
           value={form.BarcodePrinterName ?? ""}
           onChange={v => setForm(f => ({ ...f, BarcodePrinterName: v }))}
-          placeholder="Tên máy in"
+          placeholder={t('pages.setting.product.printerNamePlaceholder')}
         />
       </SettingCard>
 

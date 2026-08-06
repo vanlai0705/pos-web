@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileSpreadsheet, ChevronDown, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { query, downloadBlob } from '@/utils'
@@ -148,10 +149,11 @@ export function TD({ children, right = false, center = false, bold = false, clas
 }
 
 export function TableNoData({ cols }: { cols: number }) {
+  const { t } = useTranslation()
   return (
     <tr>
       <td colSpan={cols} className="text-center py-16 text-sm text-slate-400">
-        Không có dữ liệu
+        {t('pages.report.shared.noData')}
       </td>
     </tr>
   )
@@ -180,11 +182,12 @@ export function ReportPagination({ page, total, pageSize, onPage, onPageSizeChan
 // ─── Excel export button ──────────────────────────────────────────────────────
 
 export function ExcelBtn({ onClick, loading }: { onClick: () => void; loading?: boolean }) {
+  const { t } = useTranslation()
   return (
     <Button size="sm" variant="outline" disabled={loading}
       className="h-8 text-xs gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50" onClick={onClick}>
       <FileSpreadsheet className="h-3.5 w-3.5" />
-      {loading ? 'Đang xuất...' : 'Xuất Excel'}
+      {loading ? t('pages.report.shared.exporting') : t('pages.report.shared.exportExcel')}
     </Button>
   )
 }
@@ -194,15 +197,16 @@ export function ExcelBtn({ onClick, loading }: { onClick: () => void; loading?: 
  * built from the same filter params the tab is already showing.
  */
 export function useReportExcel() {
+  const { t } = useTranslation()
   const [download, { isLoading: exporting }] = useGenericDownloadMutation()
 
   const exportExcel = async (endpoint: string, params: Record<string, unknown>, fileName: string) => {
     try {
       const blob = await download({ url: `${endpoint}${query(params)}` }).unwrap()
       downloadBlob(blob, fileName)
-      toast.success('Xuất Excel thành công')
+      toast.success(t('pages.report.shared.exportSuccess'))
     } catch {
-      toast.error('Không thể xuất Excel')
+      toast.error(t('pages.report.shared.exportError'))
     }
   }
 
@@ -237,6 +241,7 @@ export function CustomerFilter({
   value: number | null
   onChange: (id: number | null) => void
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedName, setSelectedName] = useState('')
@@ -279,7 +284,7 @@ export function CustomerFilter({
         className="h-8 min-w-[180px] flex items-center gap-1.5 px-2.5 rounded-md border border-slate-300 bg-white text-xs text-slate-700 hover:border-slate-400 transition-colors"
       >
         <span className="flex-1 text-left truncate">
-          {selectedName || <span className="text-slate-400">Khách hàng</span>}
+          {selectedName || <span className="text-slate-400">{t('pages.report.shared.customerPlaceholder')}</span>}
         </span>
         {value ? (
           <X className="h-3 w-3 shrink-0 text-slate-400 hover:text-slate-600" onClick={handleClear} />
@@ -295,15 +300,15 @@ export function CustomerFilter({
               autoFocus
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Tìm tên / số điện thoại..."
+              placeholder={t('pages.report.shared.searchCustomerPlaceholder')}
               className="h-7 text-xs"
             />
           </div>
           <div className="max-h-[220px] overflow-y-auto py-1">
             {isFetching ? (
-              <div className="px-3 py-2 text-xs text-slate-400">Đang tìm...</div>
+              <div className="px-3 py-2 text-xs text-slate-400">{t('pages.report.shared.searching')}</div>
             ) : items.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-slate-400">Không tìm thấy</div>
+              <div className="px-3 py-2 text-xs text-slate-400">{t('pages.report.shared.notFound')}</div>
             ) : (
               items.map(c => (
                 <button
@@ -333,6 +338,7 @@ export function ShopFilter({
   value: number | null
   onChange: (id: number | null) => void
 }) {
+  const { t } = useTranslation()
   const { data: setting } = useGetUserShopSettingQuery()
   const shops = setting?.Shops ?? []
 
@@ -344,7 +350,7 @@ export function ShopFilter({
       onChange={e => onChange(e.target.value ? Number(e.target.value) : null)}
       className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-700 hover:border-slate-400 transition-colors focus:outline-none focus:ring-1 focus:ring-sky-500"
     >
-      <option value="">Tất cả chi nhánh</option>
+      <option value="">{t('pages.report.shared.allBranches')}</option>
       {shops.map(s => (
         <option key={s.Id} value={s.Id}>{s.Name}</option>
       ))}
@@ -361,6 +367,7 @@ export function ProductGroupFilter({
   value: number | null
   onChange: (id: number | null) => void
 }) {
+  const { t } = useTranslation()
   const { data: groups = [] } = useGetProductGroupsSimpleQuery()
 
   return (
@@ -369,7 +376,7 @@ export function ProductGroupFilter({
       onChange={e => onChange(e.target.value ? Number(e.target.value) : null)}
       className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-700 hover:border-slate-400 transition-colors focus:outline-none focus:ring-1 focus:ring-sky-500"
     >
-      <option value="">Tất cả nhóm hàng</option>
+      <option value="">{t('pages.report.shared.allProductGroups')}</option>
       {groups.map(g => (
         <option key={g.Id} value={g.Id}>{g.Name}</option>
       ))}

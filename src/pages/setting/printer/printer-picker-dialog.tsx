@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Loader2, Printer } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getInstalledPrinters } from '@/utils/print-service'
@@ -15,6 +16,7 @@ interface PrinterPickerDialogProps {
  * print bridge reports as installed, so a row's "Máy in" field can be picked
  * instead of typed by hand. */
 export function PrinterPickerDialog({ open, onOpenChange, printerUrl, onSelect }: PrinterPickerDialogProps) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [printers, setPrinters] = useState<string[]>([])
 
@@ -32,18 +34,18 @@ export function PrinterPickerDialog({ open, onOpenChange, printerUrl, onSelect }
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm">
             <Printer className="h-4 w-4" />
-            Danh sách máy in
+            {t('pages.setting.printer.picker.printerListTitle')}
           </DialogTitle>
         </DialogHeader>
 
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Đang tải danh sách máy in...
+            {t('pages.setting.printer.picker.loadingPrinterList')}
           </div>
         ) : printers.length === 0 ? (
           <div className="py-10 text-center text-sm italic text-muted-foreground">
-            Không có máy in nào được cài đặt.
+            {t('pages.setting.printer.picker.noPrintersInstalled')}
           </div>
         ) : (
           <div className="max-h-96 space-y-1 overflow-y-auto pr-1">
@@ -56,7 +58,7 @@ export function PrinterPickerDialog({ open, onOpenChange, printerUrl, onSelect }
               >
                 <span className="text-sm font-medium">{name}</span>
                 <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary group-hover:bg-primary group-hover:text-primary-foreground">
-                  Chọn
+                  {t('pages.setting.printer.picker.select')}
                 </span>
               </button>
             ))}
@@ -64,7 +66,7 @@ export function PrinterPickerDialog({ open, onOpenChange, printerUrl, onSelect }
         )}
 
         <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Đóng</Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t('pages.setting.printer.picker.close')}</Button>
         </div>
       </DialogContent>
     </Dialog>

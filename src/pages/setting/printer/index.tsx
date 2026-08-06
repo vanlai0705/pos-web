@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Check, List, Play, RefreshCw } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import {
   useGetAreasQuery,
   useGetProductGroupsQuery,
@@ -72,12 +73,14 @@ function buildKitchenPrintersByGroups(groups: TPosProductGroup[]): TPosKitchenPr
 
 // ─── Mode options ───────────────────────────────────────────────────────────────
 
-const INVOICE_MODE_OPTIONS = [
-  { value: 0, label: "Không sử dụng" },
-  { value: 1, label: "Chỉ in hoá đơn theo khu vực" },
-  { value: 2, label: "In một liên tại quầy và một liên theo khu vực" },
-  { value: 3, label: "In tạm tính theo khu vực và in hoá đơn tại quầy" },
-]
+function getInvoiceModeOptions(t: (key: string) => string) {
+  return [
+    { value: 0, label: t("pages.setting.printer.invoiceModeNone") },
+    { value: 1, label: t("pages.setting.printer.invoiceModeByAreaOnly") },
+    { value: 2, label: t("pages.setting.printer.invoiceModeOneAtCounterOneByArea") },
+    { value: 3, label: t("pages.setting.printer.invoiceModeProvisionalByAreaAndInvoiceAtCounter") },
+  ]
+}
 
 const defaultForm: TPosSettingPrinter = {
   EnableKitchenPrintByArea: false,
@@ -102,12 +105,13 @@ interface PrinterTableRowProps {
 }
 
 function PrinterTableRow({ index, areaLabel, groupLabel, value, onChange, onPick }: PrinterTableRowProps) {
+  const { t } = useTranslation()
   const set = (key: "PrinterName" | "PrinterIp" | "PrinterPort") => (e: React.ChangeEvent<HTMLInputElement>) =>
     onChange({ ...value, [key]: key === "PrinterPort" ? Number(e.target.value) : e.target.value })
 
   const handleTest = () => {
-    if (!value.PrinterIp || !value.PrinterPort) { toast.warning("Vui lòng nhập IP và PORT máy in"); return }
-    if (!value.PrinterName) { toast.warning("Vui lòng chọn tên máy in"); return }
+    if (!value.PrinterIp || !value.PrinterPort) { toast.warning(t("pages.setting.printer.pleaseEnterPrinterIpPort")); return }
+    if (!value.PrinterName) { toast.warning(t("pages.setting.printer.pleaseSelectPrinterName")); return }
     printData(`http://${value.PrinterIp}:${value.PrinterPort}`, "setting/print-test", value.PrinterName, {})
   }
 
@@ -121,11 +125,11 @@ function PrinterTableRow({ index, areaLabel, groupLabel, value, onChange, onPick
       {areaLabel != null && <td className="px-2 py-2 text-sm">{areaLabel}</td>}
       {groupLabel != null && <td className="px-2 py-2 text-sm">{groupLabel}</td>}
       <td className="px-2 py-2">
-        <input value={value.PrinterName ?? ""} onChange={set("PrinterName")} placeholder="Nhập tên máy in"
+        <input value={value.PrinterName ?? ""} onChange={set("PrinterName")} placeholder={t("pages.setting.printer.enterPrinterNamePlaceholder")}
           className="w-full rounded-md border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
       </td>
       <td className="px-2 py-2">
-        <input value={value.PrinterIp ?? ""} onChange={set("PrinterIp")} placeholder="VD: 192.168.1.10"
+        <input value={value.PrinterIp ?? ""} onChange={set("PrinterIp")} placeholder={t("pages.setting.printer.ipExamplePlaceholder")}
           className="w-36 rounded-md border bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
       </td>
       <td className="px-2 py-2">
@@ -144,10 +148,10 @@ function PrinterTableRow({ index, areaLabel, groupLabel, value, onChange, onPick
       <td className="px-2 py-2">
         <div className="flex flex-col items-stretch gap-1">
           <Button type="button" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onPick}>
-            <List className="h-3.5 w-3.5" /> Kiểm tra
+            <List className="h-3.5 w-3.5" /> {t("pages.setting.printer.selectPrinterButton")}
           </Button>
           <Button type="button" size="sm" variant="secondary" className="h-7 gap-1 px-2 text-xs" onClick={handleTest}>
-            <Play className="h-3.5 w-3.5" /> Test
+            <Play className="h-3.5 w-3.5" /> {t("pages.setting.printer.testPrinterButton")}
           </Button>
         </div>
       </td>
@@ -158,6 +162,7 @@ function PrinterTableRow({ index, areaLabel, groupLabel, value, onChange, onPick
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function SettingPrinterPage() {
+  const { t } = useTranslation()
   const [guid] = useState(() => getOrCreateGuid())
   const [activeTab, setActiveTab] = useState<"kitchen" | "invoice">("kitchen")
   const [picker, setPicker] = useState<{ onSelect: (name: string) => void } | null>(null)
@@ -198,9 +203,9 @@ export default function SettingPrinterPage() {
   const handleSave = async () => {
     try {
       await update({ guid, data: form }).unwrap()
-      toast.success("Cài đặt máy in đã được lưu")
+      toast.success(t("pages.setting.printer.saveSuccess"))
     } catch {
-      toast.error("Không thể lưu cài đặt máy in")
+      toast.error(t("pages.setting.printer.saveError"))
     }
   }
 
@@ -209,7 +214,7 @@ export default function SettingPrinterPage() {
     // areas/productGroups have loaded — the reconcile effect above builds
     // the grid as soon as they arrive.
     if (!areas.length || !productGroups.length) {
-      toast.warning("Đang tải khu vực và nhóm sản phẩm, vui lòng thử lại")
+      toast.warning(t("pages.setting.printer.loadingAreasAndGroups"))
       setForm(f => ({ ...f, EnableKitchenPrintByArea: enabled }))
       return
     }
@@ -232,7 +237,7 @@ export default function SettingPrinterPage() {
 
   const openPicker = (onSelect: (name: string) => void) => {
     if (!settingOrder?.PrinterUrl) {
-      toast.warning("Vui lòng nhập đường dẫn máy in ở cài đặt đơn hàng")
+      toast.warning(t("pages.setting.printer.pleaseEnterPrinterUrlInOrderSettings"))
       return
     }
     setPicker({ onSelect })
@@ -241,12 +246,13 @@ export default function SettingPrinterPage() {
   if (isLoading) return <Skeleton className="h-96 w-full" />
 
   const showAreaMode = form.InvoicePrintByAreaMode !== 0
+  const invoiceModeOptions = getInvoiceModeOptions(t)
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-bold">Cài đặt máy in</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Quản lý máy in chế biến và máy in hóa đơn theo khu vực</p>
+        <h1 className="text-lg font-bold">{t("pages.setting.printer.pageTitle")}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{t("pages.setting.printer.pageDescription")}</p>
       </div>
 
       {/* Option panel + device GUID */}
@@ -256,22 +262,22 @@ export default function SettingPrinterPage() {
             <input type="checkbox" checked={form.EnableKitchenPrintByArea}
               onChange={e => toggleKitchenByArea(e.target.checked)}
               className="h-4 w-4 rounded border-input" />
-            In chế biến theo khu vực
+            {t("pages.setting.printer.kitchenPrintByAreaLabel")}
           </label>
           <div className="flex items-center gap-2">
-            <label htmlFor="InvoicePrintByAreaMode" className="text-sm font-medium whitespace-nowrap">In hóa đơn theo khu vực</label>
+            <label htmlFor="InvoicePrintByAreaMode" className="text-sm font-medium whitespace-nowrap">{t("pages.setting.printer.invoicePrintByAreaLabel")}</label>
             <select
               id="InvoicePrintByAreaMode"
               value={form.InvoicePrintByAreaMode}
               onChange={e => setForm(f => ({ ...f, InvoicePrintByAreaMode: Number(e.target.value) }))}
               className="rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              {INVOICE_MODE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {invoiceModeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
         </div>
         <Button variant="outline" size="sm" onClick={resetGuid} className="flex-none gap-1.5">
-          <RefreshCw className="h-3.5 w-3.5" /> Reset GUID
+          <RefreshCw className="h-3.5 w-3.5" /> {t("pages.setting.printer.resetGuidButton")}
         </Button>
       </div>
 
@@ -286,7 +292,7 @@ export default function SettingPrinterPage() {
               activeTab === tab ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
             )}
           >
-            {tab === "kitchen" ? "Máy in chế biến" : "Máy in hóa đơn"}
+            {tab === "kitchen" ? t("pages.setting.printer.kitchenPrinterTab") : t("pages.setting.printer.invoicePrinterTab")}
           </button>
         ))}
       </div>
@@ -299,35 +305,35 @@ export default function SettingPrinterPage() {
               {activeTab === "kitchen" ? (
                 <tr>
                   <th className="px-2 py-2 text-center w-12">#</th>
-                  {form.EnableKitchenPrintByArea && <th className="px-2 py-2">Khu vực</th>}
-                  <th className="px-2 py-2">Loại đồ</th>
-                  <th className="px-2 py-2">Máy in</th>
+                  {form.EnableKitchenPrintByArea && <th className="px-2 py-2">{t("pages.setting.printer.areaColumn")}</th>}
+                  <th className="px-2 py-2">{t("pages.setting.printer.productGroupColumn")}</th>
+                  <th className="px-2 py-2">{t("pages.setting.printer.printerNameColumn")}</th>
                   <th className="px-2 py-2 w-36">IP</th>
                   <th className="px-2 py-2 w-20">PORT</th>
-                  <th className="px-2 py-2 text-center w-16">In tem</th>
-                  <th className="px-2 py-2 w-24">Kiểm tra máy in</th>
+                  <th className="px-2 py-2 text-center w-16">{t("pages.setting.printer.printLabelColumn")}</th>
+                  <th className="px-2 py-2 w-24">{t("pages.setting.printer.checkPrinterColumn")}</th>
                 </tr>
               ) : (
                 <tr>
-                  <th className="px-2 py-2">{showAreaMode ? "Khu vực" : "Loại máy in"}</th>
-                  <th className="px-2 py-2">Máy in</th>
+                  <th className="px-2 py-2">{showAreaMode ? t("pages.setting.printer.areaColumn") : t("pages.setting.printer.printerTypeColumn")}</th>
+                  <th className="px-2 py-2">{t("pages.setting.printer.printerNameColumn")}</th>
                   <th className="px-2 py-2 w-36">IP</th>
                   <th className="px-2 py-2 w-20">PORT</th>
-                  <th className="px-2 py-2 text-center w-16">In tem</th>
-                  <th className="px-2 py-2 w-24">Kiểm tra</th>
+                  <th className="px-2 py-2 text-center w-16">{t("pages.setting.printer.printLabelColumn")}</th>
+                  <th className="px-2 py-2 w-24">{t("pages.setting.printer.checkColumn")}</th>
                 </tr>
               )}
             </thead>
             <tbody>
               {activeTab === "kitchen" && (
                 form.KitchenPrinters.length === 0 ? (
-                  <tr><td colSpan={form.EnableKitchenPrintByArea ? 8 : 7} className="px-2 py-8 text-center text-sm text-muted-foreground italic">Không có dữ liệu</td></tr>
+                  <tr><td colSpan={form.EnableKitchenPrintByArea ? 8 : 7} className="px-2 py-8 text-center text-sm text-muted-foreground italic">{t("pages.setting.printer.noData")}</td></tr>
                 ) : form.KitchenPrinters.map((item, i) => (
                   <PrinterTableRow
                     key={i}
                     index={i + 1}
-                    areaLabel={form.EnableKitchenPrintByArea ? (item.Area?.Name || "Chưa gán khu vực") : undefined}
-                    groupLabel={item.ProductGroup?.Name || "Chưa gán loại đồ"}
+                    areaLabel={form.EnableKitchenPrintByArea ? (item.Area?.Name || t("pages.setting.printer.areaNotAssigned")) : undefined}
+                    groupLabel={item.ProductGroup?.Name || t("pages.setting.printer.productGroupNotAssigned")}
                     value={item}
                     onChange={updateKitchen(i)}
                     onPick={() => openPicker(name => updateKitchen(i)({ ...item, PrinterName: name }))}
@@ -338,13 +344,13 @@ export default function SettingPrinterPage() {
               {activeTab === "invoice" && !showAreaMode && (
                 <>
                   <PrinterTableRow
-                    groupLabel="Máy in hoá đơn (sử dụng máy in mặc định nếu để trống)"
+                    groupLabel={t("pages.setting.printer.billPrinterLabel")}
                     value={form.BillPrinter ?? {}}
                     onChange={v => setForm(f => ({ ...f, BillPrinter: v as TPosInvoicePrinter }))}
                     onPick={() => openPicker(name => setForm(f => ({ ...f, BillPrinter: { ...(f.BillPrinter ?? {}), PrinterName: name } })))}
                   />
                   <PrinterTableRow
-                    groupLabel="Máy in yêu cầu thanh toán (sử dụng máy in mặc định nếu để trống)"
+                    groupLabel={t("pages.setting.printer.tempBillPrinterLabel")}
                     value={form.TempBillPrinter ?? {}}
                     onChange={v => setForm(f => ({ ...f, TempBillPrinter: v as TPosInvoicePrinter }))}
                     onPick={() => openPicker(name => setForm(f => ({ ...f, TempBillPrinter: { ...(f.TempBillPrinter ?? {}), PrinterName: name } })))}
@@ -354,11 +360,11 @@ export default function SettingPrinterPage() {
 
               {activeTab === "invoice" && showAreaMode && (
                 form.InvoicePrinters.length === 0 ? (
-                  <tr><td colSpan={6} className="px-2 py-8 text-center text-sm text-muted-foreground italic">Không có dữ liệu</td></tr>
+                  <tr><td colSpan={6} className="px-2 py-8 text-center text-sm text-muted-foreground italic">{t("pages.setting.printer.noData")}</td></tr>
                 ) : form.InvoicePrinters.map((item, i) => (
                   <PrinterTableRow
                     key={i}
-                    areaLabel={item.Area?.Name || "Chưa gán khu vực"}
+                    areaLabel={item.Area?.Name || t("pages.setting.printer.areaNotAssigned")}
                     value={item}
                     onChange={updateInvoiceArea(i)}
                     onPick={() => openPicker(name => updateInvoiceArea(i)({ ...item, PrinterName: name }))}
@@ -371,7 +377,7 @@ export default function SettingPrinterPage() {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving} className="min-w-[120px]">Cập nhật</Button>
+        <Button onClick={handleSave} disabled={saving} className="min-w-[120px]">{t("pages.setting.printer.updateButton")}</Button>
       </div>
 
       {picker && (
