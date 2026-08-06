@@ -19,7 +19,7 @@ function getInitials(name?: string): string {
 }
 
 function emptyForm(): TPosMember {
-  return { Name: "", Phone: "", Email: "", UserInfo: { Address: "" } };
+  return { Name: "", Phone: "", Email: "", UserProfile: { Address: "" } };
 }
 
 export default function ProfilePage() {
@@ -54,7 +54,7 @@ export default function ProfilePage() {
   const onChangeField = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name === "Address") {
-      setForm((prev) => ({ ...prev, UserInfo: { ...prev.UserInfo, Address: value } }));
+      setForm((prev) => ({ ...prev, UserProfile: { ...prev.UserProfile, Address: value } }));
     } else {
       setForm((prev) => ({ ...prev, [name]: value }));
     }
@@ -66,18 +66,19 @@ export default function ProfilePage() {
       return;
     }
     try {
+      // Send the full loaded record back (Shops/Status/UserInfo work-schedule
+      // included) — self-update replaces the whole record, so submitting only
+      // the edited fields would wipe the rest. `Image` is excluded: the new
+      // avatar goes in as its own multipart file part, matching pos_web's
+      // real self-update request.
+      const { Image: _image, ...model } = form;
       const saved = await selfUpdate({
-        model: {
-          Id: form.Id,
-          Name: form.Name,
-          Phone: form.Phone,
-          Email: form.Email,
-          UserInfo: { Address: form.UserInfo?.Address },
-        },
+        model,
         file: avatarFile,
       }).unwrap();
 
       toast.success("Cập nhật hồ sơ thành công");
+      setForm((prev) => ({ ...prev, ...saved }));
       setAvatarFile(null);
       setAvatarPreview(null);
 
@@ -150,7 +151,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Địa chỉ</label>
-                  <Input name="Address" value={form.UserInfo?.Address ?? ""} onChange={onChangeField} disabled={isLoading} />
+                  <Input name="Address" value={form.UserProfile?.Address ?? ""} onChange={onChangeField} disabled={isLoading} />
                 </div>
               </div>
 
