@@ -61,12 +61,6 @@ export function ProfileDropdown() {
               <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to='/change-password'>
-              {t('common.changePassword')}
-              <DropdownMenuShortcut>⌘C</DropdownMenuShortcut>
-            </Link>
-          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout} className='text-destructive focus:text-destructive'>

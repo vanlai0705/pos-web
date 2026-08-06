@@ -42,12 +42,18 @@ export const getBaseQueryWithReauth = (): BaseQueryFn<
 
     if (result.error) {
       const status = result.error.status;
+      // Anonymous QR self-order calls run with no session at all (a diner
+      // scanning a table's QR code) — a 401/expired-guid there must never
+      // force-redirect to /login, there's no login for them to reach.
       const isAuthEndpoint =
         requestUrl.includes("login") ||
         requestUrl.includes("register") ||
         requestUrl.includes("forgot-password") ||
         requestUrl.includes("renew-password") ||
-        requestUrl.includes("logout");
+        requestUrl.includes("logout") ||
+        requestUrl.includes("get-anonymous") ||
+        requestUrl.includes("order-anonymous") ||
+        requestUrl.includes("get-order-items");
 
       if (status === 401 && !isAuthEndpoint) {
         api.dispatch(logout());

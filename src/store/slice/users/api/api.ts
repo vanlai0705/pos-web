@@ -2,8 +2,6 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { buildModelFormData } from "@/utils/multipart";
 
 import {
-  TChangePasswordRequest,
-  TChangePasswordV1Request,
   TLoginResponse,
   TForgotPasswordRequest,
   TRenewPasswordRequest,
@@ -66,9 +64,6 @@ import {
   TPosOrderInvoice,
   TPosOrderInvoiceFilterParams,
   TRegisterRequest,
-  TUpdateProfileRequest,
-  TUserInfo,
-  TUserProfileResponse,
   TUsersRequest,
   TUsersListResponse,
   TCreateUserRequest,
@@ -214,76 +209,40 @@ export const userApiSlice = createApi({
       providesTags: () => [{ type: EUserTagTypes.UserInfo }],
     }),
 
-    changePassword: builder.mutation<TMessage, TChangePasswordRequest>({
-      query: (body: TChangePasswordRequest) => ({
-        url: "user_profile/password",
-        method: "POST",
-        body: body,
-      }),
-      transformResponse: (response: TMessage) => response,
-      transformErrorResponse: (response: { status: string | number }) =>
-        response.status,
-    }),
-
-    getUserProfile: builder.query<TUserProfileResponse, void>({
-      query: () => ({
-        url: "users/profile",
-        method: "GET",
-      }),
-      transformResponse: (response: TUserProfileResponse) => response,
-      transformErrorResponse: (response: { status: string | number }) =>
-        response.status,
-      providesTags: () => [{ type: EUserTagTypes.UserInfo }],
-    }),
-
-    updateUserProfile: builder.mutation<TUserProfileResponse, TUpdateProfileRequest>({
-      query: (body: TUpdateProfileRequest) => ({
-        url: "users/profile",
-        method: "PUT",
-        body,
-      }),
-      transformResponse: (response: TUserProfileResponse) => response,
-      transformErrorResponse: (response: { status: string | number }) =>
-        response.status,
-      invalidatesTags: () => [{ type: EUserTagTypes.UserInfo }],
-    }),
-
-    changePasswordV1: builder.mutation<TMessage, TChangePasswordV1Request>({
-      query: (body: TChangePasswordV1Request) => ({
-        url: "users/change-password",
-        method: "PUT",
-        body,
-      }),
-      transformResponse: (response: TMessage) => response,
-      transformErrorResponse: (response: { status: string | number }) =>
-        response.status,
-    }),
-
-    getUserInfo: builder.query<TUserInfo, void>({
-      query: () => ({
-        url: "user_profile",
-        method: "GET",
-      }),
-      transformResponse: (response: TUserInfo) => response,
-      transformErrorResponse: (response: { status: string | number }) =>
-        response.status,
-      providesTags: () => [{ type: EUserTagTypes.UserInfo }],
-    }),
-
-    uploadAvatar: builder.mutation<TUserProfileResponse, { file: File }>({
-      query: ({ file }) => {
-        const formData = new FormData();
-        formData.append("image", file);
-        return {
-          url: "users/avatar",
-          method: "POST",
-          body: formData,
-        };
+    /**
+     * The logged-in user's own profile — GET users/detail?id={selfId} to
+     * load (same endpoint the HR member-detail screen uses, just called
+     * with your own Id), POST (multipart) user-infos/self-update to save.
+     * Mirrors pos_web's user-update.component 1:1; the previous
+     * users/profile GET/PUT here never existed on the real API.
+     */
+    selfUpdateProfile: builder.mutation<TPosMember, { model: Partial<TPosMember>; file?: File | null }>({
+      query: ({ model, file }) => {
+        const form = new FormData()
+        form.append("model", new Blob([JSON.stringify(model)], { type: "application/json" }))
+        if (file) form.append(file.name, file)
+        return { url: "user-infos/self-update", method: "POST", body: form }
       },
-      transformResponse: (response: TUserProfileResponse) => response,
-      transformErrorResponse: (response: { status: string | number }) =>
-        response.status,
+      transformResponse: (res: TPosResponse<TPosMember>) => res.Data,
       invalidatesTags: () => [{ type: EUserTagTypes.UserInfo }],
+    }),
+
+    /**
+     * Mirrors pos_web's UserChangePasswordComponent: POST user-infos/change-password
+     * with the OLD and NEW passwords already SHA256-salted client-side
+     * (same computePasswordSalt used at login) — the plaintext password is
+     * never sent. The previous users/change-password (PUT) here never
+     * existed on the real API.
+     */
+    selfChangePassword: builder.mutation<TMessage, { PasswordSaltOld: string; PasswordSaltNew: string }>({
+      query: (body) => ({
+        url: "user-infos/change-password",
+        method: "POST",
+        body,
+      }),
+      transformResponse: (response: TMessage) => response,
+      transformErrorResponse: (response: any) =>
+        response?.data?.Errors?.[0]?.Message || response.status,
     }),
 
     createUser: builder.mutation<TMessage, TCreateUserRequest>({
@@ -616,6 +575,28 @@ export const userApiSlice = createApi({
         return { url: `tables/get-list${qs ? '?' + qs : ''}`, method: 'GET' }
       },
       transformResponse: (res: TPosResponse<TPosTable[]>) => res.Data ?? [],
+    }),
+
+    // ─── QR self-order (customer-facing, unauthenticated) ────────────────────
+    // A diner scans the table's QR code, which links to /order-table?guid=...
+    // (see pos_web's qr-order module) — no login, tenant/table context comes
+    // entirely from that guid.
+
+    /** The menu a diner sees for their table — a public product list. */
+    getAnonymousProducts: builder.query<TPosActiveProduct[], string>({
+      query: (tableGuid) => ({ url: `products/get-anonymous?tableGuid=${tableGuid}` }),
+      transformResponse: (res: TPosResponse<TPosActiveProduct[]>) => res.Data ?? [],
+    }),
+
+    /** Items already placed on this table's order, keyed by table guid (not tableId — this is the anonymous/public counterpart to getTableOrderDetail). */
+    getTableOrderItemsByGuid: builder.query<TPosOrderItem[], string>({
+      query: (guid) => ({ url: `tables/get-order-items?guid=${guid}` }),
+      transformResponse: (res: TPosResponse<TPosOrderItem[]>) => res.Data ?? [],
+    }),
+
+    /** Submits (or appends to) the anonymous order tied to this table guid. */
+    submitAnonymousOrder: builder.mutation<void, Record<string, unknown>>({
+      query: (body) => ({ url: "tables/order-anonymous", method: "PUT", body }),
     }),
 
     /**
@@ -1235,13 +1216,8 @@ export const {
   useGetProductCategoriesQuery,
   useInitShopDataMutation,
   useLazyGetMenuQuery,
-  useGetUserInfoQuery,
-  useChangePasswordMutation,
-  useGetUserProfileQuery,
-  useLazyGetUserProfileQuery,
-  useUpdateUserProfileMutation,
-  useChangePasswordV1Mutation,
-  useUploadAvatarMutation,
+  useSelfUpdateProfileMutation,
+  useSelfChangePasswordMutation,
   useGetUsersQuery,
   useCreateUserMutation,
   useUpdateUserMutation,
@@ -1288,6 +1264,9 @@ export const {
   useTransferTableMutation,
   useMergeTablesMutation,
   useSplitTableMutation,
+  useGetAnonymousProductsQuery,
+  useGetTableOrderItemsByGuidQuery,
+  useSubmitAnonymousOrderMutation,
   useLazyGetOrderKitchenQuery,
   useGetProductGroupsQuery,
   useSelectShopMutation,
@@ -1389,6 +1368,7 @@ export const {
   useSaveShiftMutation,
   useUpdateShiftStatusMutation,
   useSaveMemberMutation,
+  useGetMemberDetailQuery,
   useLazyGetMemberDetailQuery,
   useLazyGetAccountByMemberQuery,
   useSaveAccountMutation,
