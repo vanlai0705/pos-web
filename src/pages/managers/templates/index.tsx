@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Copy, Download, FileText, MoreHorizontal, Plus, RefreshCw, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
@@ -30,11 +31,10 @@ const STATUS_LOCKED = 1
 const REPORT_TEMPLATE_PRODUCT = 0
 const MAX_FILE_SIZE_MB = 10
 
-const TEMPLATE_TYPE_OPTIONS = [
-  { Value: 0, Name: 'Báo cáo theo mặt hàng' },
-  { Value: 1, Name: 'Báo cáo theo đơn hàng' },
-  { Value: 2, Name: 'Báo cáo tiền theo tháng' },
-]
+interface TemplateTypeOption {
+  Value: number
+  Name: string
+}
 
 interface InvoiceTemplateGroup extends TreeSidebarNode {
   ParentId?: number
@@ -121,8 +121,23 @@ function flattenGroups(groups: InvoiceTemplateGroup[]): InvoiceTemplateGroup[] {
   }, [])
 }
 
-function getTemplateTypeName(value?: number) {
-  return TEMPLATE_TYPE_OPTIONS.find(item => item.Value === Number(value))?.Name || '-'
+function normalizeTemplateTypeOptions(response: any): TemplateTypeOption[] {
+  const items = Array.isArray(response?.Data)
+    ? response.Data
+    : Array.isArray(response?.data)
+      ? response.data
+      : []
+
+  return items
+    .map((item: any) => ({
+      Value: Number(item?.Value ?? item?.value),
+      Name: item?.Name ?? item?.name ?? '',
+    }))
+    .filter((item: TemplateTypeOption) => Number.isFinite(item.Value) && !!item.Name)
+}
+
+function getTemplateTypeName(options: TemplateTypeOption[], value?: number) {
+  return options.find(item => Number(item.Value) === Number(value))?.Name || '-'
 }
 
 function getFileExtension(fileName: string) {
@@ -131,6 +146,7 @@ function getFileExtension(fileName: string) {
 }
 
 export default function TemplatesPage() {
+  const { t } = useTranslation()
   const [groups, setGroups] = useState<InvoiceTemplateGroup[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState(0)
   const [selectedTemplateId, setSelectedTemplateId] = useState(0)
@@ -143,6 +159,7 @@ export default function TemplatesPage() {
   const [templatesLoading, setTemplatesLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [templates, setTemplates] = useState<InvoiceTemplate[]>([])
+  const [templateTypeOptions, setTemplateTypeOptions] = useState<TemplateTypeOption[]>([])
 
   const [groupModal, setGroupModal] = useState(false)
   const [groupParent, setGroupParent] = useState<InvoiceTemplateGroup | null>(null)
@@ -179,7 +196,7 @@ export default function TemplatesPage() {
 
     if (normalizedKeyword) {
       items = items.filter(item =>
-        [item.Name, item.Code, item.Description, item.TemplateGroup?.Name, getTemplateTypeName(item.TemplateType)]
+        [item.Name, item.Code, item.Description, item.TemplateGroup?.Name, getTemplateTypeName(templateTypeOptions, item.TemplateType)]
           .filter(Boolean)
           .some(value => String(value).toLowerCase().includes(normalizedKeyword)),
       )
@@ -200,7 +217,7 @@ export default function TemplatesPage() {
     }
 
     return items
-  }, [keyword, selectedGroup?.Name, sort, statusId, templates])
+  }, [keyword, selectedGroup?.Name, sort, statusId, templateTypeOptions, templates])
 
   const pagedTemplates = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE
@@ -208,6 +225,16 @@ export default function TemplatesPage() {
   }, [filteredTemplates, page])
 
   const selectedTemplate = templates.find(item => Number(item.Id) === Number(selectedTemplateId))
+
+  const loadTemplateTypeOptions = useCallback(async () => {
+    try {
+      const response = await request({ url: 'report-templates/get-template-type', method: 'GET' }).unwrap()
+      setTemplateTypeOptions(normalizeTemplateTypeOptions(response))
+    } catch {
+      setTemplateTypeOptions([])
+      toast.error(t('pages.managers.templates.loadTemplateTypesError'))
+    }
+  }, [request, t])
 
   const loadGroups = useCallback(async () => {
     setGroupsLoading(true)
@@ -218,11 +245,11 @@ export default function TemplatesPage() {
       setGroups(nextGroups)
       setSelectedGroupId(current => flat.some(item => item.Id === current) ? current : flat[0]?.Id || 0)
     } catch {
-      toast.error('Không thể tải nhóm mẫu hóa đơn')
+      toast.error(t('pages.managers.templates.loadGroupsError'))
     } finally {
       setGroupsLoading(false)
     }
-  }, [request])
+  }, [request, t])
 
   const loadTemplatesByGroup = useCallback(async (groupId: number) => {
     setTemplatesLoading(true)
@@ -235,15 +262,16 @@ export default function TemplatesPage() {
       setTemplates((response?.Data?.Items || []) as InvoiceTemplate[])
     } catch {
       setTemplates([])
-      toast.error('Không thể tải mẫu hóa đơn')
+      toast.error(t('pages.managers.templates.loadTemplatesError'))
     } finally {
       setTemplatesLoading(false)
     }
-  }, [request])
+  }, [request, t])
 
   useEffect(() => {
+    loadTemplateTypeOptions()
     loadGroups()
-  }, [loadGroups])
+  }, [loadGroups, loadTemplateTypeOptions])
 
   useEffect(() => {
     loadTemplatesByGroup(selectedGroupId)
@@ -272,7 +300,7 @@ export default function TemplatesPage() {
 
   const openEditGroup = async (group = selectedGroup) => {
     if (!group?.Id) {
-      toast.error('Vui lòng chọn nhóm mẫu cần sửa')
+      toast.error(t('pages.managers.templates.selectGroupToEdit'))
       return
     }
     try {
@@ -289,13 +317,13 @@ export default function TemplatesPage() {
       })
       setGroupModal(true)
     } catch {
-      toast.error('Không lấy được chi tiết nhóm mẫu')
+      toast.error(t('pages.managers.templates.groupDetailError'))
     }
   }
 
   const saveGroup = async () => {
     if (!groupForm.Name?.trim()) {
-      toast.error('Vui lòng nhập tên nhóm mẫu')
+      toast.error(t('pages.managers.templates.groupNameRequired'))
       return
     }
 
@@ -328,11 +356,11 @@ export default function TemplatesPage() {
         method: isUpdate ? 'PUT' : 'POST',
         body: payload,
       }).unwrap()
-      toast.success(isUpdate ? 'Cập nhật nhóm thành công' : 'Tạo nhóm thành công')
+      toast.success(isUpdate ? t('pages.managers.templates.groupUpdateSuccess') : t('pages.managers.templates.groupCreateSuccess'))
       setGroupModal(false)
       await loadGroups()
     } catch {
-      toast.error('Không thể lưu nhóm mẫu')
+      toast.error(t('pages.managers.templates.groupSaveError'))
     } finally {
       setSaving(false)
     }
@@ -340,24 +368,24 @@ export default function TemplatesPage() {
 
   const deleteGroup = async (group = selectedGroup) => {
     if (!group?.Id) {
-      toast.error('Vui lòng chọn nhóm mẫu cần xóa')
+      toast.error(t('pages.managers.templates.selectGroupToDelete'))
       return
     }
-    if (!window.confirm(`Xóa nhóm mẫu "${group.Name || group.Code}"?`)) return
+    if (!window.confirm(t('pages.managers.templates.deleteGroupConfirm', { name: group.Name || group.Code }))) return
 
     try {
       await request({ url: `report-template-groups/delete${query({ id: group.Id })}`, method: 'DELETE' }).unwrap()
-      toast.success('Xóa nhóm thành công')
+      toast.success(t('pages.managers.templates.groupDeleteSuccess'))
       if (selectedGroupId === group.Id) setSelectedGroupId(0)
       await loadGroups()
     } catch {
-      toast.error('Không thể xóa nhóm mẫu')
+      toast.error(t('pages.managers.templates.groupDeleteError'))
     }
   }
 
   const openCreateTemplate = () => {
     if (!groupOptions.length) {
-      toast.error('Chưa có nhóm mẫu hóa đơn để chọn')
+      toast.error(t('pages.managers.templates.noGroupsToChoose'))
       return
     }
     const group = selectedGroup || groupOptions[0]
@@ -373,7 +401,7 @@ export default function TemplatesPage() {
 
   const openEditTemplate = async (item?: InvoiceTemplate) => {
     if (!item?.Id) {
-      toast.error('Vui lòng chọn template cần sửa')
+      toast.error(t('pages.managers.templates.selectTemplateToEdit'))
       return
     }
 
@@ -394,17 +422,17 @@ export default function TemplatesPage() {
       setTemplateFileName(detail.OriginalFileName || detail.FileName || '')
       setTemplateModal(true)
     } catch {
-      toast.error('Không lấy được chi tiết template')
+      toast.error(t('pages.managers.templates.templateDetailError'))
     }
   }
 
   const saveTemplate = async () => {
     if (!templateForm.Name?.trim()) {
-      toast.error('Vui lòng nhập tên template')
+      toast.error(t('pages.managers.templates.templateNameRequired'))
       return
     }
     if (!templateForm.TemplateGroupId) {
-      toast.error('Vui lòng chọn nhóm mẫu hóa đơn')
+      toast.error(t('pages.managers.templates.templateGroupRequired'))
       return
     }
 
@@ -444,13 +472,13 @@ export default function TemplatesPage() {
         method: isUpdate ? 'PUT' : 'POST',
         body: buildModelFormData(payload, templateFile ? [templateFile] : []),
       }).unwrap()
-      toast.success(isUpdate ? 'Cập nhật template thành công' : 'Tạo template thành công')
+      toast.success(isUpdate ? t('pages.managers.templates.templateUpdateSuccess') : t('pages.managers.templates.templateCreateSuccess'))
       setTemplateModal(false)
       const nextGroupId = Number(templateForm.TemplateGroupId) || selectedGroupId
       setSelectedGroupId(nextGroupId)
       loadTemplatesByGroup(nextGroupId)
     } catch {
-      toast.error('Không thể lưu template')
+      toast.error(t('pages.managers.templates.templateSaveError'))
     } finally {
       setSaving(false)
     }
@@ -458,7 +486,7 @@ export default function TemplatesPage() {
 
   const openCloneTemplate = async (item: InvoiceTemplate) => {
     if (!item.Id) {
-      toast.error('Vui lòng chọn template cần clone')
+      toast.error(t('pages.managers.templates.selectTemplateToClone'))
       return
     }
     setCloneSourceTemplate(item)
@@ -478,7 +506,7 @@ export default function TemplatesPage() {
       setCloneTenantOptions(options)
       setCloneTargetTenantId(options[0]?.Value || 0)
     } catch {
-      toast.error('Không thể tải danh sách tenant')
+      toast.error(t('pages.managers.templates.loadTenantsError'))
     } finally {
       setCloneLoading(false)
     }
@@ -486,11 +514,11 @@ export default function TemplatesPage() {
 
   const cloneTemplateToTenant = async () => {
     if (!cloneSourceTemplate?.Id) {
-      toast.error('Không xác định được template nguồn')
+      toast.error(t('pages.managers.templates.cloneSourceUndetermined'))
       return
     }
     if (!cloneTargetTenantId) {
-      toast.error('Vui lòng chọn tenant đích')
+      toast.error(t('pages.managers.templates.selectTargetTenant'))
       return
     }
 
@@ -501,10 +529,10 @@ export default function TemplatesPage() {
         method: 'POST',
         body: { id: cloneSourceTemplate.Id, targetTenantId: cloneTargetTenantId },
       }).unwrap()
-      toast.success('Clone template thành công')
+      toast.success(t('pages.managers.templates.cloneSuccess'))
       setCloneModal(false)
     } catch {
-      toast.error('Không thể clone template')
+      toast.error(t('pages.managers.templates.cloneError'))
     } finally {
       setSaving(false)
     }
@@ -533,45 +561,45 @@ export default function TemplatesPage() {
           },
         },
       }).unwrap()
-      toast.success('Cập nhật trạng thái thành công')
+      toast.success(t('pages.managers.templates.statusUpdateSuccess'))
       loadTemplatesByGroup(selectedGroupId)
     } catch {
-      toast.error('Không thể cập nhật trạng thái')
+      toast.error(t('pages.managers.templates.statusUpdateError'))
     }
   }
 
   const deleteTemplate = async (item: InvoiceTemplate) => {
     if (!item.Id) return
-    if (!window.confirm(`Xóa template "${item.Name || item.Code}"?`)) return
+    if (!window.confirm(t('pages.managers.templates.deleteTemplateConfirm', { name: item.Name || item.Code }))) return
     try {
       await request({ url: `report-templates/delete${query({ id: item.Id })}`, method: 'DELETE' }).unwrap()
-      toast.success('Xóa template thành công')
+      toast.success(t('pages.managers.templates.templateDeleteSuccess'))
       loadTemplatesByGroup(selectedGroupId)
     } catch {
-      toast.error('Không thể xóa template')
+      toast.error(t('pages.managers.templates.templateDeleteError'))
     }
   }
 
   const exportSelectedTemplate = async () => {
     if (!selectedTemplate?.Id) {
-      toast.error('Vui lòng chọn template cần export')
+      toast.error(t('pages.managers.templates.selectTemplateToExport'))
       return
     }
     try {
       const blob = await downloadTemplate({ url: `report-templates/export-template${query({ id: selectedTemplate.Id })}` }).unwrap()
       downloadBlob(blob, `${selectedTemplate.Code || selectedTemplate.Name || 'report-template'}.zip`)
     } catch {
-      toast.error('Không thể export template')
+      toast.error(t('pages.managers.templates.exportError'))
     }
   }
 
   const submitImportTemplate = async () => {
     if (!selectedTemplate?.Id) {
-      toast.error('Vui lòng chọn template cần import')
+      toast.error(t('pages.managers.templates.selectTemplateToImport'))
       return
     }
     if (!importFile) {
-      toast.error('Vui lòng chọn file import')
+      toast.error(t('pages.managers.templates.selectImportFile'))
       return
     }
 
@@ -582,12 +610,12 @@ export default function TemplatesPage() {
         method: 'POST',
         body: buildModelFormData(null, [importFile]),
       }).unwrap()
-      toast.success('Import template thành công')
+      toast.success(t('pages.managers.templates.importSuccess'))
       setImportModal(false)
       setImportFile(null)
       loadTemplatesByGroup(selectedGroupId)
     } catch {
-      toast.error('Không thể import template')
+      toast.error(t('pages.managers.templates.importError'))
     } finally {
       setSaving(false)
     }
@@ -596,7 +624,7 @@ export default function TemplatesPage() {
   const onTemplateFileChanged = (file?: File) => {
     if (!file) return
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      toast.error(`Kích thước file tối đa ${MAX_FILE_SIZE_MB}MB`)
+      toast.error(t('pages.managers.templates.fileTooLarge', { size: MAX_FILE_SIZE_MB }))
       return
     }
     setTemplateFile(file)
@@ -614,7 +642,7 @@ export default function TemplatesPage() {
   const onImportFileChanged = (file?: File) => {
     if (!file) return
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      toast.error(`Kích thước file tối đa ${MAX_FILE_SIZE_MB}MB`)
+      toast.error(t('pages.managers.templates.fileTooLarge', { size: MAX_FILE_SIZE_MB }))
       return
     }
     setImportFile(file)
@@ -636,19 +664,19 @@ export default function TemplatesPage() {
   const templateColumns: ColumnDef<InvoiceTemplate>[] = [
     {
       id: 'stt',
-      header: () => <SortableHeader label="STT" sortKey="Id" sort={sort} onSort={toggleSort} />,
+      header: () => <SortableHeader label={t('pages.managers.templates.colStt')} sortKey="Id" sort={sort} onSort={toggleSort} />,
       meta: { className: 'w-[72px] text-center' },
       cell: ({ row }) => <span className="text-slate-500">{(page - 1) * PAGE_SIZE + row.index + 1}</span>,
     },
     {
       id: 'code',
-      header: () => <SortableHeader label="Mã" sortKey="Code" sort={sort} onSort={toggleSort} />,
+      header: () => <SortableHeader label={t('pages.managers.templates.colCode')} sortKey="Code" sort={sort} onSort={toggleSort} />,
       meta: { cellClassName: 'font-medium text-emerald-700 whitespace-nowrap' },
       cell: ({ row }) => row.original.Code || '-',
     },
     {
       id: 'name',
-      header: () => <SortableHeader label="Tên" sortKey="Name" sort={sort} onSort={toggleSort} />,
+      header: () => <SortableHeader label={t('pages.managers.templates.colName')} sortKey="Name" sort={sort} onSort={toggleSort} />,
       cell: ({ row }) => (
         <div className="flex min-w-0 items-center gap-2">
           <FileText className="h-4 w-4 shrink-0 text-slate-400" />
@@ -658,37 +686,37 @@ export default function TemplatesPage() {
     },
     {
       id: 'group',
-      header: () => <SortableHeader label="Nhóm mẫu" sortKey="Group" sort={sort} onSort={toggleSort} />,
+      header: () => <SortableHeader label={t('pages.managers.templates.colGroup')} sortKey="Group" sort={sort} onSort={toggleSort} />,
       cell: ({ row }) => row.original.TemplateGroup?.Name || selectedGroup?.Name || '-',
     },
     {
       id: 'description',
-      header: () => <SortableHeader label="Ghi chú" sortKey="Description" sort={sort} onSort={toggleSort} />,
+      header: () => <SortableHeader label={t('pages.managers.templates.colDescription')} sortKey="Description" sort={sort} onSort={toggleSort} />,
       meta: { cellClassName: 'text-slate-600' },
       cell: ({ row }) => row.original.Description || '-',
     },
     {
       id: 'default',
-      header: () => <SortableHeader label="Mặc định" sortKey="IsDefault" sort={sort} onSort={toggleSort} />,
+      header: () => <SortableHeader label={t('pages.managers.templates.colDefault')} sortKey="IsDefault" sort={sort} onSort={toggleSort} />,
       meta: { className: 'w-[110px] text-center' },
-      cell: ({ row }) => row.original.IsDefault ? 'Có' : 'Không',
+      cell: ({ row }) => row.original.IsDefault ? t('pages.managers.templates.yes') : t('pages.managers.templates.no'),
     },
     {
       id: 'status',
-      header: () => <SortableHeader label="Trạng thái" sortKey="Status" sort={sort} onSort={toggleSort} />,
+      header: () => <SortableHeader label={t('pages.managers.templates.colStatus')} sortKey="Status" sort={sort} onSort={toggleSort} />,
       meta: { className: 'w-[130px] text-center' },
       cell: ({ row }) => (
         <span className={cn(
           'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
           row.original.IsActive ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
         )}>
-          {row.original.IsActive ? 'Hoạt động' : 'Tạm khóa'}
+          {row.original.IsActive ? t('pages.managers.templates.statusActive') : t('pages.managers.templates.statusLocked')}
         </span>
       ),
     },
     {
       id: 'actions',
-      header: 'Thao tác',
+      header: t('pages.managers.templates.colActions'),
       meta: { className: 'w-[110px] text-center' },
       cell: ({ row }) => {
         const item = row.original
@@ -701,19 +729,19 @@ export default function TemplatesPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openEditTemplate(item)}>Chi tiết / sửa</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEditTemplate(item)}>{t('pages.managers.templates.actionViewEdit')}</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => openCloneTemplate(item)}>
                   <Copy className="mr-2 h-4 w-4" />
-                  Clone template
+                  {t('pages.managers.templates.actionClone')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {item.IsActive ? (
-                  <DropdownMenuItem onClick={() => updateTemplateStatus(item, false)}>Tạm khóa</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateTemplateStatus(item, false)}>{t('pages.managers.templates.statusLocked')}</DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem onClick={() => updateTemplateStatus(item, true)}>Kích hoạt</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateTemplateStatus(item, true)}>{t('pages.managers.templates.actionActivate')}</DropdownMenuItem>
                 )}
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteTemplate(item)}>
-                  Xóa
+                  {t('pages.managers.templates.actionDelete')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -727,13 +755,13 @@ export default function TemplatesPage() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
         <TreeSidebar
-          title="Nhóm mẫu hóa đơn"
+          title={t('pages.managers.templates.groupSidebarTitle')}
           items={groups}
           selectedId={selectedGroupId}
           searchText={groupSearchText}
           loading={groupsLoading}
-          searchPlaceholder="Tìm kiếm nhóm..."
-          emptyText="Không tìm thấy nhóm mẫu"
+          searchPlaceholder={t('pages.managers.templates.groupSearchPlaceholder')}
+          emptyText={t('pages.managers.templates.groupEmptyText')}
           onSearchTextChange={setGroupSearchText}
           onSelect={item => setSelectedGroupId(item.Id)}
           onCreate={openCreateGroup}
@@ -745,7 +773,7 @@ export default function TemplatesPage() {
         <section className="flex min-w-0 flex-1 flex-col gap-3">
           <ListToolbar
             searchValue={keyword}
-            searchPlaceholder="Tìm kiếm"
+            searchPlaceholder={t('pages.managers.templates.toolbarSearchPlaceholder')}
             onSearchChange={setKeyword}
             filters={(
               <select
@@ -753,26 +781,26 @@ export default function TemplatesPage() {
                 onChange={event => setStatusId(event.target.value === '' ? '' : Number(event.target.value))}
                 className="h-10 min-w-[180px] rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">Tất cả</option>
-                <option value={STATUS_ACTIVE}>Hoạt động</option>
-                <option value={STATUS_LOCKED}>Tạm khóa</option>
+                <option value="">{t('pages.managers.templates.filterAll')}</option>
+                <option value={STATUS_ACTIVE}>{t('pages.managers.templates.statusActive')}</option>
+                <option value={STATUS_LOCKED}>{t('pages.managers.templates.statusLocked')}</option>
               </select>
             )}
             actions={(
               <>
                 <ToolbarButton type="button" tone="neutral" onClick={exportSelectedTemplate} disabled={!selectedTemplateId || exporting}>
                   <Download className="h-4 w-4" />
-                  Xuất
+                  {t('pages.managers.templates.exportButton')}
                 </ToolbarButton>
                 <ToolbarButton type="button" tone="neutral" disabled={!selectedTemplateId} onClick={() => setImportModal(true)}>
                   <Upload className="h-4 w-4" />
-                  Nhập
+                  {t('pages.managers.templates.importButton')}
                 </ToolbarButton>
                 <ToolbarButton type="button" tone="primary" onClick={openCreateTemplate}>
                   <Plus className="h-4 w-4" />
-                  Thêm mới
+                  {t('pages.managers.templates.addNewButton')}
                 </ToolbarButton>
-                <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => { loadGroups(); loadTemplatesByGroup(selectedGroupId) }} title="Tải lại">
+                <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => { loadGroups(); loadTemplatesByGroup(selectedGroupId) }} title={t('pages.managers.templates.reloadTooltip')}>
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </>
@@ -790,7 +818,7 @@ export default function TemplatesPage() {
             onRowClick={item => setSelectedTemplateId(item.Id || 0)}
             onRowDoubleClick={openEditTemplate}
             rowClassName={item => Number(item.Id) === Number(selectedTemplateId) ? 'bg-sky-100 hover:bg-sky-100' : ''}
-            emptyText="Chưa có template trong nhóm này"
+            emptyText={t('pages.managers.templates.noTemplatesInGroup')}
           />
         </section>
       </div>
@@ -798,28 +826,32 @@ export default function TemplatesPage() {
       <Dialog open={groupModal} onOpenChange={setGroupModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{groupForm.Id ? 'Sửa nhóm mẫu hóa đơn' : groupParent ? 'Tạo hóa đơn con' : 'Tạo nhóm mẫu hóa đơn'}</DialogTitle>
+            <DialogTitle>
+              {groupForm.Id
+                ? t('pages.managers.templates.groupDialogTitleEdit')
+                : groupParent ? t('pages.managers.templates.groupDialogTitleCreateChild') : t('pages.managers.templates.groupDialogTitleCreate')}
+            </DialogTitle>
           </DialogHeader>
           {groupParent ? (
             <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-              Nhóm cha: <strong>{groupParent.Name || groupParent.Code}</strong>
+              {t('pages.managers.templates.parentGroupLabel')} <strong>{groupParent.Name || groupParent.Code}</strong>
             </div>
           ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Mã nhóm">
+            <Field label={t('pages.managers.templates.groupCodeLabel')}>
               <Input value={groupForm.Code || ''} onChange={event => setGroupForm(form => ({ ...form, Code: event.target.value }))} />
             </Field>
-            <Field label="Tên nhóm" required>
+            <Field label={t('pages.managers.templates.groupNameLabel')} required>
               <Input value={groupForm.Name || ''} onChange={event => setGroupForm(form => ({ ...form, Name: event.target.value }))} />
             </Field>
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Switch checked={!!groupForm.IsActive} onCheckedChange={value => setGroupForm(form => ({ ...form, IsActive: value }))} />
-              Hoạt động
+              {t('pages.managers.templates.statusActive')}
             </label>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setGroupModal(false)}>Hủy</Button>
-            <Button onClick={saveGroup} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+            <Button variant="outline" onClick={() => setGroupModal(false)}>{t('pages.managers.templates.cancelButton')}</Button>
+            <Button onClick={saveGroup} disabled={saving}>{saving ? t('pages.managers.templates.saving') : t('pages.managers.templates.saveButton')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -827,49 +859,49 @@ export default function TemplatesPage() {
       <Dialog open={templateModal} onOpenChange={setTemplateModal}>
         <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{templateForm.Id ? 'Sửa mẫu hóa đơn' : 'Tạo mẫu hóa đơn'}</DialogTitle>
+            <DialogTitle>{templateForm.Id ? t('pages.managers.templates.templateDialogTitleEdit') : t('pages.managers.templates.templateDialogTitleCreate')}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nhóm mẫu hóa đơn" required>
+            <Field label={t('pages.managers.templates.templateGroupLabel')} required>
               <select
                 value={templateForm.TemplateGroupId || ''}
                 onChange={event => setTemplateGroup(Number(event.target.value))}
                 className="h-9 w-full rounded-md border bg-white px-3 text-sm"
               >
-                <option value="">Chọn nhóm</option>
+                <option value="">{t('pages.managers.templates.chooseGroupOption')}</option>
                 {groupOptions.map(group => (
                   <option key={group.Id} value={group.Id}>{group.Name || group.Code}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Mã mẫu">
+            <Field label={t('pages.managers.templates.templateCodeLabel')}>
               <Input value={templateForm.Code || ''} onChange={event => setTemplateForm(form => ({ ...form, Code: event.target.value }))} />
             </Field>
-            <Field label="Tên mẫu" required>
+            <Field label={t('pages.managers.templates.templateNameLabel')} required>
               <Input value={templateForm.Name || ''} onChange={event => setTemplateForm(form => ({ ...form, Name: event.target.value }))} />
             </Field>
-            <Field label="Loại mẫu">
+            <Field label={t('pages.managers.templates.templateTypeLabel')}>
               <select
                 value={templateForm.TemplateType ?? REPORT_TEMPLATE_PRODUCT}
                 onChange={event => setTemplateForm(form => ({ ...form, TemplateType: Number(event.target.value) }))}
                 className="h-9 w-full rounded-md border bg-white px-3 text-sm"
               >
-                {TEMPLATE_TYPE_OPTIONS.map(option => (
+                {templateTypeOptions.map(option => (
                   <option key={option.Value} value={option.Value}>{option.Name}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Ghi chú" className="sm:col-span-2">
+            <Field label={t('pages.managers.templates.colDescription')} className="sm:col-span-2">
               <Textarea value={templateForm.Description || ''} onChange={event => setTemplateForm(form => ({ ...form, Description: event.target.value }))} rows={2} />
             </Field>
             <div className="flex items-center gap-5 sm:col-span-2">
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                 <Switch checked={!!templateForm.IsDefault} onCheckedChange={value => setTemplateForm(form => ({ ...form, IsDefault: value }))} />
-                Mặc định
+                {t('pages.managers.templates.colDefault')}
               </label>
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                 <Switch checked={!!templateForm.IsActive} onCheckedChange={value => setTemplateForm(form => ({ ...form, IsActive: value }))} />
-                Hoạt động
+                {t('pages.managers.templates.statusActive')}
               </label>
             </div>
             <div className="sm:col-span-2">
@@ -885,11 +917,11 @@ export default function TemplatesPage() {
               <div className="rounded-md border border-dashed bg-slate-50 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-slate-700">{templateFileName || templateForm.OriginalFileName || 'Chưa chọn file template'}</div>
-                    <div className="mt-1 text-xs text-slate-500">Dung lượng tối đa {MAX_FILE_SIZE_MB}MB</div>
+                    <div className="truncate text-sm font-medium text-slate-700">{templateFileName || templateForm.OriginalFileName || t('pages.managers.templates.noTemplateFileChosen')}</div>
+                    <div className="mt-1 text-xs text-slate-500">{t('pages.managers.templates.maxFileSize', { size: MAX_FILE_SIZE_MB })}</div>
                   </div>
                   <div className="flex gap-2">
-                    <Button type="button" onClick={() => templateInputRef.current?.click()}>Chọn file</Button>
+                    <Button type="button" onClick={() => templateInputRef.current?.click()}>{t('pages.managers.templates.chooseFileButton')}</Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -899,7 +931,7 @@ export default function TemplatesPage() {
                         setTemplateForm(form => ({ ...form, Files: [], FileName: '', OriginalFileName: '', FilePath: '', FileSize: 0 }))
                       }}
                     >
-                      Xóa tệp
+                      {t('pages.managers.templates.removeFileButton')}
                     </Button>
                   </div>
                 </div>
@@ -907,8 +939,8 @@ export default function TemplatesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTemplateModal(false)}>Hủy</Button>
-            <Button onClick={saveTemplate} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu'}</Button>
+            <Button variant="outline" onClick={() => setTemplateModal(false)}>{t('pages.managers.templates.cancelButton')}</Button>
+            <Button onClick={saveTemplate} disabled={saving}>{saving ? t('pages.managers.templates.saving') : t('pages.managers.templates.saveButton')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -916,11 +948,11 @@ export default function TemplatesPage() {
       <Dialog open={importModal} onOpenChange={setImportModal}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Nhập file cho template</DialogTitle>
+            <DialogTitle>{t('pages.managers.templates.importDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-md border bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              Template đích: <strong>{selectedTemplate?.Name || selectedTemplate?.Code || '-'}</strong>
+              {t('pages.managers.templates.targetTemplateLabel')} <strong>{selectedTemplate?.Name || selectedTemplate?.Code || '-'}</strong>
             </div>
             <input
               ref={importInputRef}
@@ -934,16 +966,16 @@ export default function TemplatesPage() {
             <div className="rounded-md border border-dashed bg-slate-50 p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-slate-700">{importFile?.name || 'Chưa chọn file import'}</div>
-                  <div className="mt-1 text-xs text-slate-500">Chỉ cho phép 1 file, dung lượng tối đa {MAX_FILE_SIZE_MB}MB</div>
+                  <div className="truncate text-sm font-medium text-slate-700">{importFile?.name || t('pages.managers.templates.noImportFileChosen')}</div>
+                  <div className="mt-1 text-xs text-slate-500">{t('pages.managers.templates.maxFileSizeSingle', { size: MAX_FILE_SIZE_MB })}</div>
                 </div>
-                <Button type="button" onClick={() => importInputRef.current?.click()}>Chọn file</Button>
+                <Button type="button" onClick={() => importInputRef.current?.click()}>{t('pages.managers.templates.chooseFileButton')}</Button>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImportModal(false)}>Hủy</Button>
-            <Button onClick={submitImportTemplate} disabled={saving || !importFile}>{saving ? 'Đang import...' : 'Nhập'}</Button>
+            <Button variant="outline" onClick={() => setImportModal(false)}>{t('pages.managers.templates.cancelButton')}</Button>
+            <Button onClick={submitImportTemplate} disabled={saving || !importFile}>{saving ? t('pages.managers.templates.importing') : t('pages.managers.templates.importButton')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -951,13 +983,13 @@ export default function TemplatesPage() {
       <Dialog open={cloneModal} onOpenChange={setCloneModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Clone report template</DialogTitle>
+            <DialogTitle>{t('pages.managers.templates.cloneDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-md border bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              Template nguồn: <strong>{cloneSourceTemplate?.Name || cloneSourceTemplate?.Code || '-'}</strong>
+              {t('pages.managers.templates.sourceTemplateLabel')} <strong>{cloneSourceTemplate?.Name || cloneSourceTemplate?.Code || '-'}</strong>
             </div>
-            <Field label="Tenant đích">
+            <Field label={t('pages.managers.templates.targetTenantLabel')}>
               {cloneLoading ? (
                 <Skeleton className="h-9 w-full rounded-md" />
               ) : (
@@ -966,7 +998,7 @@ export default function TemplatesPage() {
                   onChange={event => setCloneTargetTenantId(Number(event.target.value))}
                   className="h-9 w-full rounded-md border bg-white px-3 text-sm"
                 >
-                  <option value="">Chọn tenant</option>
+                  <option value="">{t('pages.managers.templates.chooseTenantOption')}</option>
                   {cloneTenantOptions.map(option => (
                     <option key={option.Value} value={option.Value}>{option.Name}</option>
                   ))}
@@ -975,14 +1007,14 @@ export default function TemplatesPage() {
             </Field>
             {!cloneLoading && cloneTenantOptions.length === 0 ? (
               <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                Không có tenant đích khả dụng.
+                {t('pages.managers.templates.noTenantAvailable')}
               </div>
             ) : null}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCloneModal(false)}>Hủy</Button>
+            <Button variant="outline" onClick={() => setCloneModal(false)}>{t('pages.managers.templates.cancelButton')}</Button>
             <Button onClick={cloneTemplateToTenant} disabled={saving || cloneLoading || !cloneTargetTenantId}>
-              {saving ? 'Đang clone...' : 'Clone'}
+              {saving ? t('pages.managers.templates.cloning') : t('pages.managers.templates.cloneButton')}
             </Button>
           </DialogFooter>
         </DialogContent>

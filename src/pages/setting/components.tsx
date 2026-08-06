@@ -1,4 +1,5 @@
 import { ReactNode } from "react"
+import { useTranslation } from "react-i18next"
 import { Loader2, Save } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
@@ -151,12 +152,13 @@ interface SaveBarProps {
   loading?: boolean
   label?: string
 }
-export function SaveBar({ onSave, loading, label = "Lưu cài đặt" }: SaveBarProps) {
+export function SaveBar({ onSave, loading, label }: SaveBarProps) {
+  const { t } = useTranslation()
   return (
     <div className="flex justify-end pt-2">
       <Button onClick={onSave} disabled={loading} className="gap-2 min-w-[120px]">
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-        {label}
+        {label ?? t('pages.setting.saveSettings')}
       </Button>
     </div>
   )

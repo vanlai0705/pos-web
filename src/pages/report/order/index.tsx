@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ShoppingCart } from 'lucide-react'
 import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import {
@@ -7,8 +8,6 @@ import {
   TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
   CustomerFilter, ShopFilter, ProductGroupFilter,
 } from '../shared'
-
-const TABS = ['Báo cáo bán hàng', 'Tổng hợp mặt hàng bán']
 
 // ─── Discount/Tax helpers (same logic as Angular) ────────────────────────────
 
@@ -34,6 +33,7 @@ function OrderReport({
 }: {
   dateFrom: string; dateTo: string; customerId: number | null; shopId: number | null
 }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -57,33 +57,33 @@ function OrderReport({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Tiền hàng', value: s.SubTotal || 0, tone: 'sky' },
-        { title: 'Giảm giá', value: sumDiscount, tone: 'rose' },
-        { title: 'Thuế', value: sumTax, tone: 'amber' },
-        { title: 'Phí vận chuyển', value: s.TransferCost || 0, tone: 'indigo' },
-        { title: 'Tiền mặt', value: s.Cash || 0, tone: 'cyan' },
-        { title: 'Chuyển khoản', value: s.Transfer || 0, tone: 'violet' },
-        { title: 'Thẻ', value: s.Card || 0, tone: 'pink' },
-        { title: 'Tổng cộng', value: s.Total || 0, tone: 'emerald' },
+        { title: t('pages.report.order.statSubTotal'), value: s.SubTotal || 0, tone: 'sky' },
+        { title: t('pages.report.order.statDiscount'), value: sumDiscount, tone: 'rose' },
+        { title: t('pages.report.order.statTax'), value: sumTax, tone: 'amber' },
+        { title: t('pages.report.order.statTransferCost'), value: s.TransferCost || 0, tone: 'indigo' },
+        { title: t('pages.report.order.statCash'), value: s.Cash || 0, tone: 'cyan' },
+        { title: t('pages.report.order.statTransfer'), value: s.Transfer || 0, tone: 'violet' },
+        { title: t('pages.report.order.statCard'), value: s.Card || 0, tone: 'pink' },
+        { title: t('pages.report.order.statTotal'), value: s.Total || 0, tone: 'emerald' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Đơn hàng</TH>
-              <TH>Khách hàng</TH>
-              <TH right>Tiền hàng</TH>
-              <TH right>Đổi trả</TH>
-              <TH right>Giảm giá</TH>
-              <TH right>Thuế</TH>
-              <TH right>Phí vận chuyển</TH>
-              <TH right>Tiền mặt</TH>
-              <TH right>Chuyển khoản</TH>
-              <TH right>Thẻ</TH>
-              <TH right>Tổng cộng</TH>
+              <TH center>{t('pages.report.order.colStt')}</TH>
+              <TH center>{t('pages.report.order.colDate')}</TH>
+              <TH>{t('pages.report.order.colOrder')}</TH>
+              <TH>{t('pages.report.order.colCustomer')}</TH>
+              <TH right>{t('pages.report.order.colSubTotal')}</TH>
+              <TH right>{t('pages.report.order.colChange')}</TH>
+              <TH right>{t('pages.report.order.colDiscount')}</TH>
+              <TH right>{t('pages.report.order.colTax')}</TH>
+              <TH right>{t('pages.report.order.colTransferCost')}</TH>
+              <TH right>{t('pages.report.order.colCash')}</TH>
+              <TH right>{t('pages.report.order.colTransfer')}</TH>
+              <TH right>{t('pages.report.order.colCard')}</TH>
+              <TH right>{t('pages.report.order.colTotal')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -123,6 +123,7 @@ function OrderItemReport({
 }: {
   dateFrom: string; dateTo: string; productGroupId: number | null; shopId: number | null
 }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -143,23 +144,23 @@ function OrderItemReport({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'SL Bán', value: s.Quantity || 0, tone: 'sky' },
-        { title: 'SL Trả', value: s.Exchange || 0, tone: 'amber' },
-        { title: 'Thành tiền', value: s.Amount || 0, tone: 'emerald' },
+        { title: t('pages.report.order.statQtySold'), value: s.Quantity || 0, tone: 'sky' },
+        { title: t('pages.report.order.statQtyReturned'), value: s.Exchange || 0, tone: 'amber' },
+        { title: t('pages.report.order.statAmount'), value: s.Amount || 0, tone: 'emerald' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH>Mã hàng</TH>
-              <TH>Mặt hàng</TH>
-              <TH>Đơn vị tính</TH>
-              <TH right>SL Bán</TH>
-              <TH right>SL Trả</TH>
-              <TH right>Đơn giá</TH>
-              <TH right>Thành tiền</TH>
+              <TH center>{t('pages.report.order.colStt')}</TH>
+              <TH>{t('pages.report.order.colProductCode')}</TH>
+              <TH>{t('pages.report.order.colProduct')}</TH>
+              <TH>{t('pages.report.order.colUnit')}</TH>
+              <TH right>{t('pages.report.order.colQtySold')}</TH>
+              <TH right>{t('pages.report.order.colQtyReturned')}</TH>
+              <TH right>{t('pages.report.order.colUnitPrice')}</TH>
+              <TH right>{t('pages.report.order.colAmount')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -187,6 +188,8 @@ function OrderItemReport({
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ReportOrderPage() {
+  const { t } = useTranslation()
+  const TABS = [t('pages.report.order.tabSales'), t('pages.report.order.tabItems')]
   const [tab, setTab] = useState(0)
   const range = currentMonthRange()
   const [dateFrom, setDateFrom] = useState(range.from)
@@ -215,8 +218,8 @@ export default function ReportOrderPage() {
             <ShoppingCart className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-800">Báo cáo đơn hàng</p>
-            <p className="text-[11px] text-slate-500">Báo cáo bán hàng theo đơn và mặt hàng</p>
+            <p className="text-sm font-bold text-slate-800">{t('pages.report.order.pageTitle')}</p>
+            <p className="text-[11px] text-slate-500">{t('pages.report.order.pageDescription')}</p>
           </div>
         </div>
 

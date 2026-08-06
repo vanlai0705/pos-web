@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
 import { Warehouse } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { useGetSettingStockQuery, useUpdateSettingStockMutation } from "@/store/slice/users/api/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { PageHeader, SettingCard, ToggleRow, SaveBar } from "../components"
 
 export default function SettingStockPage() {
+  const { t } = useTranslation()
   const { data, isLoading } = useGetSettingStockQuery()
   const [update, { isLoading: saving }] = useUpdateSettingStockMutation()
 
@@ -25,9 +27,9 @@ export default function SettingStockPage() {
   const handleSave = async () => {
     try {
       await update(form).unwrap()
-      toast.success("Lưu thành công", { description: "Cài đặt kho hàng đã được cập nhật." })
+      toast.success(t("pages.setting.stock.saveSuccessTitle"), { description: t("pages.setting.stock.saveSuccessDescription") })
     } catch {
-      toast.error("Lỗi", { description: "Không thể lưu cài đặt." })
+      toast.error(t("pages.setting.stock.errorTitle"), { description: t("pages.setting.stock.cannotSaveSettings") })
     }
   }
 
@@ -36,27 +38,27 @@ export default function SettingStockPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Cài đặt kho hàng"
-        description="Quy tắc và điều kiện trong nhập/xuất kho"
+        title={t("pages.setting.stock.pageTitle")}
+        description={t("pages.setting.stock.pageDescription")}
         icon={<Warehouse className="h-5 w-5" />}
       />
-      <SettingCard title="Quy tắc phiếu kho" icon={<Warehouse className="h-4 w-4 text-primary" />}>
+      <SettingCard title={t("pages.setting.stock.receiptRulesTitle")} icon={<Warehouse className="h-4 w-4 text-primary" />}>
         <ToggleRow
           id="IsInputDupplicateProduct"
-          label="Cho phép nhập một mặt hàng nhiều lần trong phiếu"
-          description="Cùng một sản phẩm có thể xuất hiện nhiều dòng trong phiếu kho"
+          label={t("pages.setting.stock.allowDuplicateProductInReceipt")}
+          description={t("pages.setting.stock.allowDuplicateProductInReceiptDescription")}
           checked={form.IsInputDupplicateProduct}
           onCheckedChange={toggle("IsInputDupplicateProduct")}
         />
         <ToggleRow
           id="IsRequireUser"
-          label="Bắt buộc chọn nhân viên trong nhập kho"
+          label={t("pages.setting.stock.requireUserInStockIn")}
           checked={form.IsRequireUser}
           onCheckedChange={toggle("IsRequireUser")}
         />
         <ToggleRow
           id="IsRequireSuppier"
-          label="Bắt buộc chọn nhà cung cấp trong nhập kho"
+          label={t("pages.setting.stock.requireSupplierInStockIn")}
           checked={form.IsRequireSuppier}
           onCheckedChange={toggle("IsRequireSuppier")}
         />

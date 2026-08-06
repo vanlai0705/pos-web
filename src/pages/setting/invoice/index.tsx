@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { FileText, Eye, EyeOff } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import {
   useGetUserShopSettingQuery,
   useGetSettingInvoiceQuery,
@@ -13,10 +14,10 @@ import { PageHeader, SettingCard, ToggleRow, SaveBar } from "../components"
 import type { TPosSettingInvoice } from "@/store/slice/users/types"
 
 const TAX_EXPORT_OPTIONS = [
-  { value: 0, label: "Không xuất hoá đơn" },
-  { value: 1, label: "Xuất thủ công" },
-  { value: 2, label: "Tự động khi thanh toán" },
-  { value: 3, label: "Lựa chọn khi thanh toán" },
+  { value: 0, labelKey: "pages.setting.invoice.taxExportNone" },
+  { value: 1, labelKey: "pages.setting.invoice.taxExportManual" },
+  { value: 2, labelKey: "pages.setting.invoice.taxExportAutoOnPayment" },
+  { value: 3, labelKey: "pages.setting.invoice.taxExportChooseOnPayment" },
 ]
 
 const INVOICE_TYPE_OPTIONS = [
@@ -36,6 +37,7 @@ const defaultForm: TPosSettingInvoice = {
 }
 
 export default function SettingInvoicePage() {
+  const { t } = useTranslation()
   const { data: shopSetting, isLoading: shopLoading } = useGetUserShopSettingQuery()
   const shopId = shopSetting?.SelectedShopId
   const { data, isLoading: invoiceLoading } = useGetSettingInvoiceQuery(
@@ -56,9 +58,13 @@ export default function SettingInvoicePage() {
   const handleSave = async () => {
     try {
       await update({ ...form, shopId }).unwrap()
-      toast.success("Lưu thành công", { description: "Cài đặt hoá đơn điện tử đã được cập nhật." })
+      toast.success(t("pages.setting.invoice.saveSuccessTitle"), {
+        description: t("pages.setting.invoice.saveSuccessDescription"),
+      })
     } catch {
-      toast.error("Lỗi", { description: "Không thể lưu cài đặt." })
+      toast.error(t("pages.setting.invoice.saveErrorTitle"), {
+        description: t("pages.setting.invoice.saveErrorDescription"),
+      })
     }
   }
 
@@ -67,15 +73,15 @@ export default function SettingInvoicePage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Hoá đơn điện tử"
-        description="Cấu hình tích hợp phát hành hoá đơn điện tử"
+        title={t("pages.setting.invoice.pageTitle")}
+        description={t("pages.setting.invoice.pageDescription")}
         icon={<FileText className="h-5 w-5" />}
       />
 
       {/* Export type */}
-      <SettingCard title="Cách xuất hoá đơn" icon={<FileText className="h-4 w-4 text-primary" />}>
+      <SettingCard title={t("pages.setting.invoice.exportMethodCardTitle")} icon={<FileText className="h-4 w-4 text-primary" />}>
         <div className="space-y-1.5">
-          <Label htmlFor="taxExportType">Chọn phương thức xuất hoá đơn</Label>
+          <Label htmlFor="taxExportType">{t("pages.setting.invoice.exportMethodLabel")}</Label>
           <select
             id="taxExportType"
             value={form.taxExportType}
@@ -83,7 +89,7 @@ export default function SettingInvoicePage() {
             className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {TAX_EXPORT_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
             ))}
           </select>
         </div>
@@ -91,9 +97,9 @@ export default function SettingInvoicePage() {
 
       {/* Provider config — only shown when export type != 0 */}
       {needConfig && (
-        <SettingCard title="Thông tin kết nối" icon={<FileText className="h-4 w-4 text-primary" />}>
+        <SettingCard title={t("pages.setting.invoice.connectionInfoCardTitle")} icon={<FileText className="h-4 w-4 text-primary" />}>
           <div className="space-y-1.5">
-            <Label htmlFor="invoiceType">Loại hoá đơn</Label>
+            <Label htmlFor="invoiceType">{t("pages.setting.invoice.invoiceTypeLabel")}</Label>
             <select
               id="invoiceType"
               value={form.invoiceType}
@@ -107,7 +113,7 @@ export default function SettingInvoicePage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="url">Đường dẫn API</Label>
+            <Label htmlFor="url">{t("pages.setting.invoice.apiUrlLabel")}</Label>
             <Input
               id="url"
               value={form.url ?? ""}
@@ -117,7 +123,7 @@ export default function SettingInvoicePage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="taxNumber">Mã số thuế</Label>
+            <Label htmlFor="taxNumber">{t("pages.setting.invoice.taxNumberLabel")}</Label>
             <Input
               id="taxNumber"
               value={form.taxNumber ?? ""}
@@ -128,7 +134,7 @@ export default function SettingInvoicePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="userName">Tài khoản</Label>
+              <Label htmlFor="userName">{t("pages.setting.invoice.usernameLabel")}</Label>
               <Input
                 id="userName"
                 value={form.userName ?? ""}
@@ -137,7 +143,7 @@ export default function SettingInvoicePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Mật khẩu</Label>
+              <Label htmlFor="password">{t("pages.setting.invoice.passwordLabel")}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -159,7 +165,7 @@ export default function SettingInvoicePage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="parttern">Mẫu hoá đơn (pattern)</Label>
+            <Label htmlFor="parttern">{t("pages.setting.invoice.invoicePatternLabel")}</Label>
             <Input
               id="parttern"
               value={form.parttern ?? ""}
@@ -170,8 +176,8 @@ export default function SettingInvoicePage() {
 
           <ToggleRow
             id="isDraft"
-            label="Hoá đơn nháp"
-            description="Tạo hoá đơn ở trạng thái nháp trước khi phát hành chính thức"
+            label={t("pages.setting.invoice.draftInvoiceLabel")}
+            description={t("pages.setting.invoice.draftInvoiceDescription")}
             checked={form.isDraft}
             onCheckedChange={v => setForm(f => ({ ...f, isDraft: v }))}
           />
