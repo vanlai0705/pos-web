@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Armchair, Layers, ArrowLeftRight, Scissors } from 'lucide-react'
+import {
+  Armchair, Layers, ArrowLeftRight, Scissors, Maximize2, Minimize2,
+  LayoutGrid, Users, CheckCircle2, QrCode, MapPin,
+} from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useGetAreasQuery,
@@ -113,35 +116,58 @@ function FloorSidebar({ areas, selected, onSelect, loading }: {
   loading: boolean
 }) {
   const { t } = useTranslation()
-  const itemClass = (active: boolean) =>
-    `block w-full rounded-sm px-2 py-2 text-left text-xs ${active ? 'font-bold text-teal-700' : 'text-slate-500 hover:text-slate-800'}`
+
+  // Each status filter gets the same color it shows as on the table cards
+  // themselves (teal = occupied, orange = QR order) so the sidebar reads as
+  // a legend, not just a plain list — "Còn trống" gets emerald as the
+  // universal "available" signal.
+  const TONE = {
+    slate: { active: 'bg-slate-700 text-white shadow-sm shadow-slate-700/20', idle: 'text-slate-600 hover:bg-slate-200/70', icon: 'text-slate-400' },
+    teal: { active: 'bg-teal-600 text-white shadow-sm shadow-teal-600/20', idle: 'text-teal-700 hover:bg-teal-50', icon: 'text-teal-500' },
+    emerald: { active: 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/20', idle: 'text-emerald-700 hover:bg-emerald-50', icon: 'text-emerald-500' },
+    orange: { active: 'bg-orange-500 text-white shadow-sm shadow-orange-500/20', idle: 'text-orange-700 hover:bg-orange-50', icon: 'text-orange-500' },
+  } as const
+
+  const item = (id: number, label: string, Icon: typeof LayoutGrid, tone: keyof typeof TONE = 'slate') => {
+    const active = selected === id
+    const c = TONE[tone]
+    return (
+      <button
+        key={id}
+        onClick={() => onSelect(id)}
+        className={cn(
+          'group flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors',
+          active ? c.active : `${c.idle} hover:text-current`,
+        )}
+      >
+        <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-white' : c.icon)} />
+        <span className="truncate">{label}</span>
+      </button>
+    )
+  }
+
   return (
-    <aside className="hidden w-[184px] shrink-0 border-r border-slate-200 bg-slate-50/95 text-slate-700 md:flex md:flex-col">
-      <nav className="flex-1 space-y-1 px-3 py-4">
+    <aside className="hidden w-[196px] shrink-0 flex-col border-r border-slate-200 bg-gradient-to-b from-slate-50 to-slate-100/60 text-slate-700 md:flex">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {loading ? (
           <div className="space-y-2 py-1">
-            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-6 w-24 rounded-md" />)}
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full rounded-lg" />)}
           </div>
         ) : (
           <>
-            <button onClick={() => onSelect(0)} className={itemClass(selected === 0)}>
-              {t('pages.actives.tablesOrder.allAreas')}
-            </button>
-            <button onClick={() => onSelect(FILTER_IN_USE)} className={itemClass(selected === FILTER_IN_USE)}>
-              {t('pages.actives.tablesOrder.filterInUse')}
-            </button>
-            <button onClick={() => onSelect(FILTER_EMPTY)} className={itemClass(selected === FILTER_EMPTY)}>
-              {t('pages.actives.tablesOrder.filterEmpty')}
-            </button>
-            <button onClick={() => onSelect(FILTER_QR)} className={itemClass(selected === FILTER_QR)}>
-              {t('pages.actives.tablesOrder.filterQr')}
-            </button>
-            <div className="my-2 border-t border-slate-200" />
-            {areas.map(area => (
-              <button key={area.Id} onClick={() => onSelect(area.Id)} className={itemClass(selected === area.Id)}>
-                {area.Name}
-              </button>
-            ))}
+            {item(0, t('pages.actives.tablesOrder.allAreas'), LayoutGrid, 'slate')}
+            {item(FILTER_IN_USE, t('pages.actives.tablesOrder.filterInUse'), Users, 'teal')}
+            {item(FILTER_EMPTY, t('pages.actives.tablesOrder.filterEmpty'), CheckCircle2, 'emerald')}
+            {item(FILTER_QR, t('pages.actives.tablesOrder.filterQr'), QrCode, 'orange')}
+
+            <div className="my-3 flex items-center gap-2 px-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {t('pages.actives.tablesOrder.area')}
+              </span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            {areas.map(area => item(area.Id, area.Name, MapPin))}
           </>
         )}
       </nav>
@@ -162,6 +188,27 @@ export default function TablesOrderPage() {
   const [fromTable, setFromTable] = useState<TPosTable | null>(null)
   const [splitToTable, setSplitToTable] = useState<TPosTable | null>(null)
   const [splitOpen, setSplitOpen] = useState(false)
+
+  // Drives a full-viewport overlay (see the root div below) that hides the
+  // app's own sidebar/header, not just the OS-level Fullscreen API — that API
+  // can silently fail in embedded/sandboxed contexts, but "hide everything
+  // else" still has to work either way. requestFullscreen() is still tried
+  // as a bonus for real deployments; failures are swallowed on purpose.
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  useEffect(() => {
+    const onChange = () => { if (!document.fullscreenElement) setIsFullscreen(false) }
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+  const toggleFullscreen = () => {
+    if (isFullscreen) {
+      setIsFullscreen(false)
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    } else {
+      setIsFullscreen(true)
+      document.documentElement.requestFullscreen?.().catch(() => {})
+    }
+  }
 
   const { data: areas = [], isLoading: areasLoading } = useGetAreasQuery()
   const { data: rawTables = [], isLoading: tablesLoading, refetch } = useGetTablesQuery(
@@ -271,13 +318,15 @@ export default function TablesOrderPage() {
         ? t('pages.actives.tablesOrder.splitModeBanner')
         : ''
 
-  const modeButton = (m: Exclude<Mode, 'NORMAL'>, Icon: typeof Layers, labelKey: string, activeClass: string) => (
+  // Each mode button keeps its tint even when idle, so the 3 actions read as
+  // distinct colored controls at a glance instead of only lighting up on click.
+  const modeButton = (m: Exclude<Mode, 'NORMAL'>, Icon: typeof Layers, labelKey: string, activeClass: string, idleClass: string) => (
     <button
       onClick={() => startMode(m)}
       title={t(labelKey)}
       className={cn(
         'flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors',
-        mode === m ? activeClass : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+        mode === m ? activeClass : idleClass,
       )}
     >
       <Icon className="h-4 w-4" />
@@ -286,7 +335,15 @@ export default function TablesOrderPage() {
   )
 
   return (
-    <div className="absolute inset-0 flex overflow-hidden bg-slate-100">
+    <div className={cn(
+      'flex overflow-hidden bg-slate-100',
+      // Fullscreen covers the whole viewport (fixed + a z-index above the
+      // app's own sidebar/header) instead of just this page's own content
+      // area, so toggling it hides everything else and leaves only this
+      // screen visible — not just the browser-level Fullscreen API, which
+      // can silently fail in some embedded contexts anyway.
+      isFullscreen ? 'fixed inset-0 z-[60]' : 'absolute inset-0',
+    )}>
       <FloorSidebar
         areas={areas}
         selected={selectedAreaId}
@@ -300,9 +357,17 @@ export default function TablesOrderPage() {
             <p className="truncate text-sm font-semibold text-slate-800">{selectedAreaName}</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
-            {modeButton('SPLIT', Scissors, 'pages.actives.tablesOrder.splitModeButton', 'bg-amber-100 text-amber-700')}
-            {modeButton('MOVE', ArrowLeftRight, 'pages.actives.tablesOrder.moveModeButton', 'bg-blue-100 text-blue-700')}
-            {modeButton('MERGE', Layers, 'pages.actives.tablesOrder.mergeModeButton', 'bg-emerald-100 text-emerald-700')}
+            {modeButton('SPLIT', Scissors, 'pages.actives.tablesOrder.splitModeButton', 'bg-amber-500 text-white shadow-sm shadow-amber-500/20', 'bg-amber-50 text-amber-700 hover:bg-amber-100')}
+            {modeButton('MOVE', ArrowLeftRight, 'pages.actives.tablesOrder.moveModeButton', 'bg-blue-500 text-white shadow-sm shadow-blue-500/20', 'bg-blue-50 text-blue-700 hover:bg-blue-100')}
+            {modeButton('MERGE', Layers, 'pages.actives.tablesOrder.mergeModeButton', 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20', 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100')}
+            <div className="mx-1 h-5 w-px bg-slate-200" />
+            <button
+              onClick={toggleFullscreen}
+              title={t('common.fullscreen')}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+            >
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </button>
           </div>
         </header>
 

@@ -1,133 +1,124 @@
-'use client'
-
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { TUserProfileData, useGetUserProfileQuery, useUpdateUserProfileMutation, useUploadAvatarMutation } from "@/store/slice/users";
-import dayjs from "dayjs";
-import { Camera, ChevronDownIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Camera, KeyRound, UserRound } from "lucide-react";
 import { toast } from "sonner";
-import { getImageUrl } from "@/utils/common";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
+import { useGetMemberDetailQuery, useSelfUpdateProfileMutation } from "@/store/slice/users/api/api";
+import type { TPosMember } from "@/store/slice/users/types/pos-types";
+import { getImageUrl } from "@/utils/common";
+import { ChangePasswordForm } from "./change-password-form";
+
+function getInitials(name?: string): string {
+  if (!name) return "U";
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+function emptyForm(): TPosMember {
+  return { Name: "", Phone: "", Email: "", UserInfo: { Address: "" } };
+}
 
 export default function ProfilePage() {
-  const { data: user, isLoading } = useGetUserProfileQuery();
-  const [
-    updateProfile,
-    { isLoading: isUpdating, isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError }
-  ] = useUpdateUserProfileMutation();
-  const [
-    uploadAvatar,
-    { isError: isUploadError, error: uploadError }
-  ] = useUploadAvatarMutation();
-  const [open, setOpen] = useState(false)
+  const { user, setUser } = useAuth();
+  const selfId = user.data?.User?.Id;
 
-  const profile = user?.data;
+  const { data: member, isLoading } = useGetMemberDetailQuery(selfId!, { skip: !selfId });
+  const [selfUpdate, { isLoading: isSaving }] = useSelfUpdateProfileMutation();
+
+  const [form, setForm] = useState<TPosMember>(emptyForm());
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [userInfo, setUserInfo] = useState<Partial<TUserProfileData> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (profile) {
-      setUserInfo(profile);
-    }
-  }, [profile]);
+    if (member) setForm(member);
+  }, [member]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-        uploadAvatar({ file });
+    if (!file) return;
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
 
-      };
-      reader.readAsDataURL(file);
+  const onChangeField = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name === "Address") {
+      setForm((prev) => ({ ...prev, UserInfo: { ...prev.UserInfo, Address: value } }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  const onSubmit = () => {
-    const { name, email, phone, department, avatar, id_card_issue_place, id_card_number, date_of_birth } = userInfo || {};
-    updateProfile({ name, email, phone, department, avatar, id_card_issue_place, id_card_number, date_of_birth: dayjs(date_of_birth?.time).format('YYYY-MM-DD') });
-  };
+  const onSubmit = async () => {
+    if (!form.Name?.trim()) {
+      toast.error("Vui lòng nhập họ tên");
+      return;
+    }
+    try {
+      const saved = await selfUpdate({
+        model: {
+          Id: form.Id,
+          Name: form.Name,
+          Phone: form.Phone,
+          Email: form.Email,
+          UserInfo: { Address: form.UserInfo?.Address },
+        },
+        file: avatarFile,
+      }).unwrap();
 
-  useEffect(() => {
-    if (!isUploadError) return;
-    const message =
-      (uploadError as any)?.data?.return_message ||
-      (uploadError as any)?.data?.message ||
-      (uploadError as any)?.message ||
-      "Upload avatar thất bại";
-    setAvatarPreview(null);
-    toast.error(message);
-  }, [isUploadError, uploadError]);
-
-  useEffect(() => {
-    if (isUpdateSuccess) {
       toast.success("Cập nhật hồ sơ thành công");
+      setAvatarFile(null);
+      setAvatarPreview(null);
+
+      if (user.data) {
+        setUser({
+          ...user.data,
+          User: { ...user.data.User, Name: saved.Name ?? form.Name, FullName: saved.FullName ?? form.Name, Email: saved.Email ?? form.Email },
+        });
+      }
+    } catch (err: any) {
+      toast.error(err?.data?.Errors?.[0]?.Message || err?.message || "Cập nhật thất bại");
     }
-  }, [isUpdateSuccess]);
+  };
 
-  useEffect(() => {
-    if (!isUpdateError) return;
-    const message =
-      (updateError as any)?.data?.return_message ||
-      (updateError as any)?.data?.message ||
-      (updateError as any)?.message ||
-      "Cập nhật thất bại";
-    toast.error(message);
-  }, [isUpdateError, updateError])
-
-
-  const onChangeUserInfo = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUserInfo(prev => ({
-      ...(prev || {}),
-      [e.target.name]: e.target.value,
-    }));
-  }
+  const avatarUrl = avatarPreview || getImageUrl(form.Image?.Url);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-background via-background to-card">
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-accent/5 rounded-full blur-3xl"></div>
-      </div>
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto max-w-5xl px-4 py-10 space-y-6">
+        <h1 className="text-xl font-semibold">Thông tin cá nhân</h1>
 
-      <div className="relative z-10 container mx-auto px-4 py-12 md:py-20">
-        <div className="mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-balance mb-2">
-            Thông tin cá nhân
-          </h1>
-          <div className="h-1 w-50 bg-gradient-to-r from-primary to-accent rounded-full"></div>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-border bg-primary/5 px-6 py-4">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
+                <UserRound className="h-4 w-4" />
+              </span>
+              <h2 className="text-sm font-semibold">Hồ sơ</h2>
+            </div>
 
-        {userInfo && <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <div className="bg-card border border-border rounded-2xl p-8 sticky top-8">
-              <div className="flex flex-col items-center mb-8">
-                <div className="relative w-32 h-32 mb-6 group cursor-pointer">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-accent rounded-2xl opacity-20 blur-lg"></div>
-                  <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-primary/30 bg-muted">
-                    <img
-                      src={avatarPreview || `${getImageUrl(userInfo.avatar_url)}`}
-                      alt={userInfo.name}
-                      width={128}
-                      height={128}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement
-                        img.src = '/admin-avatar.png'
-                      }}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl"
-                      aria-label="Change avatar"
-                    >
-                      <Camera className="w-8 h-8 text-white" />
-                    </button>
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                  <Avatar className="h-16 w-16 ring-2 ring-primary/20 ring-offset-2 ring-offset-card">
+                    <AvatarImage src={avatarUrl} alt={form.Name} className="object-cover" />
+                    <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
+                      {getInitials(form.Name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Camera className="w-5 h-5 text-white" />
                   </div>
                   <input
                     type="file"
@@ -138,91 +129,52 @@ export default function ProfilePage() {
                     ref={fileInputRef}
                   />
                 </div>
-                <h2 className="text-2xl font-bold text-center mb-1">{userInfo.name}</h2>
-                <div className="inline-block px-4 py-2 bg-primary/10 border border-primary/30 text-primary rounded-full text-sm font-semibold mb-6">
-                  {userInfo.role ? (userInfo.role.charAt(0).toUpperCase() + userInfo.role.slice(1)) : ''}
+                <div>
+                  <div className="font-medium">{form.Name || "—"}</div>
+                  {form.Email && <div className="text-sm text-muted-foreground">{form.Email}</div>}
                 </div>
-                <div className="inline-block px-4 py-2 bg-primary/10 border border-primary/30 text-primary rounded-full text-sm font-semibold mb-6">
-                  Tên đăng nhập: {userInfo?.user_name}
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Họ tên</label>
+                  <Input name="Name" value={form.Name ?? ""} onChange={onChangeField} disabled={isLoading} />
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Email</label>
+                  <Input name="Email" value={form.Email ?? ""} onChange={onChangeField} disabled={isLoading} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Số điện thoại</label>
+                  <Input name="Phone" value={form.Phone ?? ""} onChange={onChangeField} disabled={isLoading} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">Địa chỉ</label>
+                  <Input name="Address" value={form.UserInfo?.Address ?? ""} onChange={onChangeField} disabled={isLoading} />
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <Button type="button" onClick={onSubmit} loading={isSaving} disabled={isSaving}>
+                  Lưu thay đổi
+                </Button>
               </div>
             </div>
           </div>
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-card border border-border rounded-2xl p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Họ tên</label>
-                  <Input id="name" name="name" value={userInfo.name ?? ''} onChange={onChangeUserInfo} disabled={isLoading} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</label>
-                  <Input id="email" name="email" value={userInfo.email ?? ''} onChange={onChangeUserInfo} disabled={isLoading} />
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Số điện thoại</label>
-                  <Input id="phone" name="phone" value={userInfo.phone ?? ''} onChange={onChangeUserInfo} disabled={isLoading} />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Phòng ban</label>
-                  <Input id="department" name="department" value={userInfo.department ?? ''} onChange={onChangeUserInfo} disabled={isLoading} />
-                </div>
-
-                <div className="space-y-2 flex-col">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ngày sinh</label>
-                  <div>
-                    <Popover open={open} onOpenChange={setOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          id="date"
-                          className="w-48 justify-between font-normal"
-                        >
-                          {dayjs(userInfo?.date_of_birth?.time).format('DD/MM/YYYY')}
-                          <ChevronDownIcon />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="overflow-hidden p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          className="w-auto"
-                          selected={userInfo?.date_of_birth?.time ? dayjs(userInfo.date_of_birth.time).toDate() : undefined}
-                          onSelect={(date: Date | undefined) => {
-                            if (!date) return;
-                            setUserInfo({
-                              ...userInfo,
-                              date_of_birth: {
-                                ...userInfo.date_of_birth,
-                                time: date
-                              }
-                            });
-                            setOpen(false);
-                          }}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">CCCD</label>
-                  <Input id="id_card_number" name="id_card_number" value={userInfo.id_card_number ?? ''} onChange={onChangeUserInfo} disabled={isLoading} />
-
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">ID Issued Place</label>
-                  <Input id="id_card_issue_place" name="id_card_issue_place" value={userInfo.id_card_issue_place ?? ''} onChange={onChangeUserInfo} disabled={isLoading} />
-                </div>
-              </div>
-              <div className="flex items-center justify-center mt-6">
-                <Button type="submit" onClick={onSubmit} loading={isUpdating} disabled={isUpdating}>Lưu thay đổi</Button>
-              </div>
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-border bg-primary/5 px-6 py-4">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
+                <KeyRound className="h-4 w-4" />
+              </span>
+              <h2 className="text-sm font-semibold">Đổi mật khẩu</h2>
+            </div>
+            <div className="p-6">
+              <ChangePasswordForm />
             </div>
           </div>
-        </div>}
+        </div>
       </div>
     </main>
-  )
+  );
 }

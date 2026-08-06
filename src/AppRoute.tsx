@@ -12,7 +12,6 @@ import RegisterPage from "./pages/register"
 import ForgotPasswordPage from "./pages/forgot-password"
 import RenewPasswordPage from "./pages/renew-password"
 import ProfilePage from "./pages/profile"
-import ChangePasswordPage from "./pages/change-password"
 import ComingSoonPage from "./pages/coming-soon"
 import DashboardPage from "./pages/dashboard"
 import OrderManagerPage from "./pages/actives/order-manager"
@@ -84,6 +83,9 @@ import SupportHubPage from "./pages/supports"
 import HelpsPage from "./pages/supports/helps"
 import SupportsPage from "./pages/supports/supports"
 import AdminTenantsPage from "./pages/admins/tenants"
+import QrOrderPage from "./pages/order-table"
+import QrOrderCartPage from "./pages/order-cart"
+import QrOrderSuccessPage from "./pages/order-success"
 import { useAuth } from "./hooks/useAuth"
 import { DOMAIN_KEY, normalizeDomainName, setStoredDomainName, withDomainPath } from "./utils/domain-route"
 
@@ -129,7 +131,6 @@ function renderPrivateAppRoutes() {
 
       {/* Profile */}
       <Route path="profile" element={<ProfilePage />} />
-      <Route path="change-password" element={<ChangePasswordPage />} />
 
       {/* Hoạt động */}
       <Route path="actives" element={<Navigate to="order" replace />} />
@@ -318,6 +319,12 @@ function AppRoute() {
         <Route path="/renew-password" element={<RenewPasswordPage />} />
         <Route path="/privacy-policy/*" element={<HomePage />} />
 
+        {/* QR self-order (customer-facing, unauthenticated) — a diner scans
+            their table's QR code straight into these, no login involved. */}
+        <Route path="/order-table" element={<QrOrderPage />} />
+        <Route path="/order-cart" element={<QrOrderCartPage />} />
+        <Route path="/order-success" element={<QrOrderSuccessPage />} />
+
         {/* Private — có AppLayout */}
         <Route element={<PrivateRoute />}>
             <Route element={<DomainRedirectGate />}>
@@ -328,6 +335,9 @@ function AppRoute() {
         </Route>
 
         <Route path="/:domainName" element={<DomainScope />}>
+          <Route path="order-table" element={<QrOrderPage />} />
+          <Route path="order-cart" element={<QrOrderCartPage />} />
+          <Route path="order-success" element={<QrOrderSuccessPage />} />
           <Route element={<PrivateRoute />}>
             <Route element={<AppLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
