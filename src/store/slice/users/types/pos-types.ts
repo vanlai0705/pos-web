@@ -1015,9 +1015,12 @@ export interface TPosMember {
   /** Shops this member may work in */
   Shops?: Array<{ Id?: number; Name?: string; LongName?: string; Image?: TPosItemImage }>
   UserInfo?: TPosMemberUserInfo
+  /** Self-service profile fields (address/note) — a separate object from `UserInfo`, only used by `user-infos/self-update`. */
+  UserProfile?: { Address?: string; Note?: string }
   Image?: TPosItemImage | null
   UserGroups?: TPosAccountUserGroup[]
   Status?: TPosItemStatus
+  IsActive?: boolean
 }
 
 /** One row of the account ↔ permission-group join. */

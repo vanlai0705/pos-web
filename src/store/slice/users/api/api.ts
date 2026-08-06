@@ -1126,6 +1126,7 @@ export const userApiSlice = createApi({
     getMemberDetail: builder.query<TPosMember | null, number>({
       query: (id) => ({ url: `users/detail?id=${id}` }),
       transformResponse: (res: TPosResponse<TPosMember>) => res.Data ?? null,
+      providesTags: () => [{ type: EUserTagTypes.UserInfo }],
     }),
 
     /**
