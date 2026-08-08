@@ -44,11 +44,6 @@ function toRangeParam(date: Date, end = false) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${end ? "23:59:59" : "00:00:00"}+07:00`
 }
 
-/** orders/filter-order is the odd one out — plain YYYY-MM-DD, no time/offset. */
-function toDateOnly(date: Date) {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-}
-
 function dayKey(date: Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
@@ -99,22 +94,35 @@ export default function DashboardPage() {
   const prevWeekEnd = addDays(today, -7)
 
   // ── Row 1: today's KPIs, each compared to yesterday ──────────────────────
-  const { data: salesToday, isFetching: salesTodayLoading } = useGetSimpleChartQuery({ type: 0, DateFrom: todayFrom, DateTo: todayTo })
-  const { data: salesYesterday } = useGetSimpleChartQuery({ type: 0, DateFrom: yestFrom, DateTo: yestTo })
-  const { data: ordersToday, isFetching: ordersTodayLoading } = useGetSimpleChartQuery({ type: 1, DateFrom: todayFrom, DateTo: todayTo })
-  const { data: ordersYesterday } = useGetSimpleChartQuery({ type: 1, DateFrom: yestFrom, DateTo: yestTo })
   const { data: customersToday, isFetching: customersTodayLoading } = useGetSimpleChartQuery({ type: 2, DateFrom: todayFrom, DateTo: todayTo })
   const { data: customersYesterday } = useGetSimpleChartQuery({ type: 2, DateFrom: yestFrom, DateTo: yestTo })
+
+  // "Tình hình đơn hàng" / invoice count — fetched first because it's used
+  // below to gate the product-statistic numbers (see note there).
+  const { data: ordersTodayList, isFetching: statusLoading } = useFilterOrdersQuery({ PageIndex: 0, PageSize: 200, DateFrom: todayFrom, DateTo: todayTo })
+  const { data: ordersYesterdayList } = useFilterOrdersQuery({ PageIndex: 0, PageSize: 1, DateFrom: yestFrom, DateTo: yestTo })
+  const invoiceCountToday = ordersTodayList?.TotalItemCount ?? 0
+  const invoiceCountYesterday = ordersYesterdayList?.TotalItemCount ?? 0
 
   const { data: productStatToday, isFetching: productStatTodayLoading } = useGetProductStatisticQuery({ PageIndex: 0, PageSize: 500, dateFrom: todayFrom, dateTo: todayTo })
   const { data: productStatYesterday } = useGetProductStatisticQuery({ PageIndex: 0, PageSize: 500, dateFrom: yestFrom, dateTo: yestTo })
 
-  const todayItems = productStatToday?.Items ?? []
-  const yesterdayItems = productStatYesterday?.Items ?? []
+  // statistic/filter-product-statistic appears to fall back to the most
+  // recent day WITH data instead of returning empty when the requested day
+  // has none yet (confirmed live: asking it for two different days in a row
+  // returned the exact same rows both times). orders/filter-order doesn't
+  // have that problem, so it's used as ground truth here — zero invoices
+  // today means there's genuinely nothing to report yet, no matter what the
+  // statistic endpoint just handed back.
+  const todayDataLoading = productStatTodayLoading || statusLoading
+  const todayItems = invoiceCountToday > 0 ? (productStatToday?.Items ?? []) : []
+  const yesterdayItems = invoiceCountYesterday > 0 ? (productStatYesterday?.Items ?? []) : []
   const profitToday = todayItems.reduce((s, i) => s + (i.Profit ?? 0), 0)
   const profitYesterday = yesterdayItems.reduce((s, i) => s + (i.Profit ?? 0), 0)
   const qtyToday = todayItems.reduce((s, i) => s + (i.Quantity ?? 0), 0)
   const qtyYesterday = yesterdayItems.reduce((s, i) => s + (i.Quantity ?? 0), 0)
+  const revenueToday = todayItems.reduce((s, i) => s + (i.Amount ?? 0), 0)
+  const revenueYesterday = yesterdayItems.reduce((s, i) => s + (i.Amount ?? 0), 0)
 
   // ── Row 2: 7-day trend + today-by-hour both come from one order list —
   // each order already carries its own timestamp, so both charts are just
@@ -154,7 +162,8 @@ export default function DashboardPage() {
 
   // "Tình hình đơn hàng" — whatever statuses actually occur today, not a
   // fixed Hoàn thành/Đang xử lý/Đã hủy/Trả hàng set the backend may not have.
-  const { data: ordersTodayList, isFetching: statusLoading } = useFilterOrdersQuery({ PageIndex: 0, PageSize: 200, DateFrom: toDateOnly(today), DateTo: toDateOnly(today) })
+  // (ordersTodayList/invoiceCountToday are fetched above, alongside the
+  // product-statistic gate.)
   const statusBreakdown = useMemo(() => {
     const counts = new Map<string, number>()
     ;(ordersTodayList?.Items ?? []).forEach(o => {
@@ -196,18 +205,18 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <KpiCard
           icon={Wallet} tone="blue" label={t('pages.dashboard.kpiRevenueToday')}
-          loading={salesTodayLoading} value={formatNumber(salesToday?.TotalCount ?? 0) + "đ"}
-          delta={pctDelta(salesToday?.TotalCount ?? 0, salesYesterday?.TotalCount ?? 0)}
+          loading={todayDataLoading} value={formatNumber(revenueToday) + "đ"}
+          delta={pctDelta(revenueToday, revenueYesterday)}
         />
         <KpiCard
           icon={TrendingUp} tone="emerald" label={t('pages.dashboard.kpiProfitToday')}
-          loading={productStatTodayLoading} value={formatNumber(profitToday) + "đ"}
+          loading={todayDataLoading} value={formatNumber(profitToday) + "đ"}
           delta={pctDelta(profitToday, profitYesterday)}
         />
         <KpiCard
           icon={ReceiptText} tone="amber" label={t('pages.dashboard.kpiOrdersToday')}
-          loading={ordersTodayLoading} value={formatNumber(ordersToday?.TotalCount ?? 0)}
-          delta={pctDelta(ordersToday?.TotalCount ?? 0, ordersYesterday?.TotalCount ?? 0)}
+          loading={statusLoading} value={formatNumber(invoiceCountToday)}
+          delta={pctDelta(invoiceCountToday, invoiceCountYesterday)}
         />
         <KpiCard
           icon={UserPlus} tone="violet" label={t('pages.dashboard.kpiNewCustomers')}
@@ -216,7 +225,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           icon={Package} tone="cyan" label={t('pages.dashboard.kpiProductsSold')}
-          loading={productStatTodayLoading} value={formatNumber(qtyToday)}
+          loading={todayDataLoading} value={formatNumber(qtyToday)}
           delta={pctDelta(qtyToday, qtyYesterday)}
         />
       </div>
@@ -322,7 +331,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-semibold">{t('pages.dashboard.topProductsTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2.5 pt-0">
-            {productStatTodayLoading ? (
+            {todayDataLoading ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
             ) : topProducts.length === 0 ? (
               <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">{t('pages.dashboard.noProductsSold')}</div>
@@ -351,7 +360,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-semibold">{t('pages.dashboard.groupRevenueTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            {productStatTodayLoading ? <Skeleton className="h-[160px] w-full" /> : groupRevenueTotal === 0 ? (
+            {todayDataLoading ? <Skeleton className="h-[160px] w-full" /> : groupRevenueTotal === 0 ? (
               <div className="flex h-[160px] items-center justify-center text-sm text-muted-foreground">{t('pages.dashboard.noDataYet')}</div>
             ) : (
               <div className="flex items-center gap-4">
