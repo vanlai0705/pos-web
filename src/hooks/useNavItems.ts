@@ -9,7 +9,8 @@ import { posMenuToNavItems } from '@/utils/pos-menu-converter'
 /**
  * Trả về NavItem[] để render sidebar/header-nav.
  * Ưu tiên menu từ API (store), fallback về navItems static.
- * Dashboard luôn được thêm vào đầu.
+ * Không còn mục "Tổng quan" trong menu — route /dashboard vẫn hoạt động
+ * (đăng nhập xong vẫn điều hướng vào đó), chỉ là không có link trong nav.
  */
 export function useNavItems(): NavItem[] {
   const auth = useAppSelector(selectAuth)
@@ -19,16 +20,10 @@ export function useNavItems(): NavItem[] {
   return useMemo(() => {
     if (posMenu.length === 0) return translateNavItems(navItems, t)
 
-    const dashboard: NavItem = {
-      title: t('menu.dashboard'),
-      href: '/dashboard',
-      icon: 'dashboard',
-    }
-
     // The API's menu (posMenu) carries raw Vietnamese Name/ShortName fields —
     // route them through the same title→i18n-key lookup as the static
     // fallback below, otherwise every header/sidebar item stays untranslated
     // regardless of the selected language.
-    return [dashboard, ...translateNavItems(posMenuToNavItems(posMenu), t)]
+    return translateNavItems(posMenuToNavItems(posMenu), t)
   }, [posMenu, t, i18n.resolvedLanguage])
 }

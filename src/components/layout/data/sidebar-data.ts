@@ -1,5 +1,4 @@
 import {
-  IconLayoutDashboard,
   IconShoppingCart,
   IconPackage,
   IconBuildingStore,
@@ -21,11 +20,6 @@ export const sidebarData: SidebarData = {
     {
       title: "Chính",
       items: [
-        {
-          title: "Tổng quan",
-          url: "/dashboard",
-          icon: IconLayoutDashboard,
-        },
         {
           title: "Bán hàng",
           url: "/actives/order",

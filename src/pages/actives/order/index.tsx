@@ -27,6 +27,7 @@ import {
   useSaveOrderMutation,
   useCompleteOrderMutation,
   useGetSettingOrderQuery,
+  useGetUserShopSettingQuery,
   useGetPaymentTypesQuery,
   useLazyGetTableOrderDetailQuery,
   useSaveTableOrderMutation,
@@ -464,6 +465,18 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
   // needed here too so handleSave can resolve a cash fallback even when the
   // panel's own picker never rendered anything for the user to click.
   const { data: fundTypes = [] } = useGetPaymentTypesQuery()
+  // Which warehouse a StockOut deducts from — mirrors pos_web's
+  // getDefaultStockOut: the currently-selected shop's own Stock first
+  // (user-infos/get-setting), falling back to setting/get-order's
+  // StockDefault only when that shop has no warehouse assigned.
+  const { data: shopSetting } = useGetUserShopSettingQuery()
+  const defaultStockOut = useMemo(() => {
+    const shops = shopSetting?.Shops ?? []
+    const selectedShop = shops.find(s => s.Id === shopSetting?.SelectedShopId) ?? shops[0]
+    const shopStock = selectedShop?.Stock
+    if (shopStock?.Id) return shopStock
+    return settings?.StockDefault ?? null
+  }, [shopSetting, settings])
   const { user: auth } = useAuth()
   // `Member` mirrors Angular's currentMember: the logged-in user plus their shops.
   const member = useMemo(() => {
@@ -810,7 +823,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       // Who is ringing the order up — the logged-in user plus their shops.
       Member: member,
       CreatorUser: null,
-      StockOut: settings?.StockDefault ?? null,
+      StockOut: defaultStockOut,
       // An explicit `null` here is what actually crashes the backend
       // (NullReferenceException) — omit the key entirely on the rare case
       // even the cash fallback above couldn't resolve anything.
