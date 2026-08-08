@@ -533,7 +533,29 @@ export const userApiSlice = createApi({
         url: shopId ? `setting/get-invoice?shopId=${shopId}` : "setting/get-invoice",
         method: "GET",
       }),
-      transformResponse: (res: TPosResponse<TPosSettingInvoice>) => res.Data ?? {},
+      // The GET response comes back PascalCase (Id, TaxExportType, Url, ...)
+      // like every other setting/* endpoint, but this form's fields are
+      // camelCase to match what update-invoice expects on save — remap here
+      // instead of matching the response casing, mirroring pos_web's
+      // invoice-settings.component getInvoiceSetting(). Without this, every
+      // field silently falls back to its default on load (and after any F5),
+      // since none of the response keys matched.
+      transformResponse: (res: TPosResponse<any>) => {
+        const d = res.Data ?? {}
+        return {
+          id: d.Id,
+          taxExportType: d.TaxExportType,
+          invoiceType: d.InvoiceType,
+          url: d.Url,
+          taxNumber: d.TaxNumber,
+          userName: d.UserName,
+          password: d.Password,
+          parttern: d.Parttern,
+          isDraft: d.IsDraft,
+          shopId: d.ShopId,
+        } as TPosSettingInvoice
+      },
+      providesTags: () => [{ type: EUserTagTypes.UserInfo }],
       transformErrorResponse: (res: any) => res?.data?.Errors?.[0]?.Message || res.status,
     }),
 
@@ -543,6 +565,7 @@ export const userApiSlice = createApi({
         method: "POST",
         body,
       }),
+      invalidatesTags: () => [{ type: EUserTagTypes.UserInfo }],
     }),
 
     getSettingPrinter: builder.query<TPosSettingPrinter, { guid: string }>({
