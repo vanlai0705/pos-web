@@ -19,6 +19,8 @@ export interface TPosShop {
   ExpirationAt: string;
   Image?: TPosImage;
   IsDefault?: boolean;
+  /** The shop's assigned warehouse — used as the default StockOut target when submitting an order. */
+  Stock?: { Id: number; Name: string; IsNegative?: boolean } | null;
 }
 
 export interface TPosPermissionFunction {

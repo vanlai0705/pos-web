@@ -41,6 +41,7 @@ interface InvoiceTemplateGroup extends TreeSidebarNode {
   SortOrder?: number
   IsSystem?: boolean
   IsActive?: boolean
+  IsMenu?: boolean
   Parent?: { Id?: number; Code?: string; Name?: string }
 }
 
@@ -82,6 +83,7 @@ function emptyGroup(): InvoiceTemplateGroup {
     SortOrder: 0,
     IsSystem: true,
     IsActive: true,
+    IsMenu: true,
     Childrens: [],
     Childrents: [],
   }
@@ -337,6 +339,7 @@ export default function TemplatesPage() {
           SortOrder: groupForm.SortOrder ?? 0,
           IsSystem: !!groupForm.IsSystem,
           IsActive: !!groupForm.IsActive,
+          IsMenu: !!groupForm.IsMenu,
           Parent: groupForm.ParentId ? groupForm.Parent : undefined,
         }
       : {
@@ -346,6 +349,7 @@ export default function TemplatesPage() {
           SortOrder: groupForm.SortOrder ?? 0,
           IsSystem: !!groupForm.IsSystem,
           IsActive: !!groupForm.IsActive,
+          IsMenu: !!groupForm.IsMenu,
           Parent: groupParent ? { Id: groupParent.Id, Code: groupParent.Code || '', Name: groupParent.Name || '' } : undefined,
         }
 
@@ -847,6 +851,10 @@ export default function TemplatesPage() {
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Switch checked={!!groupForm.IsActive} onCheckedChange={value => setGroupForm(form => ({ ...form, IsActive: value }))} />
               {t('pages.managers.templates.statusActive')}
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <Switch checked={!!groupForm.IsMenu} onCheckedChange={value => setGroupForm(form => ({ ...form, IsMenu: value }))} />
+              {t('pages.managers.templates.groupIsMenuLabel')}
             </label>
           </div>
           <DialogFooter>

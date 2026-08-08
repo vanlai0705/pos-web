@@ -33,8 +33,11 @@ export function StaffSelect({
   const inputRef = useRef<HTMLInputElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout>>()
 
-  const [search, { data, isFetching }] = useLazyFilterUsersSimpleQuery()
-  const items = data?.Items ?? []
+  const PAGE_SIZE = 20
+  const [search, { isFetching }] = useLazyFilterUsersSimpleQuery()
+  const [items, setItems] = useState<TPosUser[]>([])
+  const [pageIndex, setPageIndex] = useState(0)
+  const [total, setTotal] = useState(0)
 
   // Inline "Thêm"/"Sửa" — profile-only subset of the full staff wizard in
   // human-resources/members (no login account), same idea as CustomerSelect.
@@ -47,6 +50,7 @@ export function StaffSelect({
     if (!open) return
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        clearTimeout(timer.current)
         setOpen(false)
         setKeyword('')
       }
@@ -55,9 +59,19 @@ export function StaffSelect({
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const runSearch = (v: string) => search({ Keyword: v, PageIndex: 0, PageSize: 10 })
+  // `page` 0 replaces the list (fresh keyword/open), further pages append —
+  // lets the dropdown lazily load the full list on scroll instead of only
+  // ever showing the first 10 results.
+  const runSearch = (v: string, page = 0) => {
+    setPageIndex(page)
+    search({ Keyword: v, PageIndex: page, PageSize: PAGE_SIZE }).unwrap().then(res => {
+      setTotal(res.TotalItemCount ?? 0)
+      setItems(prev => (page === 0 ? res.Items ?? [] : [...prev, ...(res.Items ?? [])]))
+    }).catch(() => {})
+  }
 
   const handleOpen = () => {
+    clearTimeout(timer.current)
     setOpen(true)
     runSearch('')
     setTimeout(() => inputRef.current?.focus(), 50)
@@ -69,7 +83,18 @@ export function StaffSelect({
     timer.current = setTimeout(() => runSearch(v), 300)
   }
 
+  const handleLoadMore = () => {
+    if (isFetching || items.length >= total) return
+    runSearch(keyword, pageIndex + 1)
+  }
+
+  const handleResultsScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 24) handleLoadMore()
+  }
+
   const handleSelect = (item: TPosUser) => {
+    clearTimeout(timer.current)
     onChange(item)
     setOpen(false)
     setKeyword('')
@@ -167,8 +192,7 @@ export function StaffSelect({
               {t('components.staffSelect.staffList')}
             </button>
           </div>
-          <div className="max-h-48 overflow-y-auto">
-            {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">{t('common.loading')}</div>}
+          <div className="max-h-48 overflow-y-auto" onScroll={handleResultsScroll}>
             {!isFetching && items.length === 0 && (
               <div className="px-3 py-2 text-xs text-muted-foreground">{t('components.staffSelect.notFound')}</div>
             )}
@@ -188,6 +212,7 @@ export function StaffSelect({
                 </button>
               </div>
             ))}
+            {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">{t('common.loading')}</div>}
           </div>
         </div>
       )}
