@@ -522,7 +522,7 @@ export const userApiSlice = createApi({
           Shops: shops.map(s => ({
             Id: s.Id,
             Name: s.Name,
-            Image: { Id: 0, Url: '' },
+            Image: s.Image ?? { Id: 0, Url: '' },
           })),
         },
       }),
@@ -826,6 +826,16 @@ export const userApiSlice = createApi({
     getOrderItems: builder.query<TPosOrderItem[], number>({
       query: (orderId) => ({ url: `orders/get-list-order-item?orderId=${orderId}` }),
       transformResponse: (res: TPosResponse<TPosOrderItem[]>) => res.Data ?? [],
+    }),
+
+    filterTemporaryReceipts: builder.query<TPosFilterData<TPosOrder>, TPosOrderFilterParams>({
+      query: (p) => ({ url: `orders/filter-temporary-receipt${query({ PageIndex: 0, PageSize: 15, StatusId: 0, ...p })}` }),
+      transformResponse: (res: TPosResponse<TPosFilterData<TPosOrder>>) =>
+        res.Data ?? { Items: [], TotalItemCount: 0 },
+    }),
+
+    deleteTemporaryReceipt: builder.mutation<void, number>({
+      query: (orderId) => ({ url: `orders/delete-temporary-receipt?orderId=${orderId}`, method: 'POST', body: {} }),
     }),
 
     cancelOrder: builder.mutation<void, number>({
@@ -1319,6 +1329,8 @@ export const {
   useLazyFilterOrdersQuery,
   useGetOrderDetailQuery,
   useLazyGetOrderItemsQuery,
+  useFilterTemporaryReceiptsQuery,
+  useDeleteTemporaryReceiptMutation,
   useLazyGetOrderDetailQuery,
   useCancelOrderMutation,
   useSaveOrderMutation,

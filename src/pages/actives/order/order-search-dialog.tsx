@@ -1,33 +1,34 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { History } from 'lucide-react'
+import { History, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { CustomerSelect } from '@/components/pos/customer-select'
 import {
+  useDeleteTemporaryReceiptMutation,
   useFilterBookingsQuery,
   useFilterQuotationsQuery,
+  useFilterTemporaryReceiptsQuery,
   useLazyGetOrderItemsQuery,
 } from '@/store/slice/users/api/api'
-import type { TPosBooking, TPosCustomerSimple, TPosQuotation } from '@/store/slice/users/types/pos-types'
+import type { TPosBooking, TPosCustomerSimple, TPosOrder, TPosQuotation } from '@/store/slice/users/types/pos-types'
 import { DateRangeFilter, Pagination, SearchBar, fmtCurrency, fmtDate, useListFilter, PAGE_SIZE } from '../shared'
 
-type PickableOrder = TPosBooking | TPosQuotation
+type OrderSearchKind = 'booking' | 'quotation' | 'temporary'
+type PickableOrder = TPosBooking | TPosQuotation | TPosOrder
 
 interface OrderSearchDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Which backend list to search — the dialog itself is otherwise identical
-   * for both, matching Angular's BookingSearchComponent/QuotationSearchComponent
-   * (which even share the same "Khách đặt hàng" dialog title verbatim). */
-  kind: 'booking' | 'quotation'
+  /** Which backend list to search — booking, quotation, or Angular's
+   * OrderTemporaryReceiptSearchComponent flow for saved temporary receipts. */
+  kind: OrderSearchKind
   onConfirm: (order: PickableOrder) => void
 }
 
-/** Mirrors pos_web's booking-search / quotation-search dialogs: search+pick an
- * existing booking or quotation, preview its items, then hand the pick back to
- * the caller (which loads it into the current order screen via orders/detail). */
+/** Mirrors pos_web's booking / quotation / temporary-receipt search dialogs:
+ * search, preview items, then hand the pick back to the order screen. */
 export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: OrderSearchDialogProps) {
   const { t } = useTranslation()
   const { keyword, setKeyword, page, goPage, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
@@ -41,8 +42,14 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
   }
   const bookingQuery = useFilterBookingsQuery(params, { skip: !open || kind !== 'booking' })
   const quotationQuery = useFilterQuotationsQuery(params, { skip: !open || kind !== 'quotation' })
-  const { data, isFetching } = kind === 'booking' ? bookingQuery : quotationQuery
+  const temporaryQuery = useFilterTemporaryReceiptsQuery(params, { skip: !open || kind !== 'temporary' })
+  const [deleteTemporaryReceipt, { isLoading: deleting }] = useDeleteTemporaryReceiptMutation()
+  const activeQuery = kind === 'booking' ? bookingQuery : kind === 'quotation' ? quotationQuery : temporaryQuery
+  const { data, isFetching, refetch } = activeQuery
   const items = data?.Items ?? []
+  const title = kind === 'temporary'
+    ? 'Chọn lại hóa đơn lưu tạm'
+    : t('pages.actives.order.searchDialogTitle')
 
   // Reset local state every time the dialog re-opens, mirroring Angular's
   // fresh component instance per dialogService.show() call.
@@ -61,7 +68,7 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
 
   const handleConfirm = () => {
     if (!selected?.Id) { toast.error(t('pages.actives.order.searchDialogNoSelection')); return }
-    onConfirm(selected)
+    onConfirm(kind === 'temporary' ? { ...selected, Items: previewItems } : selected)
   }
 
   return (
@@ -70,7 +77,7 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
         <DialogHeader className="border-b px-4 py-3">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <History className="h-4 w-4" />
-            {t('pages.actives.order.searchDialogTitle')}
+            {title}
           </DialogTitle>
         </DialogHeader>
 
@@ -132,13 +139,14 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
                     <th className="px-2 py-1.5 text-left">{t('common.customer')}</th>
                     <th className="px-2 py-1.5 text-right">{t('metrics.subtotal')}</th>
                     <th className="px-2 py-1.5 text-right">{t('metrics.grandTotal')}</th>
+                    {kind === 'temporary' && <th className="w-10 px-2 py-1.5" />}
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {isFetching ? (
-                    <tr><td colSpan={6} className="px-2 py-8 text-center text-muted-foreground">{t('common.loading')}</td></tr>
+                    <tr><td colSpan={kind === 'temporary' ? 7 : 6} className="px-2 py-8 text-center text-muted-foreground">{t('common.loading')}</td></tr>
                   ) : items.length === 0 ? (
-                    <tr><td colSpan={6} className="px-2 py-8 text-center text-muted-foreground">{t('common.noData')}</td></tr>
+                    <tr><td colSpan={kind === 'temporary' ? 7 : 6} className="px-2 py-8 text-center text-muted-foreground">{t('common.noData')}</td></tr>
                   ) : items.map((order, i) => (
                     <tr
                       key={order.Id}
@@ -151,6 +159,29 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
                       <td className="px-2 py-1.5 truncate">{order.Customer?.Name}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums">{fmtCurrency(order.SubTotal)}</td>
                       <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{fmtCurrency(order.Total)}</td>
+                      {kind === 'temporary' && (
+                        <td className="px-2 py-1.5 text-right">
+                          <button
+                            type="button"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                            disabled={deleting}
+                            onClick={async e => {
+                              e.stopPropagation()
+                              if (!order.Id) return
+                              try {
+                                await deleteTemporaryReceipt(order.Id).unwrap()
+                                if (selected?.Id === order.Id) setSelected(null)
+                                refetch()
+                              } catch {
+                                toast.error(t('pages.actives.order.deleteOrderFailed'))
+                              }
+                            }}
+                            title={t('common.delete')}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -164,7 +195,7 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
 
         <div className="flex justify-end gap-2 border-t px-4 py-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
-          <Button onClick={handleConfirm} disabled={!selected}>{t('pages.actives.order.searchDialogConfirm')}</Button>
+          <Button onClick={handleConfirm} disabled={!selected || itemsLoading}>{t('pages.actives.order.searchDialogConfirm')}</Button>
         </div>
       </DialogContent>
     </Dialog>

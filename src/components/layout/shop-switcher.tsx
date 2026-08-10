@@ -1,18 +1,17 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Store, ChevronDown, Check, Loader2 } from 'lucide-react'
-import { getImageUrl } from '@/utils/common'
+import { PosImage } from '@/components/ui/pos-image'
 
 function ShopAvatar({ imageUrl, name, size = 'sm' }: { imageUrl?: string | null; name?: string; size?: 'sm' | 'md' }) {
-  const [imgError, setImgError] = useState(false)
   const dim = size === 'md' ? 'w-8 h-8' : 'w-5 h-5'
-  if (imageUrl && !imgError) {
+  if (imageUrl) {
     return (
-      <img
-        src={imageUrl}
+      <PosImage
+        url={imageUrl}
         alt={name}
-        className={`${dim} rounded-full object-cover bg-white/10 flex-none`}
-        onError={() => setImgError(true)}
+        className={`${dim} rounded-full bg-white/10 flex-none`}
+        fallbackIcon={<Store className={`${size === 'md' ? 'size-5' : 'size-4'} flex-none opacity-80`} />}
       />
     )
   }
@@ -57,7 +56,7 @@ export function ShopSwitcher() {
     }
   }
 
-  const shopImageUrl = getImageUrl(currentShop.Image?.Url) ?? null
+  const shopImageUrl = currentShop.Image?.Url ?? null
 
   // Chỉ 1 shop → hiển thị tên tĩnh
   if (shops.length <= 1) {
@@ -90,7 +89,7 @@ export function ShopSwitcher() {
         <DropdownMenuLabel className="text-xs text-muted-foreground">{t('components.shopSwitcher.selectShop')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {shops.map(shop => {
-          const itemImg = getImageUrl(shop.Image?.Url) ?? null
+          const itemImg = shop.Image?.Url ?? null
           return (
           <DropdownMenuItem
             key={shop.Id}

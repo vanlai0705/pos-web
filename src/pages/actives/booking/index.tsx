@@ -157,7 +157,7 @@ export default function BookingPage() {
         open={modal} onOpenChange={setModal}
         title={t('pages.actives.booking.dialogTitle')}
         endpoints={{ detail: 'bookings/detail', create: 'bookings/create', update: 'bookings/update' }}
-        options={{ customer: true }}
+        options={{ customer: true, sales: true, extraDateField: 'DeliveryDate', extraDateLabel: t('common.deliveryDate') }}
         editId={editId}
         onSaved={refetch}
       />

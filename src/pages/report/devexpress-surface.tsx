@@ -44,12 +44,13 @@ function formatReportDate(value: string, boundary: 'start' | 'end') {
     ? dayjs(value).startOf('day')
     : dayjs(value).endOf('day')
 
-  return date.format('YYYY-MM-DDTHH:mm:ss.SSS')
+  return date.toDate().toISOString()
 }
 
 function resolveActionKey(data: unknown) {
   if (typeof data === 'string') {
-    const params = new URLSearchParams(data)
+    const query = data.includes('?') ? data.slice(data.indexOf('?') + 1) : data
+    const params = new URLSearchParams(query)
     return params.get('actionKey')
   }
 
@@ -66,7 +67,10 @@ function resolveActionKey(data: unknown) {
 
 function shouldAppendReportRequestBody(data: unknown) {
   const actionKey = resolveActionKey(data)
-  return actionKey === 'openReport' || actionKey === 'startBuild'
+  return actionKey === 'openReport'
+    || actionKey === 'startBuild'
+    || actionKey === 'startExport'
+    || actionKey === 'exportTo'
 }
 
 function clearFetchSettings() {
@@ -98,6 +102,15 @@ function appendReportRequestBody(data: unknown, requestBody: ReportRequestBody) 
   }
 
   return data
+}
+
+function appendReportRequestBodyToUrl(url: unknown, requestBody: ReportRequestBody) {
+  if (typeof url !== 'string' || !shouldAppendReportRequestBody(url)) return url
+  if (url.includes('ReportRequestBody=')) return url
+
+  const payload = encodeURIComponent(JSON.stringify(requestBody))
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}ReportRequestBody=${payload}`
 }
 
 function setAuthorization(token: string) {
@@ -189,6 +202,7 @@ export function DevExpressReportViewer({
       if (custom) {
         const ajaxHook: JQueryAjaxSettings['beforeSend'] = (_xhr, settings) => {
           settings.data = appendReportRequestBody(settings.data, requestBodyRef.current) as JQueryAjaxSettings['data']
+          settings.url = appendReportRequestBodyToUrl(settings.url, requestBodyRef.current) as JQueryAjaxSettings['url']
         }
 
         ajaxBeforeSendRef.current = ajaxHook

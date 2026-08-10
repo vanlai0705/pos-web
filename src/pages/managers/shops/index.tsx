@@ -44,7 +44,6 @@ import {
   useLazyGenericGetQuery,
 } from '@/store/slice/users/api/api'
 import { cn } from '@/utils'
-import { getImageUrl } from '@/utils/common'
 import { withDomainPath } from '@/utils/domain-route'
 import { buildModelFormData } from '@/utils/multipart'
 
@@ -604,7 +603,13 @@ function ShopDialog({
   onClose: () => void
   onSave: (mode?: 'exit' | 'stay' | 'new') => void
 }) {
-  const previewImage = imageFile ? URL.createObjectURL(imageFile) : getImageUrl(form.Image?.Url)
+  const previewImage = useMemo(() => imageFile ? URL.createObjectURL(imageFile) : null, [imageFile])
+
+  useEffect(() => {
+    return () => {
+      if (previewImage) URL.revokeObjectURL(previewImage)
+    }
+  }, [previewImage])
 
   const selectedReportTemplateId = form.ReportTemplate?.Id || form.ReportTemplateId || 0
   const selectedReportTemplateTempId = form.ReportTemplateTemp?.Id || form.ReportTemplateTempId || 0
@@ -741,7 +746,13 @@ function ShopDialog({
                     <ImageIcon className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border bg-muted/40">
-                    {previewImage ? <img src={previewImage} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="h-12 w-12 text-muted-foreground/40" />}
+                    {previewImage ? (
+                      <img src={previewImage} alt="" className="h-full w-full object-cover" />
+                    ) : form.Image?.Url ? (
+                      <PosImage url={form.Image.Url} alt="" className="h-full w-full" />
+                    ) : (
+                      <ImageIcon className="h-12 w-12 text-muted-foreground/40" />
+                    )}
                   </div>
                   <input
                     ref={imageInputRef}

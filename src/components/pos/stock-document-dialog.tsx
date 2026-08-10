@@ -26,6 +26,11 @@ export interface StockDocLine {
   QuantityReal?: number
   Price?: number
   PriceInput?: number
+  Discount?: number
+  DiscountPercent?: number
+  Tax?: number | null
+  Total?: number
+  Amount?: number
   Note?: string
 }
 
@@ -33,6 +38,10 @@ export interface StockDoc {
   Id?: number
   Name?: string
   Date?: string
+  DeliveryDate?: string
+  ExpiredDate?: string
+  SubTotal?: number
+  Total?: number
   StockIn?: LookupItem | null
   StockOut?: LookupItem | null
   Supplier?: LookupItem | null
@@ -56,6 +65,10 @@ export interface StockDocOptions {
   customer?: boolean
   /** Count sheet: replaces price columns with system/real quantities */
   stockCheck?: boolean
+  /** Sales-like documents (booking/quotation) use product sale price and order item totals. */
+  sales?: boolean
+  extraDateField?: 'DeliveryDate' | 'ExpiredDate'
+  extraDateLabel?: string
 }
 
 interface Props {
@@ -97,6 +110,8 @@ export function StockDocumentDialog({
 }: Props) {
   const { t } = useTranslation()
   const isCheck = !!options.stockCheck
+  const isSalesDoc = !!options.sales
+  const extraDateField = options.extraDateField
   const [form, setForm] = useState<StockDoc>(emptyStockDoc())
   const [keyword, setKeyword] = useState('')
 
@@ -113,7 +128,11 @@ export function StockDocumentDialog({
   // Load the document when editing; reset to a blank one when creating.
   useEffect(() => {
     if (!open) return
-    if (!editId) { setForm(emptyStockDoc()); return }
+    if (!editId) {
+      const empty = emptyStockDoc()
+      setForm(extraDateField ? { ...empty, [extraDateField]: empty.Date } : empty)
+      return
+    }
     fetchDetail({ url: endpoints.detail, params: { id: editId } })
       .unwrap()
       .then(res => {
@@ -121,11 +140,13 @@ export function StockDocumentDialog({
         setForm({
           ...emptyStockDoc(), ...d,
           Date: d.Date ? dayjs(d.Date).format('YYYY-MM-DD') : emptyStockDoc().Date,
+          DeliveryDate: d.DeliveryDate ? dayjs(d.DeliveryDate).format('YYYY-MM-DD') : d.DeliveryDate,
+          ExpiredDate: d.ExpiredDate ? dayjs(d.ExpiredDate).format('YYYY-MM-DD') : d.ExpiredDate,
           Items: d.Items ?? [],
         })
       })
       .catch(e => toast.error(errMsg(e, t('components.stockDocumentDialog.genericError'))))
-  }, [open, editId, endpoints.detail, fetchDetail, t])
+  }, [open, editId, endpoints.detail, extraDateField, fetchDetail, t])
 
   const setLine = useCallback((idx: number, patch: Partial<StockDocLine>) => {
     setForm(f => {
@@ -162,8 +183,8 @@ export function StockDocumentDialog({
       return
     }
 
-    // Receiving defaults the price to the product's import price.
-    const price = Number(p.PriceInput ?? p.ImportPrice ?? 0)
+    // Sales-like documents use sale price; stock receiving keeps import price.
+    const price = isSalesDoc ? Number(p.Price ?? 0) : Number(p.PriceInput ?? p.ImportPrice ?? 0)
     setForm(f => ({
       ...f,
       Items: [...(f.Items ?? []), { Product: p, Quantity: 1, Price: price, PriceInput: price }],
@@ -175,6 +196,31 @@ export function StockDocumentDialog({
     [form.Items],
   )
 
+  const buildSalesPayload = () => {
+    const items = (form.Items ?? []).map(line => {
+      const total = lineTotal(line)
+      const tax = line.Product?.Tax === null || line.Product?.Tax === undefined
+        ? null
+        : Number(line.Tax ?? line.Product.Tax) || 0
+      return {
+        ...line,
+        Discount: line.Discount ?? 0,
+        DiscountPercent: line.DiscountPercent ?? 0,
+        Tax: tax,
+        Total: total,
+        Amount: total,
+        Product: line.Product ? { ...line.Product, Tax: tax, Total: total, Amount: total } : line.Product,
+      }
+    })
+
+    return {
+      ...form,
+      Items: items,
+      SubTotal: subTotal,
+      Total: subTotal,
+    }
+  }
+
   const handleSave = async () => {
     if (!(form.Items ?? []).length) { toast.error(t('components.stockDocumentDialog.selectItemRequired')); return }
     if (options.stockIn && !form.StockIn?.Id) { toast.error(t('components.stockDocumentDialog.selectStockInRequired')); return }
@@ -183,7 +229,7 @@ export function StockDocumentDialog({
       await request({
         url: form.Id ? endpoints.update : endpoints.create,
         method: 'POST',
-        body: buildModelFormData(form),
+        body: buildModelFormData(isSalesDoc ? buildSalesPayload() : form),
       }).unwrap()
       toast.success(form.Id
         ? t('components.stockDocumentDialog.updateSuccess')
@@ -210,6 +256,16 @@ export function StockDocumentDialog({
                 <Label>{t('common.voucherNo')}</Label>
                 <Input value={form.Name ?? ''} disabled placeholder={t('components.stockDocumentDialog.autoPlaceholder')} />
               </div>
+              {extraDateField && (
+                <div className="space-y-1">
+                  <Label>{options.extraDateLabel}</Label>
+                  <Input
+                    type="date"
+                    value={(form[extraDateField] as string | undefined) ?? ''}
+                    onChange={e => setForm(f => ({ ...f, [extraDateField]: e.target.value }))}
+                  />
+                </div>
+              )}
               {options.stockOut && (
                 <div className="space-y-1">
                   <Label>{t('common.stockOut')}</Label>

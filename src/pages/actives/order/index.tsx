@@ -136,7 +136,7 @@ interface CartItem {
 }
 
 function itemDiscount(item: CartItem) {
-  return Math.round(item.price * item.qty * item.discountPct / 100)
+  return item.price * item.qty * item.discountPct / 100
 }
 
 /** Line total after discount, before tax. */
@@ -233,11 +233,11 @@ function calcTotals(
   { orderTaxPct, perItemTax, discountPct, discountAmt = 0, voucher = 0, transferCost = 0 }: TotalsOpts,
 ) {
   const subTotal = cart.reduce((s, c) => s + itemSubtotal(c), 0)
-  const orderDiscount = subTotal * discountPct / 100 + discountAmt
+  const orderDiscount = Math.min(subTotal * discountPct / 100 + discountAmt, subTotal)
   const totalBeforeTax = Math.max(0, subTotal - orderDiscount - voucher)
-  const itemTax = cart.reduce((s, c) => s + itemTaxAmount(c, perItemTax), 0)
-  // Per-item tax wins when present; otherwise fall back to the order-level rate.
-  const totalTax = itemTax > 0 ? itemTax : totalBeforeTax * orderTaxPct / 100
+  const totalTax = perItemTax
+    ? cart.reduce((s, c) => s + itemTaxAmount(c, true), 0)
+    : totalBeforeTax * orderTaxPct / 100
   const subTotalItems = cart.reduce((s, c) => s + itemAmount(c, perItemTax), 0)
   return {
     subTotal, subTotalItems, orderDiscount, totalBeforeTax, totalTax,
@@ -541,35 +541,49 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
   const [loadOrderDetail] = useLazyGetOrderDetailQuery()
   const [bookingSearchOpen, setBookingSearchOpen] = useState(false)
   const [quotationSearchOpen, setQuotationSearchOpen] = useState(false)
+  const [temporarySearchOpen, setTemporarySearchOpen] = useState(false)
+
+  const applyOrderToCart = useCallback((order: TPosOrder, keepIdentity = false) => {
+    setBaseOrder(keepIdentity ? order : null)
+    setCart((order.Items ?? []).map(it => ({
+      product: (it.Product ?? {}) as TPosActiveProduct,
+      qty: it.Quantity ?? 1,
+      price: it.Price ?? it.Product?.Price ?? 0,
+      discountPct: it.DiscountPercent ?? 0,
+      note: it.Note ?? '',
+      tax: it.Tax ?? it.Product?.Tax ?? null,
+    })))
+    setSelectedCustomer(order.Customer ?? null)
+    if (order.User) setSelectedStaff(order.User as TPosUser)
+    else setSelectedStaff(null)
+    setNote(order.Note ?? '')
+    setDetail(order.Detail ?? '')
+    setDiscountPct(order.DiscountPercent ?? 0)
+    setDiscountAmt(order.Discount ?? 0)
+    setVoucher(order.Voucher ?? 0)
+    setTransferCost(order.TransferCost ?? 0)
+    setTaxOverride(order.Tax ?? null)
+    setPayment(order.Payment ?? '')
+  }, [])
 
   const applyPickedOrder = useCallback(async (id?: number) => {
     if (!id) return
     try {
       const order = await loadOrderDetail(id).unwrap()
       if (!order) return
-      setCart((order.Items ?? []).map(it => ({
-        product: (it.Product ?? {}) as TPosActiveProduct,
-        qty: it.Quantity ?? 1,
-        price: it.Price ?? it.Product?.Price ?? 0,
-        discountPct: it.DiscountPercent ?? 0,
-        note: it.Note ?? '',
-        tax: it.Tax ?? it.Product?.Tax ?? null,
-      })))
-      setSelectedCustomer(order.Customer ?? null)
-      if (order.User) setSelectedStaff(order.User as TPosUser)
-      setNote(order.Note ?? '')
-      setDetail(order.Detail ?? '')
+      applyOrderToCart(order)
     } catch {
       toast.error(t('pages.actives.order.loadOrderFailed'))
     }
-  }, [loadOrderDetail, t])
+  }, [applyOrderToCart, loadOrderDetail, t])
 
   // Guard shared by both pickers: Angular refuses to open the search dialog
   // while the cart already has items, to avoid silently discarding them.
-  const openOrderSearch = (kind: 'booking' | 'quotation') => {
+  const openOrderSearch = (kind: 'booking' | 'quotation' | 'temporary') => {
     if (cart.length > 0) { toast.error(t('pages.actives.order.searchDialogCartNotEmpty')); return }
     if (kind === 'booking') setBookingSearchOpen(true)
-    else setQuotationSearchOpen(true)
+    else if (kind === 'quotation') setQuotationSearchOpen(true)
+    else setTemporarySearchOpen(true)
   }
 
   const addToCart = useCallback((product: TPosActiveProduct) => {
@@ -813,7 +827,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
     const fundTypeRef = fund.accountId ?? fund.type?.Id ?? cashFallback?.Id
 
     const order: TPosOrder = {
-      Id: bookingId,
+      Id: isTableMode ? bookingId : baseOrder?.Id,
       Name: '',
       Date: now,
       Detail: detail || t('pages.actives.order.defaultSaleDetail'),
@@ -865,6 +879,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       try {
         await saveOrder(order).unwrap()
         toast.success(t('pages.actives.order.tempOrderSaved'))
+        setBaseOrder(null)
         setCart([])
       } catch { toast.error(t('pages.actives.order.tempOrderSaveFailed')) }
       return
@@ -906,6 +921,7 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
         // the next sale starts clean — "Thanh toán và in"/"không in" must
         // leave the cashier right where they were, not bounce to order-manager.
         if (isTableMode) { onBack?.(); return }
+        setBaseOrder(null)
         setSelectedCustomer(null)
         setSelectedStaff(null)
         setNote('')
@@ -994,6 +1010,12 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
         onOpenChange={setQuotationSearchOpen}
         kind="quotation"
         onConfirm={order => { setQuotationSearchOpen(false); applyPickedOrder(order.Id) }}
+      />
+      <OrderSearchDialog
+        open={temporarySearchOpen}
+        onOpenChange={setTemporarySearchOpen}
+        kind="temporary"
+        onConfirm={order => { setTemporarySearchOpen(false); applyOrderToCart(order as TPosOrder, true) }}
       />
     </div>
   )
@@ -1086,7 +1108,7 @@ interface InternalOrderPanelProps {
   onClear: () => void
   onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => void
   onSave: (action: OrderAction) => void
-  onOpenOrderSearch: (kind: 'booking' | 'quotation') => void
+  onOpenOrderSearch: (kind: 'booking' | 'quotation' | 'temporary') => void
   saving: boolean
   settings?: TPosSettingOrder
   totals: ReturnType<typeof calcTotals>
@@ -1521,8 +1543,8 @@ function InternalOrderPanel({
               className="flex items-center justify-center gap-1 rounded-lg border border-violet-400 px-2 py-2.5 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all disabled:opacity-40">
               <FileText className="h-3.5 w-3.5" /> {t('pages.actives.order.quotationButton')}
             </button>
-            <button
-              className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-all">
+            <button onClick={() => onOpenOrderSearch('temporary')} disabled={saving}
+              className="flex items-center justify-center gap-1 rounded-lg border border-input px-2 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-all disabled:opacity-40">
               <RefreshCw className="h-3.5 w-3.5" /> {t('pages.actives.order.reopenButton')}
             </button>
           </div>

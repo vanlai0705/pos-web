@@ -157,7 +157,7 @@ export default function QuotationPage() {
         open={modal} onOpenChange={setModal}
         title={t('pages.actives.quotation.createQuotation')}
         endpoints={{ detail: 'quotations/detail', create: 'quotations/create', update: 'quotations/update' }}
-        options={{ customer: true }}
+        options={{ customer: true, sales: true, extraDateField: 'ExpiredDate', extraDateLabel: t('pages.actives.quotation.expiredDate') }}
         editId={editId}
         onSaved={refetch}
       />
