@@ -37,6 +37,16 @@ type DevExpressBinding = {
   dispose?: () => void
 }
 
+type PosMobileReportWindow = Window & {
+  __posmobileReportViewer?: DevExpressBinding | null
+}
+
+function isMobileReportMode() {
+  if (typeof window === 'undefined') return false
+  const params = new URLSearchParams(window.location.search)
+  return params.get('mobile') === '1' || params.get('mobilePdf') === '1'
+}
+
 function formatReportDate(value: string, boundary: 'start' | 'end') {
   if (!value) return null
 
@@ -168,9 +178,10 @@ export function DevExpressReportViewer({
   token: string
   custom?: boolean
 }) {
+  const mobileMode = useMemo(isMobileReportMode, [])
   const [dateFrom, setDateFrom] = useState(dayjs().startOf('month').format('YYYY-MM-DD'))
   const [dateTo, setDateTo] = useState(dayjs().endOf('month').format('YYYY-MM-DD'))
-  const [filterOpen, setFilterOpen] = useState(custom)
+  const [filterOpen, setFilterOpen] = useState(custom && !mobileMode)
   const [viewerKey, setViewerKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -224,18 +235,23 @@ export function DevExpressReportViewer({
 
       viewer.render()
       bindingRef.current = viewer
+      ;(window as PosMobileReportWindow).__posmobileReportViewer = viewer
     } catch (err) {
       console.error('[DevExpressReportViewer] init failed:', err)
       setError('Không thể khởi tạo DevExpress Report Viewer.')
     }
-  }, [custom, disposeViewer, reportCode, token])
+  }, [custom, disposeViewer, mobileMode, reportCode, token])
 
   useEffect(() => {
     initViewer()
 
     return () => {
+      const currentViewer = bindingRef.current
       clearReportRequestHooks(ajaxBeforeSendRef.current)
       disposeViewer()
+      if ((window as PosMobileReportWindow).__posmobileReportViewer === currentViewer) {
+        ;(window as PosMobileReportWindow).__posmobileReportViewer = null
+      }
     }
   }, [disposeViewer, initViewer, viewerKey])
 
@@ -248,7 +264,7 @@ export function DevExpressReportViewer({
     setViewerKey(key => key + 1)
   }
 
-  const action = custom ? (
+  const action = custom && !mobileMode ? (
     <Button
       size="sm"
       variant="outline"
@@ -260,14 +276,14 @@ export function DevExpressReportViewer({
     </Button>
   ) : null
 
-  return (
-    <ReportShell
-      title={displayCode}
-      subtitle={custom ? 'Xem báo cáo tùy chỉnh' : 'Xem báo cáo'}
-      action={action}
+  const content = (
+    <div
+      className={cn(
+        'relative min-h-0 flex-1 overflow-hidden bg-white',
+        mobileMode ? 'mt-0 rounded-none border-0 shadow-none' : 'mt-2 rounded-lg border border-slate-200 shadow-sm',
+      )}
     >
-      <div className="relative mt-2 min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        {custom && (
+        {custom && !mobileMode && (
           <div
             className={cn(
               'absolute left-3 top-3 z-[120] w-[320px] max-w-[calc(100vw-88px)] rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 transition-all duration-200',
@@ -334,6 +350,19 @@ export function DevExpressReportViewer({
 
         <div ref={containerRef} className="absolute inset-0" />
       </div>
+  )
+
+  if (mobileMode) {
+    return <div className="flex h-full min-h-0 flex-col">{content}</div>
+  }
+
+  return (
+    <ReportShell
+      title={displayCode}
+      subtitle={custom ? 'Xem báo cáo tùy chỉnh' : 'Xem báo cáo'}
+      action={action}
+    >
+      {content}
     </ReportShell>
   )
 }

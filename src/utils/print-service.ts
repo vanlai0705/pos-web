@@ -1,5 +1,6 @@
 import { toast } from 'sonner'
 import { API_ORIGIN } from '@/constants'
+import { store } from '@/store/store'
 
 /**
  * Talks to the shop's local print bridge (a small HTTP service on the same
@@ -32,6 +33,23 @@ async function fetchWithTimeout(url: string, init: RequestInit) {
   }
 }
 
+function getSessionToken() {
+  return store.getState().user.auth?.data?.SessionToken ?? ''
+}
+
+function getBridgeHeaders(token = getSessionToken()) {
+  const headers: Record<string, string> = {
+    Accept: 'application/json, text/plain, */*',
+    'Content-Type': 'application/json',
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  return headers
+}
+
 /**
  * Fire-and-forget: a printer being offline must never block the POS flow —
  * but a failure (unreachable, timeout, non-2xx) still has to reach the
@@ -40,11 +58,16 @@ async function fetchWithTimeout(url: string, init: RequestInit) {
  */
 async function postToBridge(url: string, body: unknown, printerName?: string) {
   const who = printerName ? ` (${printerName})` : ''
+  const token = getSessionToken()
   try {
     const res = await fetchWithTimeout(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers: getBridgeHeaders(token),
+      body: JSON.stringify({
+        ...(body && typeof body === 'object' ? body : { data: body }),
+        token,
+        accessToken: token,
+      }),
     })
     if (!res.ok) {
       console.warn('[print-bridge]', url, res.status)
@@ -87,7 +110,9 @@ export function printDatas(printerUrl: string | undefined, api: string, printerN
 export async function getInstalledPrinters(printerUrl: string | undefined): Promise<string[]> {
   if (!printerUrl) return []
   try {
-    const res = await fetchWithTimeout(`${printerUrl}/Printer/GetInstalledPrinters`, {})
+    const res = await fetchWithTimeout(`${printerUrl}/Printer/GetInstalledPrinters`, {
+      headers: getBridgeHeaders(),
+    })
     if (!res.ok) return []
     const data = await res.json()
     return Array.isArray(data) ? data : (data?.Data ?? data?.data ?? [])
