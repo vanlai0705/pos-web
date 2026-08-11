@@ -123,6 +123,17 @@ function ReportCustomEntry({ fallback }: { fallback: ReactNode }) {
   return searchParams.get('code') ? <ReportCustomViewerPage /> : <>{fallback}</>
 }
 
+function LoginEntry() {
+  const { user } = useAuth()
+  const domain = normalizeDomainName(user.data?.DomainName) || setStoredDomainName(localStorage.getItem(DOMAIN_KEY))
+
+  if (user.data?.SessionToken) {
+    return <Navigate to={withDomainPath("/dashboard", domain)} replace />
+  }
+
+  return <LoginPage />
+}
+
 function renderPrivateAppRoutes() {
   return (
     <>
@@ -313,7 +324,7 @@ function AppRoute() {
         {/* Public */}
         <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<LoginEntry />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/renew-password" element={<RenewPasswordPage />} />
