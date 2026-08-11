@@ -13,6 +13,7 @@ import {
   type ReceiptPayment,
 } from '@/components/pos/receipt-payment-dialog'
 import type { LookupItem } from '@/components/pos/lookup-select'
+import { useTranslation } from 'react-i18next'
 
 /** Endpoints of the phiếu chi the "Chi lương" action raises. */
 const PAYMENT_ENDPOINTS = {
@@ -43,6 +44,7 @@ const money = (v?: number) => (v ?? 0).toLocaleString('vi-VN')
 const userName = (u?: TSalaryPay['User']) => u?.FullName || u?.Name || '—'
 
 export default function SalaryPaysPage() {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -70,21 +72,21 @@ export default function SalaryPaysPage() {
     })
 
   const columns: ColumnDef<TSalaryPay>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
+    { id: 'stt', header: t('common.index'), cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     {
-      id: 'month', header: 'Tháng',
+      id: 'month', header: t('common.month'),
       cell: ({ row }) => {
         const { Month, Year } = row.original
         return <span>{Month && Year ? `${String(Month).padStart(2, '0')}/${Year}` : '—'}</span>
       },
     },
-    { id: 'user', header: 'Nhân viên', cell: ({ row }) => <span className="font-medium">{userName(row.original.User)}</span> },
-    { id: 'salary', header: 'Lương', cell: ({ row }) => <span className="tabular-nums">{money(row.original.Salary)}</span> },
-    { id: 'reward', header: 'Thưởng', cell: ({ row }) => <span className="tabular-nums text-emerald-600">{money(row.original.Reward)}</span> },
-    { id: 'punish', header: 'Phạt', cell: ({ row }) => <span className="tabular-nums text-red-600">{money(row.original.Punish)}</span> },
-    { id: 'advance', header: 'Tạm ứng', cell: ({ row }) => <span className="tabular-nums text-amber-600">{money(row.original.AdvancePayment)}</span> },
+    { id: 'user', header: t('common.employee'), cell: ({ row }) => <span className="font-medium">{userName(row.original.User)}</span> },
+    { id: 'salary', header: t('humanResources.salary.salary'), cell: ({ row }) => <span className="tabular-nums">{money(row.original.Salary)}</span> },
+    { id: 'reward', header: t('components.rewardPunishDialog.reward'), cell: ({ row }) => <span className="tabular-nums text-emerald-600">{money(row.original.Reward)}</span> },
+    { id: 'punish', header: t('components.rewardPunishDialog.punish'), cell: ({ row }) => <span className="tabular-nums text-red-600">{money(row.original.Punish)}</span> },
+    { id: 'advance', header: t('humanResources.salary.advancePayment'), cell: ({ row }) => <span className="tabular-nums text-amber-600">{money(row.original.AdvancePayment)}</span> },
     {
-      id: 'remain', header: 'Còn lại',
+      id: 'remain', header: t('humanResources.salary.remaining'),
       cell: ({ row }) => <span className="tabular-nums font-bold text-sky-700">{money(salaryTotal(row.original))}</span>,
     },
     {
@@ -98,10 +100,10 @@ export default function SalaryPaysPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setRewardFor(r.User ?? null)}>
-                <Award className="h-3.5 w-3.5 mr-2 text-amber-600" /> Thưởng / Phạt
+                <Award className="h-3.5 w-3.5 mr-2 text-amber-600" /> {t('components.rewardPunishDialog.title')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => openSalaryPay(r)}>
-                <Wallet className="h-3.5 w-3.5 mr-2 text-sky-600" /> Chi lương
+                <Wallet className="h-3.5 w-3.5 mr-2 text-sky-600" /> {t('menu.salaryPays')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -112,8 +114,8 @@ export default function SalaryPaysPage() {
 
   return (
     <div className="space-y-4">
-      <ListPageHeader title="Bảng lương" icon={Banknote}>
-        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder="Tìm nhân viên..." />
+      <ListPageHeader title={t('menu.salaries')} icon={Banknote}>
+        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder={t('common.searchEmployee')} />
       </ListPageHeader>
 
       <DataTable
@@ -124,7 +126,7 @@ export default function SalaryPaysPage() {
         page={page}
         pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
-        emptyText="Không có bảng lương nào"
+        emptyText={t('humanResources.salary.emptyPayroll')}
       />
 
       <RewardPunishDialog

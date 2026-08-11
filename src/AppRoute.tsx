@@ -207,14 +207,14 @@ function renderPrivateAppRoutes() {
 
       {/* Khuyến mãi */}
       <Route path="promotions">
-        <Route index element={<PromotionListPage type={0} title="Khuyến mãi" />} />
-        <Route path="discount-bill" element={<PromotionListPage type={0} title="Giảm giá tổng hóa đơn" />} />
-        <Route path="discount-bill-total" element={<PromotionListPage type={5} title="Giảm giá theo giá trị đơn hàng" />} />
-        <Route path="categories" element={<PromotionListPage type={1} title="Giảm giá theo nhóm" />} />
-        <Route path="products" element={<PromotionListPage type={2} title="Giảm giá theo sản phẩm" />} />
-        <Route path="product-quantity" element={<PromotionListPage type={4} title="Giảm giá theo số lượng" />} />
-        <Route path="product-same-price" element={<PromotionListPage type={3} title="Mặt hàng đồng giá" />} />
-        <Route path="bye-1-get-1" element={<PromotionListPage type={6} title="Mua 1 tặng 1" />} />
+        <Route index element={<PromotionListPage type={0} titleKey="menu.promotions" />} />
+        <Route path="discount-bill" element={<PromotionListPage type={0} titleKey="menu.discountTotalOrder" />} />
+        <Route path="discount-bill-total" element={<PromotionListPage type={5} titleKey="menu.discountByOrderValue" />} />
+        <Route path="categories" element={<PromotionListPage type={1} titleKey="menu.discountByGroup" />} />
+        <Route path="products" element={<PromotionListPage type={2} titleKey="menu.discountByProduct" />} />
+        <Route path="product-quantity" element={<PromotionListPage type={4} titleKey="menu.discountByProductQuantity" />} />
+        <Route path="product-same-price" element={<PromotionListPage type={3} titleKey="menu.fixedPriceProducts" />} />
+        <Route path="bye-1-get-1" element={<PromotionListPage type={6} titleKey="menu.buyOneGetOne" />} />
         <Route path="*" element={<ComingSoonPage />} />
       </Route>
 

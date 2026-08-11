@@ -1,23 +1,26 @@
 import { Link } from 'react-router-dom'
 import { FileQuestion, Headset } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { useTranslation } from 'react-i18next'
 
 const items = [
   {
-    title: 'Hướng dẫn',
-    description: 'Quản lý nội dung hướng dẫn theo chức năng.',
+    titleKey: 'supports.helpTitle',
+    descriptionKey: 'supports.helpDescription',
     href: '/supports/helps',
     icon: FileQuestion,
   },
   {
-    title: 'Hỗ trợ',
-    description: 'Theo dõi yêu cầu hỗ trợ và phản hồi người dùng.',
+    titleKey: 'supports.supportTitle',
+    descriptionKey: 'supports.supportDescription',
     href: '/supports/supports',
     icon: Headset,
   },
 ]
 
 export default function SupportHubPage() {
+  const { t } = useTranslation()
+
   return (
     <div className="p-4">
       <div className="grid max-w-3xl gap-3 sm:grid-cols-2">
@@ -31,8 +34,8 @@ export default function SupportHubPage() {
                     <Icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-base font-semibold text-slate-900">{item.title}</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                    <h2 className="text-base font-semibold text-slate-900">{t(item.titleKey)}</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">{t(item.descriptionKey)}</p>
                   </div>
                 </CardContent>
               </Card>

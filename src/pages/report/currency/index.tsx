@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Wallet } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import {
   fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
@@ -7,11 +8,17 @@ import {
   TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
 } from '../shared'
 
-const TABS = ['Danh sách thu chi', 'Phiếu thu', 'Phiếu chi', 'Tồn quỹ']
+const TAB_KEYS = [
+  'pages.report.currency.tabReceiptPayment',
+  'pages.report.currency.tabReceipt',
+  'pages.report.currency.tabPayment',
+  'pages.report.currency.tabCashBalance',
+]
 
 // ─── Receipt-Payment (combined) ───────────────────────────────────────────────
 
 function ReceiptPaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -28,22 +35,22 @@ function ReceiptPaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Tổng thu', value: s.Receipt || 0, tone: 'emerald' },
-        { title: 'Tổng chi', value: s.Payment || 0, tone: 'rose' },
+        { title: t('metrics.totalReceipt'), value: s.Receipt || 0, tone: 'emerald' },
+        { title: t('metrics.totalPayment'), value: s.Payment || 0, tone: 'rose' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Số phiếu</TH>
-              <TH>Tên đối tượng</TH>
-              <TH>Địa chỉ / Chứng từ</TH>
-              <TH>Lý do</TH>
-              <TH right>Tổng thu</TH>
-              <TH right>Tổng chi</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH center>{t('common.date')}</TH>
+              <TH>{t('common.voucherNo')}</TH>
+              <TH>{t('common.objectName')}</TH>
+              <TH>{t('pages.report.currency.addressOrDocument')}</TH>
+              <TH>{t('common.reason')}</TH>
+              <TH right>{t('metrics.totalReceipt')}</TH>
+              <TH right>{t('metrics.totalPayment')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -71,6 +78,7 @@ function ReceiptPaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: 
 // ─── Receipt (Phiếu thu) ──────────────────────────────────────────────────────
 
 function ReceiptReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -86,20 +94,20 @@ function ReceiptReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <StatCards cards={[{ title: 'Tổng thu', value: s.Receipt || 0, tone: 'emerald' }]} />
+      <StatCards cards={[{ title: t('metrics.totalReceipt'), value: s.Receipt || 0, tone: 'emerald' }]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Số phiếu</TH>
-              <TH>Tên đối tượng</TH>
-              <TH>Địa chỉ</TH>
-              <TH>Chứng từ gốc</TH>
-              <TH>Lý do</TH>
-              <TH right>Tổng cộng</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH center>{t('common.date')}</TH>
+              <TH>{t('common.voucherNo')}</TH>
+              <TH>{t('common.objectName')}</TH>
+              <TH>{t('common.address')}</TH>
+              <TH>{t('pages.report.currency.originalDocument')}</TH>
+              <TH>{t('common.reason')}</TH>
+              <TH right>{t('metrics.grandTotal')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -127,6 +135,7 @@ function ReceiptReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 // ─── Payment (Phiếu chi) ──────────────────────────────────────────────────────
 
 function PaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -142,20 +151,20 @@ function PaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <StatCards cards={[{ title: 'Tổng chi', value: s.Payment || 0, tone: 'rose' }]} />
+      <StatCards cards={[{ title: t('metrics.totalPayment'), value: s.Payment || 0, tone: 'rose' }]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Số phiếu</TH>
-              <TH>Tên đối tượng</TH>
-              <TH>Địa chỉ</TH>
-              <TH>Chứng từ gốc</TH>
-              <TH>Lý do</TH>
-              <TH right>Tổng cộng</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH center>{t('common.date')}</TH>
+              <TH>{t('common.voucherNo')}</TH>
+              <TH>{t('common.objectName')}</TH>
+              <TH>{t('common.address')}</TH>
+              <TH>{t('pages.report.currency.originalDocument')}</TH>
+              <TH>{t('common.reason')}</TH>
+              <TH right>{t('metrics.grandTotal')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -183,6 +192,7 @@ function PaymentReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 // ─── Cash Balance (Tồn quỹ) ───────────────────────────────────────────────────
 
 function CashBalanceReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -199,23 +209,23 @@ function CashBalanceReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Tồn đầu kỳ', value: s.Beginning || 0, tone: 'sky' },
-        { title: 'Tổng thu', value: s.Receipt || 0, tone: 'emerald' },
-        { title: 'Tổng chi', value: s.Payment || 0, tone: 'rose' },
-        { title: 'Tồn cuối kỳ', value: s.End || 0, tone: 'amber' },
+        { title: t('metrics.openingBalance'), value: s.Beginning || 0, tone: 'sky' },
+        { title: t('metrics.totalReceipt'), value: s.Receipt || 0, tone: 'emerald' },
+        { title: t('metrics.totalPayment'), value: s.Payment || 0, tone: 'rose' },
+        { title: t('metrics.endingBalance'), value: s.End || 0, tone: 'amber' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Số phiếu</TH>
-              <TH>Diễn giải</TH>
-              <TH right>Thu</TH>
-              <TH right>Chi</TH>
-              <TH right>Tồn</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH center>{t('common.date')}</TH>
+              <TH>{t('common.voucherNo')}</TH>
+              <TH>{t('common.description')}</TH>
+              <TH right>{t('pages.report.currency.receiptShort')}</TH>
+              <TH right>{t('pages.report.currency.paymentShort')}</TH>
+              <TH right>{t('common.inventory')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -234,7 +244,7 @@ function CashBalanceReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
                 ))}
                 {s.End != null && (
                   <tr className="bg-slate-50">
-                    <td colSpan={6} className="px-2 py-2 text-xs font-semibold text-slate-700">Tồn cuối kỳ</td>
+                    <td colSpan={6} className="px-2 py-2 text-xs font-semibold text-slate-700">{t('metrics.endingBalance')}</td>
                     <td className="px-2 py-2 text-right text-xs font-bold text-slate-900">{fmtNum(s.End)}</td>
                   </tr>
                 )}
@@ -252,11 +262,13 @@ function CashBalanceReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ReportCurrencyPage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState(0)
   const range = currentMonthRange()
   const [dateFrom, setDateFrom] = useState(range.from)
   const [dateTo, setDateTo] = useState(range.to)
   const { exportExcel, exporting } = useReportExcel()
+  const tabs = TAB_KEYS.map(key => t(key))
 
   /** One export endpoint per tab, all scoped by the shared date range. */
   const EXPORTS = [
@@ -279,13 +291,13 @@ export default function ReportCurrencyPage() {
             <Wallet className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-800">Báo cáo thu chi</p>
-            <p className="text-[11px] text-slate-500">Phiếu thu, phiếu chi và tồn quỹ</p>
+            <p className="text-sm font-bold text-slate-800">{t('pages.report.currency.title')}</p>
+            <p className="text-[11px] text-slate-500">{t('pages.report.currency.subtitle')}</p>
           </div>
         </div>
 
         <div className="px-3 py-2 flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-          <ReportTabs tabs={TABS} active={tab} onSelect={setTab} />
+          <ReportTabs tabs={tabs} active={tab} onSelect={setTab} />
           <div className="flex items-center gap-2 flex-wrap">
             <ReportDateFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
             <ExcelBtn onClick={handleExport} loading={exporting} />

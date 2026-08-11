@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, KeyRound, UserRound } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ function emptyForm(): TPosMember {
 }
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const { user, setUser } = useAuth();
   const selfId = user.data?.User?.Id;
 
@@ -62,7 +64,7 @@ export default function ProfilePage() {
 
   const onSubmit = async () => {
     if (!form.Name?.trim()) {
-      toast.error("Vui lòng nhập họ tên");
+      toast.error(t("profile.requiredFullName"));
       return;
     }
     try {
@@ -77,7 +79,7 @@ export default function ProfilePage() {
         file: avatarFile,
       }).unwrap();
 
-      toast.success("Cập nhật hồ sơ thành công");
+      toast.success(t("profile.updateSuccess"));
       setForm((prev) => ({ ...prev, ...saved }));
       setAvatarFile(null);
       setAvatarPreview(null);
@@ -89,7 +91,7 @@ export default function ProfilePage() {
         });
       }
     } catch (err: any) {
-      toast.error(err?.data?.Errors?.[0]?.Message || err?.message || "Cập nhật thất bại");
+      toast.error(err?.data?.Errors?.[0]?.Message || err?.message || t("profile.updateFailed"));
     }
   };
 
@@ -98,7 +100,7 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-5xl px-4 py-10 space-y-6">
-        <h1 className="text-xl font-semibold">Thông tin cá nhân</h1>
+        <h1 className="text-xl font-semibold">{t("profile.personalInfo")}</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
@@ -106,7 +108,7 @@ export default function ProfilePage() {
               <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
                 <UserRound className="h-4 w-4" />
               </span>
-              <h2 className="text-sm font-semibold">Hồ sơ</h2>
+              <h2 className="text-sm font-semibold">{t("profile.profile")}</h2>
             </div>
 
             <div className="p-6">
@@ -126,7 +128,7 @@ export default function ProfilePage() {
                     accept="image/*"
                     onChange={handleAvatarChange}
                     className="hidden"
-                    aria-label="Upload avatar"
+                    aria-label={t("profile.uploadAvatar")}
                     ref={fileInputRef}
                   />
                 </div>
@@ -138,26 +140,26 @@ export default function ProfilePage() {
 
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Họ tên</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("common.fullName")}</label>
                   <Input name="Name" value={form.Name ?? ""} onChange={onChangeField} disabled={isLoading} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Email</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("common.email")}</label>
                   <Input name="Email" value={form.Email ?? ""} onChange={onChangeField} disabled={isLoading} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Số điện thoại</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("common.phone")}</label>
                   <Input name="Phone" value={form.Phone ?? ""} onChange={onChangeField} disabled={isLoading} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Địa chỉ</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t("common.address")}</label>
                   <Input name="Address" value={form.UserProfile?.Address ?? ""} onChange={onChangeField} disabled={isLoading} />
                 </div>
               </div>
 
               <div className="flex justify-end mt-6">
                 <Button type="button" onClick={onSubmit} loading={isSaving} disabled={isSaving}>
-                  Lưu thay đổi
+                  {t("common.saveChanges")}
                 </Button>
               </div>
             </div>
@@ -168,7 +170,7 @@ export default function ProfilePage() {
               <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
                 <KeyRound className="h-4 w-4" />
               </span>
-              <h2 className="text-sm font-semibold">Đổi mật khẩu</h2>
+              <h2 className="text-sm font-semibold">{t("common.changePassword")}</h2>
             </div>
             <div className="p-6">
               <ChangePasswordForm />

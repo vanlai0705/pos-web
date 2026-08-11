@@ -228,7 +228,7 @@ function SettingsPanel() {
 
 function RightActions() {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex shrink-0 items-center gap-1">
       <NotificationBell />
       <SettingsPanel />
       <ProfileDropdown />
@@ -263,7 +263,7 @@ export default function AppLayout() {
           <div className="min-w-0 flex-1">
             <HeaderNav />
           </div>
-          <div className="flex-none">
+          <div className="flex-none shrink-0">
             <RightActions />
           </div>
         </header>

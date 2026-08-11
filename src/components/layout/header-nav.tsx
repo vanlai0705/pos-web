@@ -257,6 +257,7 @@ export function HeaderNav() {
   const location = useLocation()
   const navItems = useNavItems()
   const filtered = navItems.filter(n => !n.isTitle)
+  const titleSignature = filtered.map(item => item.title).join('|')
 
   const containerRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLDivElement>(null)
@@ -286,9 +287,10 @@ export function HeaderNav() {
 
     const ro = new ResizeObserver(calc)
     ro.observe(container)
+    ro.observe(ruler)
     calc()
     return () => ro.disconnect()
-  }, [filtered.length])
+  }, [filtered.length, titleSignature])
 
   const overflow = filtered.slice(visibleCount)
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Warehouse } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import {
   fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
@@ -7,11 +8,18 @@ import {
   TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
 } from '../shared'
 
-const TABS = ['Nhập kho', 'Xuất kho', 'Kiểm kho', 'Chuyển kho', 'Tồn kho']
+const TAB_KEYS = [
+  'pages.report.stock.tabStockIn',
+  'pages.report.stock.tabStockOut',
+  'pages.report.stock.tabStockCheck',
+  'pages.report.stock.tabStockTransfer',
+  'pages.report.stock.tabInventory',
+]
 
 // ─── Stock In ─────────────────────────────────────────────────────────────────
 
 function StockInReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -28,21 +36,21 @@ function StockInReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Số lượng nhập', value: s.QuantityIn || 0, tone: 'sky' },
-        { title: 'Tổng cộng', value: s.Total || 0, tone: 'emerald' },
+        { title: t('pages.report.stock.quantityIn'), value: s.QuantityIn || 0, tone: 'sky' },
+        { title: t('metrics.grandTotal'), value: s.Total || 0, tone: 'emerald' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Số phiếu</TH>
-              <TH>Nhà cung cấp</TH>
-              <TH>Kho nhập</TH>
-              <TH right>Số lượng nhập</TH>
-              <TH right>Thành tiền</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH center>{t('common.date')}</TH>
+              <TH>{t('common.voucherNo')}</TH>
+              <TH>{t('common.supplier')}</TH>
+              <TH>{t('common.stockIn')}</TH>
+              <TH right>{t('pages.report.stock.quantityIn')}</TH>
+              <TH right>{t('metrics.amount')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -69,6 +77,7 @@ function StockInReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 // ─── Stock Out ────────────────────────────────────────────────────────────────
 
 function StockOutReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -85,21 +94,21 @@ function StockOutReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Số lượng xuất', value: s.QuantityOut || 0, tone: 'sky' },
-        { title: 'Tổng cộng', value: s.Total || 0, tone: 'emerald' },
+        { title: t('pages.report.stock.quantityOut'), value: s.QuantityOut || 0, tone: 'sky' },
+        { title: t('metrics.grandTotal'), value: s.Total || 0, tone: 'emerald' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Số phiếu</TH>
-              <TH>Nhân viên</TH>
-              <TH>Kho xuất</TH>
-              <TH right>Số lượng</TH>
-              <TH right>Tổng cộng</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH center>{t('common.date')}</TH>
+              <TH>{t('common.voucherNo')}</TH>
+              <TH>{t('common.employee')}</TH>
+              <TH>{t('common.stockOut')}</TH>
+              <TH right>{t('common.quantity')}</TH>
+              <TH right>{t('metrics.grandTotal')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -126,6 +135,7 @@ function StockOutReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string
 // ─── Stock Check (Kiểm kho) ───────────────────────────────────────────────────
 
 function StockCheckReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -142,24 +152,24 @@ function StockCheckReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Số lượng nhập', value: s.QuantityIn || 0, tone: 'sky' },
-        { title: 'Số lượng xuất', value: s.QuantityOut || 0, tone: 'amber' },
-        { title: 'Chênh lệch', value: (s.QuantityIn || 0) + (s.QuantityOut || 0), tone: 'emerald' },
+        { title: t('pages.report.stock.quantityIn'), value: s.QuantityIn || 0, tone: 'sky' },
+        { title: t('pages.report.stock.quantityOut'), value: s.QuantityOut || 0, tone: 'amber' },
+        { title: t('pages.report.stock.difference'), value: (s.QuantityIn || 0) + (s.QuantityOut || 0), tone: 'emerald' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Số phiếu</TH>
-              <TH>Nhân viên</TH>
-              <TH>Kho nhập</TH>
-              <TH>Kho xuất</TH>
-              <TH right>SL nhập</TH>
-              <TH right>SL xuất</TH>
-              <TH right>Chênh lệch</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH center>{t('common.date')}</TH>
+              <TH>{t('common.voucherNo')}</TH>
+              <TH>{t('common.employee')}</TH>
+              <TH>{t('common.stockIn')}</TH>
+              <TH>{t('common.stockOut')}</TH>
+              <TH right>{t('common.qtyIn')}</TH>
+              <TH right>{t('common.qtyOut')}</TH>
+              <TH right>{t('pages.report.stock.difference')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -188,6 +198,7 @@ function StockCheckReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
 // ─── Stock Transfer (Chuyển kho) ──────────────────────────────────────────────
 
 function StockTransferReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -204,20 +215,20 @@ function StockTransferReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: s
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Số lượng chuyển', value: s.QuantityTransfer || 0, tone: 'sky' },
+        { title: t('pages.report.stock.quantityTransfer'), value: s.QuantityTransfer || 0, tone: 'sky' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Số phiếu</TH>
-              <TH>Nhân viên</TH>
-              <TH>Kho nhập</TH>
-              <TH>Kho xuất</TH>
-              <TH right>SL chuyển</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH center>{t('common.date')}</TH>
+              <TH>{t('common.voucherNo')}</TH>
+              <TH>{t('common.employee')}</TH>
+              <TH>{t('common.stockIn')}</TH>
+              <TH>{t('common.stockOut')}</TH>
+              <TH right>{t('common.qtyTransfer')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -244,6 +255,7 @@ function StockTransferReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: s
 // ─── Inventory (Tồn kho) ──────────────────────────────────────────────────────
 
 function InventoryReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -260,26 +272,26 @@ function InventoryReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: strin
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Nhập trong kỳ', value: s.QuantityIn || 0, tone: 'sky' },
-        { title: 'Xuất trong kỳ', value: s.QuantityOut || 0, tone: 'amber' },
-        { title: 'Tồn cuối kỳ', value: s.QuantityEnd || 0, tone: 'emerald' },
-        { title: 'Thành tiền', value: s.Amount || 0, tone: 'rose' },
+        { title: t('metrics.periodStockIn'), value: s.QuantityIn || 0, tone: 'sky' },
+        { title: t('metrics.periodStockOut'), value: s.QuantityOut || 0, tone: 'amber' },
+        { title: t('metrics.endingBalance'), value: s.QuantityEnd || 0, tone: 'emerald' },
+        { title: t('metrics.amount'), value: s.Amount || 0, tone: 'rose' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH>Mã hàng</TH>
-              <TH>Tên mặt hàng</TH>
-              <TH>ĐVT</TH>
-              <TH right>Tồn đầu kỳ</TH>
-              <TH right>Nhập trong kỳ</TH>
-              <TH right>Xuất trong kỳ</TH>
-              <TH right>Tồn cuối kỳ</TH>
-              <TH right>Đơn giá</TH>
-              <TH right>Thành tiền</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH>{t('common.productCode')}</TH>
+              <TH>{t('common.productName')}</TH>
+              <TH>{t('common.unit')}</TH>
+              <TH right>{t('metrics.openingBalance')}</TH>
+              <TH right>{t('metrics.periodStockIn')}</TH>
+              <TH right>{t('metrics.periodStockOut')}</TH>
+              <TH right>{t('metrics.endingBalance')}</TH>
+              <TH right>{t('common.price')}</TH>
+              <TH right>{t('metrics.amount')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -313,11 +325,13 @@ function InventoryReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: strin
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ReportStockPage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState(0)
   const range = currentMonthRange()
   const [dateFrom, setDateFrom] = useState(range.from)
   const [dateTo, setDateTo] = useState(range.to)
   const { exportExcel, exporting } = useReportExcel()
+  const tabs = TAB_KEYS.map(key => t(key))
 
   /**
    * One export endpoint per stock-document tab. Tồn kho has none — pos_web
@@ -343,13 +357,13 @@ export default function ReportStockPage() {
             <Warehouse className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-800">Báo cáo kho hàng</p>
-            <p className="text-[11px] text-slate-500">Báo cáo nhập xuất, kiểm và tồn kho</p>
+            <p className="text-sm font-bold text-slate-800">{t('pages.report.stock.title')}</p>
+            <p className="text-[11px] text-slate-500">{t('pages.report.stock.subtitle')}</p>
           </div>
         </div>
 
         <div className="px-3 py-2 flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-          <ReportTabs tabs={TABS} active={tab} onSelect={setTab} />
+          <ReportTabs tabs={tabs} active={tab} onSelect={setTab} />
           <div className="flex items-center gap-2 flex-wrap">
             <ReportDateFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
             {EXPORTS[tab] && <ExcelBtn onClick={handleExport} loading={exporting} />}

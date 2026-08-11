@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag } from '@/components/ui/data-tag'
+import { useTranslation } from 'react-i18next'
 import {
   useGenericPostMutation,
   useLazyFilterReportQuery,
@@ -48,30 +49,30 @@ type PageMode = 'help' | 'support'
 
 const configByMode = {
   help: {
-    title: 'Hướng dẫn',
-    subtitle: 'Quản lý nội dung hướng dẫn theo chức năng trong hệ thống.',
+    titleKey: 'supports.helpTitle',
+    subtitleKey: 'supports.helpSubtitle',
     icon: FileQuestion,
     filterUrl: 'helps/filter',
     detailUrl: 'helps/detail',
     createUrl: 'helps/create',
     updateUrl: 'helps/update',
     lookupUrl: 'functions/filter-simple',
-    lookupLabel: 'Chức năng',
-    emptyText: 'Chưa có hướng dẫn nào',
-    searchPlaceholder: 'Tìm kiếm hướng dẫn...',
+    lookupLabelKey: 'supports.functionLabel',
+    emptyTextKey: 'supports.emptyHelp',
+    searchPlaceholderKey: 'supports.searchHelp',
   },
   support: {
-    title: 'Hỗ trợ',
-    subtitle: 'Theo dõi yêu cầu hỗ trợ và nội dung phản hồi từ người dùng.',
+    titleKey: 'supports.supportTitle',
+    subtitleKey: 'supports.supportSubtitle',
     icon: Headset,
     filterUrl: 'supports/filter',
     detailUrl: 'supports/detail',
     createUrl: 'supports/create',
     updateUrl: 'supports/update',
     lookupUrl: 'supports/filter-support-type',
-    lookupLabel: 'Loại hỗ trợ',
-    emptyText: 'Chưa có yêu cầu hỗ trợ nào',
-    searchPlaceholder: 'Tìm kiếm hỗ trợ...',
+    lookupLabelKey: 'supports.supportTypeLabel',
+    emptyTextKey: 'supports.emptySupport',
+    searchPlaceholderKey: 'supports.searchSupport',
   },
 } as const
 
@@ -88,7 +89,7 @@ function formatDate(value?: string) {
 }
 
 function getErrorMessage(error: any) {
-  return error?.data?.Errors?.[0]?.Message || error?.data?.Message || error?.message || 'Không thể xử lý yêu cầu'
+  return error?.data?.Errors?.[0]?.Message || error?.data?.Message || error?.message
 }
 
 function getLookup(item: SupportItem, mode: PageMode) {
@@ -127,6 +128,9 @@ function LookupDisplay({ item, fallbackIcon: FallbackIcon }: { item?: LookupItem
 
 export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string }) {
   const config = configByMode[mode]
+  const { t } = useTranslation()
+  const title = t(config.titleKey)
+  const lookupLabel = t(config.lookupLabelKey)
   const HeaderIcon = config.icon
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [keyword, setKeyword] = useState('')
@@ -158,7 +162,7 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
       setRows((result as any)?.Items || [])
       setTotal((result as any)?.TotalItemCount || 0)
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error) || t('common.requestFailed'))
     }
   }
 
@@ -204,7 +208,7 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
       setModalOpen(true)
       loadLookup()
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error) || t('common.requestFailed'))
     }
   }
 
@@ -219,29 +223,29 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
       setModalOpen(true)
       loadLookup()
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error) || t('common.requestFailed'))
     }
   }
 
   const saveDetail = async () => {
     if (!form.Name?.trim()) {
-      toast.error('Vui lòng nhập tên')
+      toast.error(t('common.requiredName'))
       return
     }
     const selectedLookup = getLookup(form, mode)
     if (!selectedLookup?.Id) {
-      toast.error(`Vui lòng chọn ${config.lookupLabel.toLowerCase()}`)
+      toast.error(t('supports.requiredLookup', { field: lookupLabel.toLowerCase() }))
       return
     }
     try {
       const body = buildSupportBody(form, selectedFiles)
       const url = form.Id ? config.updateUrl : config.createUrl
       await request({ url, body }).unwrap()
-      toast.success(form.Id ? 'Cập nhật thành công' : 'Thêm mới thành công')
+      toast.success(form.Id ? t('common.updateSuccess') : t('common.createSuccess'))
       setModalOpen(false)
       loadRows()
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error) || t('common.requestFailed'))
     }
   }
 
@@ -257,56 +261,56 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
     try {
       const body = buildSupportBody({ ...row, Status: { ...(row.Status ?? {}), Id: nextStatusId } }, [])
       await request({ url: config.updateUrl, body }).unwrap()
-      toast.success(nextStatusId === STATUS.Deleted ? 'Đã xóa dữ liệu' : 'Cập nhật trạng thái thành công')
+      toast.success(nextStatusId === STATUS.Deleted ? t('common.deleteSuccess') : t('common.statusUpdateSuccess'))
       loadRows()
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error) || t('common.requestFailed'))
     }
   }
 
   const columns = useMemo<ColumnDef<SupportItem>[]>(() => [
     {
-      header: 'STT',
+      header: t('common.index'),
       cell: ({ row }) => (page - 1) * pageSize + row.index + 1,
       meta: { className: 'w-16 text-center' },
     },
     {
-      header: mode === 'support' ? 'Mã hỗ trợ' : 'Mã',
+      header: mode === 'support' ? t('supports.supportCode') : t('common.code'),
       cell: ({ row }) => <CodeTag value={row.original.Code || row.original.Id} />,
       meta: { className: 'w-32' },
     },
     {
-      header: config.lookupLabel,
+      header: lookupLabel,
       cell: ({ row }) => <LookupDisplay item={getLookup(row.original, mode)} fallbackIcon={config.icon} />,
       meta: { className: 'min-w-52' },
     },
     {
-      header: 'Tên',
+      header: t('common.name'),
       cell: ({ row }) => <span className="font-medium text-slate-900">{row.original.Name || '-'}</span>,
       meta: { className: 'min-w-52' },
     },
     {
-      header: 'Nội dung',
+      header: t('common.content'),
       cell: ({ row }) => <span className="line-clamp-2 text-slate-600">{row.original.Description || '-'}</span>,
       meta: { className: 'min-w-72' },
     },
     {
-      header: 'Tạo bởi',
+      header: t('common.createdBy'),
       cell: ({ row }) => row.original.CreatorUser?.FullName || '-',
       meta: { className: 'w-40' },
     },
     {
-      header: 'Ngày tạo',
+      header: t('common.createdDate'),
       cell: ({ row }) => formatDate(row.original.CreationTime),
       meta: { className: 'w-32' },
     },
     {
-      header: 'Trạng thái',
+      header: t('common.status'),
       cell: ({ row }) => <StatusBadge status={row.original.Status} />,
       meta: { className: 'w-36' },
     },
     {
-      header: 'Thao tác',
+      header: t('common.actions'),
       cell: ({ row }) => {
         const currentStatus = Number(row.original.Status?.Id ?? STATUS.Actived)
         const nextStatus = currentStatus === STATUS.Locked ? STATUS.Actived : STATUS.Locked
@@ -327,7 +331,7 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
       },
       meta: { className: 'w-32 text-right' },
     },
-  ], [config.icon, config.lookupLabel, mode, page, pageSize])
+  ], [config.icon, lookupLabel, mode, page, pageSize, t])
 
   const selectedLookup = getLookup(form, mode)
   const lookupOptions = selectedLookup?.Id && !lookupItems.some(item => item.Id === selectedLookup.Id)
@@ -343,13 +347,13 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
               <HeaderIcon className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-slate-900">{config.title}</h1>
-              <p className="text-xs text-muted-foreground">{config.subtitle}</p>
+              <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
+              <p className="text-xs text-muted-foreground">{t(config.subtitleKey)}</p>
             </div>
           </div>
         }
         searchValue={keyword}
-        searchPlaceholder={config.searchPlaceholder}
+        searchPlaceholder={t(config.searchPlaceholderKey)}
         onSearchChange={(value) => {
           setKeyword(value)
           setPage(1)
@@ -363,20 +367,20 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
             }}
             className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 shadow-sm outline-none focus:border-blue-400"
           >
-            <option value="all">Tất cả TT</option>
-            <option value={STATUS.Actived}>Đang hoạt động</option>
-            <option value={STATUS.Locked}>Tạm khóa</option>
+            <option value="all">{t('common.allStatuses')}</option>
+            <option value={STATUS.Actived}>{t('common.active')}</option>
+            <option value={STATUS.Locked}>{t('common.locked')}</option>
           </select>
         }
         actions={
           <div className="flex items-center gap-2">
             <ToolbarButton tone="primary" onClick={openCreate}>
               <Plus className="h-4 w-4" />
-              Thêm mới
+              {t('common.addNew')}
             </ToolbarButton>
             <ToolbarButton tone="neutral" onClick={loadRows}>
               <RotateCcw className="h-4 w-4" />
-              Tải lại
+              {t('common.reload')}
             </ToolbarButton>
           </div>
         }
@@ -395,17 +399,17 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
           setPage(1)
         }}
         onRowDoubleClick={item => openDetail(item.Id)}
-        emptyText={config.emptyText}
+        emptyText={t(config.emptyTextKey)}
       />
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{form.Id ? `Sửa ${config.title.toLowerCase()}` : `Thêm ${config.title.toLowerCase()}`}</DialogTitle>
+            <DialogTitle>{form.Id ? t('common.editNamed', { name: title.toLowerCase() }) : t('common.addNamed', { name: title.toLowerCase() })}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-              {config.lookupLabel}
+              {lookupLabel}
               <select
                 value={selectedLookup?.Id ? String(selectedLookup.Id) : ''}
                 onFocus={() => lookupItems.length === 0 && loadLookup()}
@@ -415,24 +419,24 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
                 }}
                 className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-blue-400"
               >
-                <option value="">{loadingLookup ? 'Đang tải...' : `Chọn ${config.lookupLabel.toLowerCase()}`}</option>
+                <option value="">{loadingLookup ? t('common.loading') : t('common.selectNamed', { name: lookupLabel.toLowerCase() })}</option>
                 {lookupOptions.map(item => (
                   <option key={item.Id} value={item.Id}>{item.Name || item.Code || item.Id}</option>
                 ))}
               </select>
             </label>
             <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-              Tên
-              <Input value={form.Name || ''} onChange={event => setForm(current => ({ ...current, Name: event.target.value }))} placeholder="Tiêu đề" />
+              {t('common.name')}
+              <Input value={form.Name || ''} onChange={event => setForm(current => ({ ...current, Name: event.target.value }))} placeholder={t('common.title')} />
             </label>
             <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-              Nội dung
+              {t('common.content')}
               <Textarea value={form.Description || ''} onChange={event => setForm(current => ({ ...current, Description: event.target.value }))} rows={6} />
             </label>
 
             {mode === 'support' ? (
               <div className="grid gap-2">
-                <div className="text-sm font-medium text-slate-700">Hình ảnh</div>
+                <div className="text-sm font-medium text-slate-700">{t('common.images')}</div>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -443,7 +447,7 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
                 />
                 <Button type="button" variant="outline" className="w-fit gap-2" onClick={() => fileInputRef.current?.click()}>
                   <ImagePlus className="h-4 w-4" />
-                  Chọn ảnh
+                  {t('common.selectImage')}
                 </Button>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {form.Images?.map(image => image.Url ? (
@@ -459,8 +463,8 @@ export function SupportListPage({ mode, guid }: { mode: PageMode; guid?: string 
             ) : null}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Hủy</Button>
-            <Button loading={saving || loadingDetail} onClick={saveDetail}>Lưu</Button>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>{t('common.cancel')}</Button>
+            <Button loading={saving || loadingDetail} onClick={saveDetail}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

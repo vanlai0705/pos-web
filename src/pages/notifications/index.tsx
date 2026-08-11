@@ -4,6 +4,7 @@ import { cn } from "@/utils"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 import {
   useFilterNotificationsQuery,
   useUpdateNotificationStatusMutation,
@@ -39,6 +40,7 @@ function NotificationRow({
   onMarkRead: () => void
   onDelete: () => void
 }) {
+  const { t } = useTranslation()
   const isUnread = item.Status?.Id === 0
   const avatarUrl = imgUrl(item.Image?.Url)
 
@@ -75,11 +77,11 @@ function NotificationRow({
       {/* Actions on hover */}
       <div className="flex-none flex flex-col gap-1 opacity-0 group-hover:opacity-100" onClick={e => e.stopPropagation()}>
         {isUnread && (
-          <button onClick={onMarkRead} title="Đánh dấu đã đọc" className="p-1 rounded hover:bg-accent transition-colors">
+          <button onClick={onMarkRead} title={t('notifications.markRead')} className="p-1 rounded hover:bg-accent transition-colors">
             <Check className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         )}
-        <button onClick={onDelete} title="Xoá" className="p-1 rounded hover:bg-destructive/10 transition-colors">
+        <button onClick={onDelete} title={t('common.delete')} className="p-1 rounded hover:bg-destructive/10 transition-colors">
           <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
         </button>
       </div>
@@ -88,6 +90,7 @@ function NotificationRow({
 }
 
 export default function NotificationsPage() {
+  const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<TPosNotificationItem | null>(null)
 
@@ -104,7 +107,7 @@ export default function NotificationsPage() {
       await updateStatus({ id: item.Id, statusId: 1 }).unwrap()
       refetch()
     } catch {
-      toast.error("Không thể đánh dấu đã đọc")
+      toast.error(t('notifications.markReadFailed'))
     }
   }
 
@@ -114,7 +117,7 @@ export default function NotificationsPage() {
       if (selected?.Id === item.Id) setSelected(null)
       refetch()
     } catch {
-      toast.error("Không thể xoá thông báo")
+      toast.error(t('notifications.deleteFailed'))
     }
   }
 
@@ -122,9 +125,9 @@ export default function NotificationsPage() {
     try {
       await markAll().unwrap()
       refetch()
-      toast.success("Đã đánh dấu tất cả là đã đọc")
+      toast.success(t('notifications.markAllSuccess'))
     } catch {
-      toast.error("Không thể cập nhật")
+      toast.error(t('common.updateFailed'))
     }
   }
 
@@ -139,15 +142,15 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <Bell className="w-5 h-5" /> Thông báo
+            <Bell className="w-5 h-5" /> {t('notifications.title')}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {total > 0 ? `${total} thông báo` : "Không có thông báo"}
+            {total > 0 ? t('notifications.count', { count: total }) : t('notifications.empty')}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={handleMarkAll} disabled={markingAll}>
           <CheckCheck className="w-4 h-4 mr-1.5" />
-          Đánh dấu tất cả đã đọc
+          {t('notifications.markAllRead')}
         </Button>
       </div>
 
@@ -169,7 +172,7 @@ export default function NotificationsPage() {
               ? (
                 <div className="flex flex-col items-center justify-center flex-1 text-muted-foreground gap-2 py-12">
                   <Bell className="w-8 h-8 opacity-30" />
-                  <p className="text-sm">Không có thông báo</p>
+                  <p className="text-sm">{t('notifications.empty')}</p>
                 </div>
               )
               : items.map(item => (
@@ -189,10 +192,10 @@ export default function NotificationsPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-2 border-t mt-auto text-xs text-muted-foreground">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1 || isFetching}
-                className="px-2 py-1 rounded hover:bg-accent disabled:opacity-40">‹ Trước</button>
+                className="px-2 py-1 rounded hover:bg-accent disabled:opacity-40">{t('common.previous')}</button>
               <span>{page} / {totalPages}</span>
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || isFetching}
-                className="px-2 py-1 rounded hover:bg-accent disabled:opacity-40">Sau ›</button>
+                className="px-2 py-1 rounded hover:bg-accent disabled:opacity-40">{t('common.next')}</button>
             </div>
           )}
         </div>
@@ -219,7 +222,7 @@ export default function NotificationsPage() {
             : (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
                 <Bell className="w-10 h-10 opacity-20" />
-                <p className="text-sm">Chọn thông báo để xem chi tiết</p>
+                <p className="text-sm">{t('notifications.selectPrompt')}</p>
               </div>
             )
           }

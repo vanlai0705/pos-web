@@ -10,6 +10,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE, defaultDateFrom, defaultDateTo, DateRangeFilter } from '@/pages/actives/shared'
 import { CodeTag } from '@/components/ui/data-tag'
 import { PromotionDialog } from '@/components/pos/promotion-dialog'
+import { useTranslation } from 'react-i18next'
 
 const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
 
@@ -26,14 +27,16 @@ interface TPromotion {
 
 interface Props {
   type: number
-  title: string
+  titleKey: string
 }
 
-function errMsg(e: any) {
-  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || 'Không thể xử lý yêu cầu'
+function errMsg(e: any, fallback: string) {
+  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || fallback
 }
 
-export default function PromotionListPage({ type, title }: Props) {
+export default function PromotionListPage({ type, titleKey }: Props) {
+  const { t } = useTranslation()
+  const title = t(titleKey)
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -59,22 +62,22 @@ export default function PromotionListPage({ type, title }: Props) {
 
   const changeStatus = async (row: TPromotion, statusId: number) => {
     if (!row.Id) return
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá chương trình này?')) return
+    if (statusId === STATUS.DELETED && !window.confirm(t('promotions.list.confirmDelete'))) return
     try {
       await request({ url: `promotions/update-status?id=${row.Id}&statusId=${statusId}`, method: 'POST', body: {} }).unwrap()
-      toast.success('Lưu thành công')
+      toast.success(t('common.updateSuccess'))
       refetch()
-    } catch (e) { toast.error(errMsg(e)) }
+    } catch (e) { toast.error(errMsg(e, t('common.requestFailed'))) }
   }
 
   const columns: ColumnDef<TPromotion>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
-    { id: 'code', header: 'Mã', cell: ({ row }) => <CodeTag value={row.original.Code} /> },
-    { id: 'name', header: 'Tên chương trình', cell: ({ row }) => <span className="font-medium">{row.original.Name ?? '—'}</span> },
-    { id: 'from', header: 'Từ ngày', cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.DateFrom)}</span> },
-    { id: 'to', header: 'Đến ngày', cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.DateTo)}</span> },
-    { id: 'priority', header: 'Ưu tiên', cell: ({ row }) => <span className="text-xs">{row.original.Priority ?? 0}</span> },
-    { id: 'status', header: 'Trạng thái', cell: ({ row }) => <StatusBadge status={row.original.Status} /> },
+    { id: 'stt', header: t('common.index'), cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
+    { id: 'code', header: t('common.code'), cell: ({ row }) => <CodeTag value={row.original.Code} /> },
+    { id: 'name', header: t('common.programName'), cell: ({ row }) => <span className="font-medium">{row.original.Name ?? '—'}</span> },
+    { id: 'from', header: t('common.fromDate'), cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.DateFrom)}</span> },
+    { id: 'to', header: t('common.toDate'), cell: ({ row }) => <span className="text-xs">{fmtDate(row.original.DateTo)}</span> },
+    { id: 'priority', header: t('promotions.list.priority'), cell: ({ row }) => <span className="text-xs">{row.original.Priority ?? 0}</span> },
+    { id: 'status', header: t('common.status'), cell: ({ row }) => <StatusBadge status={row.original.Status} /> },
     {
       id: 'actions', header: '',
       cell: ({ row }) => {
@@ -85,21 +88,21 @@ export default function PromotionListPage({ type, title }: Props) {
               <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEdit(r)}>Chỉnh sửa</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openEdit(r)}>{t('common.edit')}</DropdownMenuItem>
               <DropdownMenuSeparator />
               {r.Status?.Id !== STATUS.ACTIVE && (
                 <DropdownMenuItem onClick={() => changeStatus(r, STATUS.ACTIVE)}>
-                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> Áp dụng
+                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> {t('promotions.list.apply')}
                 </DropdownMenuItem>
               )}
               {r.Status?.Id !== STATUS.LOCKED && (
                 <DropdownMenuItem onClick={() => changeStatus(r, STATUS.LOCKED)}>
-                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> Ngừng áp dụng
+                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> {t('promotions.list.stopApply')}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(r, STATUS.DELETED)}>
-                <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('common.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -111,10 +114,10 @@ export default function PromotionListPage({ type, title }: Props) {
   return (
     <div className="space-y-4">
       <ListPageHeader title={title} icon={Tag}>
-        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder="Tìm chương trình..." />
+        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder={t('common.searchProgram')} />
         <DateRangeFilter from={dateFrom} to={dateTo} onFrom={v => { setDateFrom(v); setPage(1) }} onTo={v => { setDateTo(v); setPage(1) }} />
         <Button size="sm" className="h-8" onClick={openCreate}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Thêm chương trình
+          <Plus className="h-3.5 w-3.5 mr-1" /> {t('promotions.list.addProgram')}
         </Button>
       </ListPageHeader>
 
@@ -127,7 +130,7 @@ export default function PromotionListPage({ type, title }: Props) {
         pageSize={pageSize} onPageSizeChange={setPageSize}
         onPageChange={setPage}
         onRowDoubleClick={openEdit}
-        emptyText={`Không có chương trình ${title.toLowerCase()} nào`}
+        emptyText={t('promotions.list.emptyByTitle', { title: title.toLowerCase() })}
       />
 
       <PromotionDialog

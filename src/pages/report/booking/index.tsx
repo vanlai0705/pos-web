@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ClipboardList } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import {
   fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
@@ -7,11 +8,12 @@ import {
   TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
 } from '../shared'
 
-const TABS = ['Báo cáo đặt hàng', 'Tổng hợp mặt hàng đặt']
+const TAB_KEYS = ['pages.report.booking.tabBooking', 'pages.report.booking.tabBookingItems']
 
 // ─── Booking report tab ───────────────────────────────────────────────────────
 
 function BookingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -28,27 +30,27 @@ function BookingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Tiền hàng', value: s.SubTotal || 0, tone: 'sky' },
-        { title: 'Giảm giá', value: s.Discount || 0, tone: 'rose' },
-        { title: 'Phí vận chuyển', value: s.TransferCost || 0, tone: 'amber' },
-        { title: 'Tổng cộng', value: s.Total || 0, tone: 'emerald' },
+        { title: t('metrics.subtotal'), value: s.SubTotal || 0, tone: 'sky' },
+        { title: t('metrics.discount'), value: s.Discount || 0, tone: 'rose' },
+        { title: t('metrics.shippingFee'), value: s.TransferCost || 0, tone: 'amber' },
+        { title: t('metrics.grandTotal'), value: s.Total || 0, tone: 'emerald' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH center>Ngày</TH>
-              <TH>Mã đặt hàng</TH>
-              <TH>Khách hàng</TH>
-              <TH center>Điện thoại</TH>
-              <TH>Địa chỉ</TH>
-              <TH right>Tiền hàng</TH>
-              <TH right>Giảm giá</TH>
-              <TH right>Thuế</TH>
-              <TH right>Phí vận chuyển</TH>
-              <TH right>Tổng cộng</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH center>{t('common.date')}</TH>
+              <TH>{t('pages.report.booking.bookingCode')}</TH>
+              <TH>{t('common.customer')}</TH>
+              <TH center>{t('common.phone')}</TH>
+              <TH>{t('common.address')}</TH>
+              <TH right>{t('metrics.subtotal')}</TH>
+              <TH right>{t('metrics.discount')}</TH>
+              <TH right>{t('common.tax')}</TH>
+              <TH right>{t('metrics.shippingFee')}</TH>
+              <TH right>{t('metrics.grandTotal')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -79,6 +81,7 @@ function BookingReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string 
 // ─── Booking-item report tab ──────────────────────────────────────────────────
 
 function BookingItemReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
@@ -95,21 +98,21 @@ function BookingItemReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <StatCards cards={[
-        { title: 'Số lượng', value: s.Quantity || 0, tone: 'sky' },
-        { title: 'Thành tiền', value: s.Amount || 0, tone: 'emerald' },
+        { title: t('common.quantity'), value: s.Quantity || 0, tone: 'sky' },
+        { title: t('metrics.amount'), value: s.Amount || 0, tone: 'emerald' },
       ]} />
 
       <div className="flex-1 min-h-0 overflow-auto mt-2">
         <table className="w-full text-xs border-separate min-w-max" style={{ borderSpacing: 0 }}>
           <thead>
             <tr>
-              <TH center>STT</TH>
-              <TH>Mã hàng</TH>
-              <TH>Mặt hàng</TH>
-              <TH>Đơn vị tính</TH>
-              <TH right>Số lượng</TH>
-              <TH right>Đơn giá</TH>
-              <TH right>Thành tiền</TH>
+              <TH center>{t('common.index')}</TH>
+              <TH>{t('common.productCode')}</TH>
+              <TH>{t('common.product')}</TH>
+              <TH>{t('common.unit')}</TH>
+              <TH right>{t('common.quantity')}</TH>
+              <TH right>{t('common.price')}</TH>
+              <TH right>{t('metrics.amount')}</TH>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -136,11 +139,13 @@ function BookingItemReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function ReportBookingPage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState(0)
   const range = currentMonthRange()
   const [dateFrom, setDateFrom] = useState(range.from)
   const [dateTo, setDateTo] = useState(range.to)
   const { exportExcel, exporting } = useReportExcel()
+  const tabs = TAB_KEYS.map(key => t(key))
 
   /** Each tab exports its own dataset with the filters currently applied. */
   const handleExport = () =>
@@ -156,13 +161,13 @@ export default function ReportBookingPage() {
             <ClipboardList className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-800">Báo cáo đặt hàng</p>
-            <p className="text-[11px] text-slate-500">Báo cáo đặt hàng theo đơn và mặt hàng</p>
+            <p className="text-sm font-bold text-slate-800">{t('pages.report.booking.title')}</p>
+            <p className="text-[11px] text-slate-500">{t('pages.report.booking.subtitle')}</p>
           </div>
         </div>
 
         <div className="px-3 py-2 flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-          <ReportTabs tabs={TABS} active={tab} onSelect={setTab} />
+          <ReportTabs tabs={tabs} active={tab} onSelect={setTab} />
           <div className="flex items-center gap-2 flex-wrap">
             <ReportDateFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
             <ExcelBtn onClick={handleExport} loading={exporting} />

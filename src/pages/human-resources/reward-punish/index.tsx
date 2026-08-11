@@ -15,6 +15,7 @@ import {
   defaultDateFrom, defaultDateTo,
 } from '@/pages/actives/shared'
 import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
 
 const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
 
@@ -33,11 +34,12 @@ interface TRewardPunish {
   Status?: { Id?: number; Name?: string }
 }
 
-function errMsg(e: any) {
-  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || 'Không thể xử lý yêu cầu'
+function errMsg(e: any, fallback: string) {
+  return e?.data?.Errors?.[0]?.Message || e?.data?.Message || fallback
 }
 
 export default function RewardPunishPage() {
+  const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -64,33 +66,33 @@ export default function RewardPunishPage() {
 
   const changeStatus = async (row: TRewardPunish, statusId: number) => {
     if (!row.Id) return
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá phiếu này?')) return
+    if (statusId === STATUS.DELETED && !window.confirm(t('humanResources.rewardPunish.confirmDelete'))) return
     try {
       await request({ url: `rewardpunishs/update-status?id=${row.Id}&statusId=${statusId}`, method: 'POST', body: {} }).unwrap()
-      toast.success('Lưu thành công')
+      toast.success(t('common.updateSuccess'))
       refetch()
-    } catch (e) { toast.error(errMsg(e)) }
+    } catch (e) { toast.error(errMsg(e, t('common.requestFailed'))) }
   }
 
   const columns: ColumnDef<TRewardPunish>[] = [
-    { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
-    { id: 'name', header: 'Số phiếu', cell: ({ row }) => <VoucherTag value={row.original.Name} /> },
-    { id: 'user', header: 'Nhân viên', cell: ({ row }) => <span className="font-medium">{row.original.User?.Name || '—'}</span> },
+    { id: 'stt', header: t('common.index'), cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
+    { id: 'name', header: t('common.voucherNo'), cell: ({ row }) => <VoucherTag value={row.original.Name} /> },
+    { id: 'user', header: t('common.employee'), cell: ({ row }) => <span className="font-medium">{row.original.User?.Name || '—'}</span> },
     {
-      id: 'date', header: 'Ngày tạo',
+      id: 'date', header: t('common.createdDate'),
       cell: ({ row }) => <span className="text-xs">{row.original.Date ? dayjs(row.original.Date).format('DD/MM/YYYY') : '—'}</span>,
     },
-    { id: 'amount', header: 'Số tiền', cell: ({ row }) => <MoneyTag value={row.original.Amount} /> },
+    { id: 'amount', header: t('common.amount'), cell: ({ row }) => <MoneyTag value={row.original.Amount} /> },
     {
-      id: 'type', header: 'Loại',
+      id: 'type', header: t('common.type'),
       cell: ({ row }) => (
         <span className={`text-xs font-medium ${row.original.Type === REWARD_PUNISH_TYPE.REWARD ? 'text-emerald-600' : 'text-red-600'}`}>
-          {row.original.Type === REWARD_PUNISH_TYPE.REWARD ? 'Thưởng' : 'Phạt'}
+          {row.original.Type === REWARD_PUNISH_TYPE.REWARD ? t('components.rewardPunishDialog.reward') : t('components.rewardPunishDialog.punish')}
         </span>
       ),
     },
-    { id: 'reason', header: 'Lý do', cell: ({ row }) => <span className="text-sm">{row.original.RewardPunishReason?.Name || '—'}</span> },
-    { id: 'status', header: 'Trạng thái', cell: ({ row }) => <StatusBadge statusId={row.original.Status?.Id} label={row.original.Status?.Name} /> },
+    { id: 'reason', header: t('common.reason'), cell: ({ row }) => <span className="text-sm">{row.original.RewardPunishReason?.Name || '—'}</span> },
+    { id: 'status', header: t('common.status'), cell: ({ row }) => <StatusBadge statusId={row.original.Status?.Id} label={row.original.Status?.Name} /> },
     {
       id: 'actions', header: '',
       cell: ({ row }) => {
@@ -101,21 +103,21 @@ export default function RewardPunishPage() {
               <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEdit(r)}>Chỉnh sửa</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openEdit(r)}>{t('common.edit')}</DropdownMenuItem>
               <DropdownMenuSeparator />
               {r.Status?.Id !== STATUS.ACTIVE && (
                 <DropdownMenuItem onClick={() => changeStatus(r, STATUS.ACTIVE)}>
-                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> Kích hoạt
+                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> {t('common.activate')}
                 </DropdownMenuItem>
               )}
               {r.Status?.Id !== STATUS.LOCKED && (
                 <DropdownMenuItem onClick={() => changeStatus(r, STATUS.LOCKED)}>
-                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> Khoá
+                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> {t('common.lock')}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(r, STATUS.DELETED)}>
-                <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('common.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -126,11 +128,11 @@ export default function RewardPunishPage() {
 
   return (
     <div className="space-y-4">
-      <ListPageHeader title="Khen thưởng & Kỷ luật" icon={Award}>
-        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder="Tìm phiếu..." />
+      <ListPageHeader title={t('humanResources.rewardPunish.title')} icon={Award}>
+        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder={t('common.searchVoucher')} />
         <DateRangeFilter from={dateFrom} to={dateTo} onFrom={v => { setDateFrom(v); setPage(1) }} onTo={v => { setDateTo(v); setPage(1) }} />
         <Button size="sm" className="h-8" onClick={openCreate}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Thêm phiếu
+          <Plus className="h-3.5 w-3.5 mr-1" /> {t('humanResources.rewardPunish.addVoucher')}
         </Button>
       </ListPageHeader>
 
@@ -139,7 +141,7 @@ export default function RewardPunishPage() {
         page={page} pageSize={pageSize}
         onPageChange={setPage} onPageSizeChange={setPageSize}
         onRowDoubleClick={openEdit}
-        emptyText="Không có phiếu khen thưởng / kỷ luật nào"
+        emptyText={t('humanResources.rewardPunish.emptyText')}
       />
 
       <RewardPunishDialog open={modal} onOpenChange={setModal} editId={editId} onSaved={refetch} />

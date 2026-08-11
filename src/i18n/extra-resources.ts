@@ -38,8 +38,10 @@ export const extraResources: Record<string, any> = {
       email: "Email",
       customer: "Khách hàng",
       supplier: "Nhà cung cấp",
+      employee: "Nhân viên",
       product: "Sản phẩm",
       order: "Đơn hàng",
+      tax: "Thuế",
       receiptNo: "Số hóa đơn",
       cash: "Tiền mặt",
       transfer: "Chuyển khoản",
@@ -134,7 +136,98 @@ export const extraResources: Record<string, any> = {
       rows: "Số dòng",
       addChildGroup: "Thêm nhóm con",
       editGroup: "Sửa nhóm",
-      deleteGroup: "Xóa nhóm"
+      deleteGroup: "Xóa nhóm",
+      delete: "Xoá",
+      edit: "Chỉnh sửa",
+      previous: "Trước",
+      next: "Sau",
+      goBack: "Quay lại",
+      backHome: "Về trang chủ",
+      fullName: "Họ tên",
+      saveChanges: "Lưu thay đổi",
+      requestFailed: "Không thể xử lý yêu cầu",
+      updateFailed: "Không thể cập nhật",
+      updateSuccess: "Cập nhật thành công",
+      createSuccess: "Thêm mới thành công",
+      deleteSuccess: "Đã xóa dữ liệu",
+      statusUpdateSuccess: "Cập nhật trạng thái thành công",
+      requiredName: "Vui lòng nhập tên",
+      content: "Nội dung",
+      createdBy: "Tạo bởi",
+      createdDate: "Ngày tạo",
+      images: "Hình ảnh",
+      selectImage: "Chọn ảnh",
+      title: "Tiêu đề",
+      month: "Tháng",
+      type: "Loại",
+      editNamed: "Sửa {{name}}",
+      addNamed: "Thêm {{name}}",
+      selectNamed: "Chọn {{name}}"
+    },
+    notifications: {
+      title: "Thông báo",
+      count: "{{count}} thông báo",
+      empty: "Không có thông báo",
+      markRead: "Đánh dấu đã đọc",
+      markReadFailed: "Không thể đánh dấu đã đọc",
+      markAllRead: "Đánh dấu tất cả đã đọc",
+      markAllSuccess: "Đã đánh dấu tất cả là đã đọc",
+      deleteFailed: "Không thể xoá thông báo",
+      selectPrompt: "Chọn thông báo để xem chi tiết"
+    },
+    profile: {
+      personalInfo: "Thông tin cá nhân",
+      profile: "Hồ sơ",
+      uploadAvatar: "Tải ảnh đại diện",
+      requiredFullName: "Vui lòng nhập họ tên",
+      updateSuccess: "Cập nhật hồ sơ thành công",
+      updateFailed: "Cập nhật thất bại"
+    },
+    supports: {
+      helpTitle: "Hướng dẫn",
+      helpDescription: "Quản lý nội dung hướng dẫn theo chức năng.",
+      helpSubtitle: "Quản lý nội dung hướng dẫn theo chức năng trong hệ thống.",
+      supportTitle: "Hỗ trợ",
+      supportDescription: "Theo dõi yêu cầu hỗ trợ và phản hồi người dùng.",
+      supportSubtitle: "Theo dõi yêu cầu hỗ trợ và nội dung phản hồi từ người dùng.",
+      functionLabel: "Chức năng",
+      supportTypeLabel: "Loại hỗ trợ",
+      emptyHelp: "Chưa có hướng dẫn nào",
+      emptySupport: "Chưa có yêu cầu hỗ trợ nào",
+      searchHelp: "Tìm kiếm hướng dẫn...",
+      searchSupport: "Tìm kiếm hỗ trợ...",
+      supportCode: "Mã hỗ trợ",
+      requiredLookup: "Vui lòng chọn {{field}}"
+    },
+    errors: {
+      notFoundTitle: "Không tìm thấy trang",
+      notFoundDescription: "Trang bạn đang tìm không tồn tại.",
+      noPermissionTitle: "Không có quyền truy cập",
+      noPermissionDescription: "Bạn không có quyền xem trang này."
+    },
+    humanResources: {
+      salary: {
+        salary: "Lương",
+        advancePayment: "Tạm ứng",
+        remaining: "Còn lại",
+        emptyPayroll: "Không có bảng lương nào"
+      },
+      rewardPunish: {
+        title: "Khen thưởng & Kỷ luật",
+        addVoucher: "Thêm phiếu",
+        emptyText: "Không có phiếu khen thưởng / kỷ luật nào",
+        confirmDelete: "Xoá phiếu này?"
+      }
+    },
+    promotions: {
+      list: {
+        confirmDelete: "Xoá chương trình này?",
+        priority: "Ưu tiên",
+        apply: "Áp dụng",
+        stopApply: "Ngừng áp dụng",
+        addProgram: "Thêm chương trình",
+        emptyByTitle: "Không có chương trình {{title}} nào"
+      }
     },
     menu: {
       main: "Chính",
@@ -168,6 +261,7 @@ export const extraResources: Record<string, any> = {
       salaryPays: "Chi lương",
       shifts: "Ca làm việc",
       reports: "Báo cáo",
+      statistics: "Thống kê",
       salesReport: "Báo cáo bán hàng",
       bookingReport: "Báo cáo đặt hàng",
       cashReport: "Thu chi",
@@ -175,6 +269,8 @@ export const extraResources: Record<string, any> = {
       reportViewer: "Report Viewer",
       notifications: "Thông báo",
       settings: "Cài đặt",
+      support: "Hỗ trợ",
+      system: "Hệ thống",
       actives: "Hoạt động",
       orderManager: "Quản lý bán hàng",
       booking: "Khách đặt hàng",
@@ -193,6 +289,7 @@ export const extraResources: Record<string, any> = {
       units: "Đơn vị tính",
       templates: "Quản lý mẫu hóa đơn",
       discountTotalOrder: "Giảm giá tổng ĐH",
+      discountByOrderValue: "Giảm giá theo giá trị đơn hàng",
       discountByOrder: "Giảm giá theo ĐH",
       discountByGroup: "Giảm giá theo nhóm",
       discountByProduct: "Giảm giá theo MH",
@@ -505,6 +602,38 @@ export const extraResources: Record<string, any> = {
           colQtyReturned: "SL Trả",
           colUnitPrice: "Đơn giá",
           colAmount: "Thành tiền",
+        },
+        currency: {
+          title: "Báo cáo thu chi",
+          subtitle: "Phiếu thu, phiếu chi và tồn quỹ",
+          tabReceiptPayment: "Danh sách thu chi",
+          tabReceipt: "Phiếu thu",
+          tabPayment: "Phiếu chi",
+          tabCashBalance: "Tồn quỹ",
+          receiptShort: "Thu",
+          paymentShort: "Chi",
+          addressOrDocument: "Địa chỉ / Chứng từ",
+          originalDocument: "Chứng từ gốc"
+        },
+        stock: {
+          title: "Báo cáo kho hàng",
+          subtitle: "Báo cáo nhập xuất, kiểm và tồn kho",
+          tabStockIn: "Nhập kho",
+          tabStockOut: "Xuất kho",
+          tabStockCheck: "Kiểm kho",
+          tabStockTransfer: "Chuyển kho",
+          tabInventory: "Tồn kho",
+          quantityIn: "Số lượng nhập",
+          quantityOut: "Số lượng xuất",
+          quantityTransfer: "Số lượng chuyển",
+          difference: "Chênh lệch"
+        },
+        booking: {
+          title: "Báo cáo đặt hàng",
+          subtitle: "Báo cáo đặt hàng theo đơn và mặt hàng",
+          tabBooking: "Báo cáo đặt hàng",
+          tabBookingItems: "Tổng hợp mặt hàng đặt",
+          bookingCode: "Mã đặt hàng"
         },
       },
       setting: {
@@ -1147,6 +1276,13 @@ export const extraResources: Record<string, any> = {
       }
     },
     components: {
+      commandMenu: {
+        placeholder: "Nhập lệnh hoặc tìm kiếm...",
+        noResults: "Không tìm thấy kết quả.",
+        themeLight: "Sáng",
+        themeDark: "Tối",
+        themeSystem: "Hệ thống"
+      },
       voucherContent: {
         inboundWarehouseLabel: "Nhập tại kho",
         outboundWarehouseLabel: "Xuất tại kho",
@@ -1518,8 +1654,10 @@ export const extraResources: Record<string, any> = {
       email: "Email",
       customer: "Customer",
       supplier: "Supplier",
+      employee: "Employee",
       product: "Product",
       order: "Order",
+      tax: "Tax",
       receiptNo: "Invoice no.",
       cash: "Cash",
       transfer: "Transfer",
@@ -1614,7 +1752,98 @@ export const extraResources: Record<string, any> = {
       rows: "Rows",
       addChildGroup: "Add child group",
       editGroup: "Edit group",
-      deleteGroup: "Delete group"
+      deleteGroup: "Delete group",
+      delete: "Delete",
+      edit: "Edit",
+      previous: "Previous",
+      next: "Next",
+      goBack: "Go back",
+      backHome: "Back home",
+      fullName: "Full name",
+      saveChanges: "Save changes",
+      requestFailed: "Unable to process request",
+      updateFailed: "Unable to update",
+      updateSuccess: "Updated successfully",
+      createSuccess: "Created successfully",
+      deleteSuccess: "Data deleted",
+      statusUpdateSuccess: "Status updated successfully",
+      requiredName: "Please enter a name",
+      content: "Content",
+      createdBy: "Created by",
+      createdDate: "Created date",
+      images: "Images",
+      selectImage: "Select image",
+      title: "Title",
+      month: "Month",
+      type: "Type",
+      editNamed: "Edit {{name}}",
+      addNamed: "Add {{name}}",
+      selectNamed: "Select {{name}}"
+    },
+    notifications: {
+      title: "Notifications",
+      count: "{{count}} notifications",
+      empty: "No notifications",
+      markRead: "Mark as read",
+      markReadFailed: "Unable to mark as read",
+      markAllRead: "Mark all as read",
+      markAllSuccess: "All notifications marked as read",
+      deleteFailed: "Unable to delete notification",
+      selectPrompt: "Select a notification to view details"
+    },
+    profile: {
+      personalInfo: "Personal information",
+      profile: "Profile",
+      uploadAvatar: "Upload avatar",
+      requiredFullName: "Please enter full name",
+      updateSuccess: "Profile updated successfully",
+      updateFailed: "Profile update failed"
+    },
+    supports: {
+      helpTitle: "Help",
+      helpDescription: "Manage help content by function.",
+      helpSubtitle: "Manage help content by system function.",
+      supportTitle: "Support",
+      supportDescription: "Track support requests and user replies.",
+      supportSubtitle: "Track support requests and response content from users.",
+      functionLabel: "Function",
+      supportTypeLabel: "Support type",
+      emptyHelp: "No help content yet",
+      emptySupport: "No support requests yet",
+      searchHelp: "Search help...",
+      searchSupport: "Search support...",
+      supportCode: "Support code",
+      requiredLookup: "Please select {{field}}"
+    },
+    errors: {
+      notFoundTitle: "Page not found",
+      notFoundDescription: "The page you are looking for does not exist.",
+      noPermissionTitle: "No permission",
+      noPermissionDescription: "You do not have permission to view this page."
+    },
+    humanResources: {
+      salary: {
+        salary: "Salary",
+        advancePayment: "Advance",
+        remaining: "Remaining",
+        emptyPayroll: "No payroll records"
+      },
+      rewardPunish: {
+        title: "Rewards & Discipline",
+        addVoucher: "Add voucher",
+        emptyText: "No reward/discipline vouchers",
+        confirmDelete: "Delete this voucher?"
+      }
+    },
+    promotions: {
+      list: {
+        confirmDelete: "Delete this program?",
+        priority: "Priority",
+        apply: "Apply",
+        stopApply: "Stop applying",
+        addProgram: "Add program",
+        emptyByTitle: "No {{title}} programs"
+      }
     },
     menu: {
       main: "Main",
@@ -1648,6 +1877,7 @@ export const extraResources: Record<string, any> = {
       salaryPays: "Salary payments",
       shifts: "Shifts",
       reports: "Reports",
+      statistics: "Statistics",
       salesReport: "Sales report",
       bookingReport: "Booking report",
       cashReport: "Cash report",
@@ -1655,6 +1885,8 @@ export const extraResources: Record<string, any> = {
       reportViewer: "Report Viewer",
       notifications: "Notifications",
       settings: "Settings",
+      support: "Support",
+      system: "System",
       actives: "Operations",
       orderManager: "Sales management",
       booking: "Bookings",
@@ -1673,6 +1905,7 @@ export const extraResources: Record<string, any> = {
       units: "Units",
       templates: "Invoice templates",
       discountTotalOrder: "Total order discount",
+      discountByOrderValue: "Order value discount",
       discountByOrder: "Order discount",
       discountByGroup: "Group discount",
       discountByProduct: "Product discount",
@@ -1985,6 +2218,38 @@ export const extraResources: Record<string, any> = {
           colQtyReturned: "Qty Returned",
           colUnitPrice: "Unit price",
           colAmount: "Amount",
+        },
+        currency: {
+          title: "Cash Flow Report",
+          subtitle: "Receipts, payments, and cash balance",
+          tabReceiptPayment: "Receipt/payment list",
+          tabReceipt: "Receipts",
+          tabPayment: "Payments",
+          tabCashBalance: "Cash balance",
+          receiptShort: "Receipt",
+          paymentShort: "Payment",
+          addressOrDocument: "Address / Document",
+          originalDocument: "Original document"
+        },
+        stock: {
+          title: "Stock Report",
+          subtitle: "Stock in, stock out, checks, transfers, and inventory",
+          tabStockIn: "Stock in",
+          tabStockOut: "Stock out",
+          tabStockCheck: "Stock check",
+          tabStockTransfer: "Transfer",
+          tabInventory: "Inventory",
+          quantityIn: "Quantity in",
+          quantityOut: "Quantity out",
+          quantityTransfer: "Quantity transferred",
+          difference: "Difference"
+        },
+        booking: {
+          title: "Booking Report",
+          subtitle: "Booking report by order and by product",
+          tabBooking: "Booking Report",
+          tabBookingItems: "Booked Product Summary",
+          bookingCode: "Booking code"
         },
       },
       setting: {
@@ -2627,6 +2892,13 @@ export const extraResources: Record<string, any> = {
       }
     },
     components: {
+      commandMenu: {
+        placeholder: "Type a command or search...",
+        noResults: "No results found.",
+        themeLight: "Light",
+        themeDark: "Dark",
+        themeSystem: "System"
+      },
       voucherContent: {
         inboundWarehouseLabel: "Received at warehouse",
         outboundWarehouseLabel: "Issued at warehouse",
@@ -3004,8 +3276,10 @@ extraResources.km = {
     email: "អ៊ីមែល",
     customer: "អតិថិជន",
     supplier: "អ្នកផ្គត់ផ្គង់",
+    employee: "បុគ្គលិក",
     product: "ទំនិញ",
     order: "ការបញ្ជាទិញ",
+    tax: "ពន្ធ",
     receiptNo: "លេខវិក្កយបត្រ",
     cash: "សាច់ប្រាក់",
     transfer: "ផ្ទេរប្រាក់",
@@ -3100,7 +3374,98 @@ extraResources.km = {
     rows: "ជួរ",
     addChildGroup: "បន្ថែមក្រុមរង",
     editGroup: "កែសម្រួលក្រុម",
-    deleteGroup: "លុបក្រុម"
+    deleteGroup: "លុបក្រុម",
+    delete: "លុប",
+    edit: "កែសម្រួល",
+    previous: "មុន",
+    next: "បន្ទាប់",
+    goBack: "ត្រឡប់ក្រោយ",
+    backHome: "ទៅទំព័រដើម",
+    fullName: "ឈ្មោះពេញ",
+    saveChanges: "រក្សាទុកការផ្លាស់ប្តូរ",
+    requestFailed: "មិនអាចដំណើរការសំណើបានទេ",
+    updateFailed: "មិនអាចធ្វើបច្ចុប្បន្នភាពបានទេ",
+    updateSuccess: "ធ្វើបច្ចុប្បន្នភាពជោគជ័យ",
+    createSuccess: "បង្កើតជោគជ័យ",
+    deleteSuccess: "បានលុបទិន្នន័យ",
+    statusUpdateSuccess: "ធ្វើបច្ចុប្បន្នភាពស្ថានភាពជោគជ័យ",
+    requiredName: "សូមបញ្ចូលឈ្មោះ",
+    content: "មាតិកា",
+    createdBy: "បង្កើតដោយ",
+    createdDate: "កាលបរិច្ឆេទបង្កើត",
+    images: "រូបភាព",
+    selectImage: "ជ្រើសរើសរូបភាព",
+    title: "ចំណងជើង",
+    month: "ខែ",
+    type: "ប្រភេទ",
+    editNamed: "កែសម្រួល {{name}}",
+    addNamed: "បន្ថែម {{name}}",
+    selectNamed: "ជ្រើសរើស {{name}}"
+  },
+  notifications: {
+    title: "ការជូនដំណឹង",
+    count: "ការជូនដំណឹង {{count}}",
+    empty: "មិនមានការជូនដំណឹង",
+    markRead: "សម្គាល់ថាបានអាន",
+    markReadFailed: "មិនអាចសម្គាល់ថាបានអានបានទេ",
+    markAllRead: "សម្គាល់ទាំងអស់ថាបានអាន",
+    markAllSuccess: "បានសម្គាល់ទាំងអស់ថាបានអាន",
+    deleteFailed: "មិនអាចលុបការជូនដំណឹងបានទេ",
+    selectPrompt: "ជ្រើសរើសការជូនដំណឹងដើម្បីមើលព័ត៌មានលម្អិត"
+  },
+  profile: {
+    personalInfo: "ព័ត៌មានផ្ទាល់ខ្លួន",
+    profile: "ប្រវត្តិរូប",
+    uploadAvatar: "ផ្ទុករូបតំណាង",
+    requiredFullName: "សូមបញ្ចូលឈ្មោះពេញ",
+    updateSuccess: "ធ្វើបច្ចុប្បន្នភាពប្រវត្តិរូបជោគជ័យ",
+    updateFailed: "ធ្វើបច្ចុប្បន្នភាពប្រវត្តិរូបបរាជ័យ"
+  },
+  supports: {
+    helpTitle: "ជំនួយ",
+    helpDescription: "គ្រប់គ្រងមាតិកាជំនួយតាមមុខងារ។",
+    helpSubtitle: "គ្រប់គ្រងមាតិកាជំនួយតាមមុខងារនៅក្នុងប្រព័ន្ធ។",
+    supportTitle: "គាំទ្រ",
+    supportDescription: "តាមដានសំណើគាំទ្រ និងការឆ្លើយតបរបស់អ្នកប្រើ។",
+    supportSubtitle: "តាមដានសំណើគាំទ្រ និងមាតិកាឆ្លើយតបពីអ្នកប្រើ។",
+    functionLabel: "មុខងារ",
+    supportTypeLabel: "ប្រភេទគាំទ្រ",
+    emptyHelp: "មិនទាន់មានមាតិកាជំនួយ",
+    emptySupport: "មិនទាន់មានសំណើគាំទ្រ",
+    searchHelp: "ស្វែងរកជំនួយ...",
+    searchSupport: "ស្វែងរកគាំទ្រ...",
+    supportCode: "លេខកូដគាំទ្រ",
+    requiredLookup: "សូមជ្រើសរើស {{field}}"
+  },
+  errors: {
+    notFoundTitle: "រកមិនឃើញទំព័រ",
+    notFoundDescription: "ទំព័រដែលអ្នកកំពុងស្វែងរកមិនមានទេ។",
+    noPermissionTitle: "គ្មានសិទ្ធិចូលប្រើ",
+    noPermissionDescription: "អ្នកគ្មានសិទ្ធិមើលទំព័រនេះទេ។"
+  },
+  humanResources: {
+    salary: {
+      salary: "ប្រាក់ខែ",
+      advancePayment: "ប្រាក់បុរេប្រទាន",
+      remaining: "នៅសល់",
+      emptyPayroll: "មិនមានបញ្ជីប្រាក់ខែ"
+    },
+    rewardPunish: {
+      title: "រង្វាន់ និងវិន័យ",
+      addVoucher: "បន្ថែមបង្កាន់ដៃ",
+      emptyText: "មិនមានបង្កាន់ដៃរង្វាន់/វិន័យ",
+      confirmDelete: "លុបបង្កាន់ដៃនេះ?"
+    }
+  },
+  promotions: {
+    list: {
+      confirmDelete: "លុបកម្មវិធីនេះ?",
+      priority: "អាទិភាព",
+      apply: "អនុវត្ត",
+      stopApply: "បញ្ឈប់ការអនុវត្ត",
+      addProgram: "បន្ថែមកម្មវិធី",
+      emptyByTitle: "មិនមានកម្មវិធី {{title}}"
+    }
   },
   menu: {
     main: "មេ",
@@ -3134,6 +3499,7 @@ extraResources.km = {
     salaryPays: "បើកប្រាក់ខែ",
     shifts: "វេនការងារ",
     reports: "របាយការណ៍",
+    statistics: "ស្ថិតិ",
     salesReport: "របាយការណ៍លក់",
     bookingReport: "របាយការណ៍កក់",
     cashReport: "របាយការណ៍ចំណូលចំណាយ",
@@ -3141,6 +3507,8 @@ extraResources.km = {
     reportViewer: "មើលរបាយការណ៍",
     notifications: "ការជូនដំណឹង",
     settings: "ការកំណត់",
+    support: "ជំនួយ",
+    system: "ប្រព័ន្ធ",
     actives: "ប្រតិបត្តិការ",
     orderManager: "គ្រប់គ្រងការលក់",
     booking: "ការកក់",
@@ -3159,6 +3527,7 @@ extraResources.km = {
     units: "ឯកតា",
     templates: "គំរូវិក្កយបត្រ",
     discountTotalOrder: "បញ្ចុះតម្លៃសរុបការបញ្ជាទិញ",
+    discountByOrderValue: "បញ្ចុះតម្លៃតាមតម្លៃការបញ្ជាទិញ",
     discountByOrder: "បញ្ចុះតម្លៃតាមការបញ្ជាទិញ",
     discountByGroup: "បញ្ចុះតម្លៃតាមក្រុម",
     discountByProduct: "បញ្ចុះតម្លៃតាមទំនិញ",
@@ -3471,6 +3840,38 @@ extraResources.km = {
           colQtyReturned: "ចំនួនត្រឡប់",
           colUnitPrice: "តម្លៃឯកតា",
           colAmount: "ចំនួនទឹកប្រាក់",
+        },
+        currency: {
+          title: "របាយការណ៍ចំណូលចំណាយ",
+          subtitle: "បង្កាន់ដៃទទួលប្រាក់ បង្កាន់ដៃចំណាយ និងសមតុល្យប្រាក់",
+          tabReceiptPayment: "បញ្ជីចំណូលចំណាយ",
+          tabReceipt: "បង្កាន់ដៃទទួលប្រាក់",
+          tabPayment: "បង្កាន់ដៃចំណាយ",
+          tabCashBalance: "សមតុល្យប្រាក់",
+          receiptShort: "ចំណូល",
+          paymentShort: "ចំណាយ",
+          addressOrDocument: "អាសយដ្ឋាន / ឯកសារ",
+          originalDocument: "ឯកសារដើម"
+        },
+        stock: {
+          title: "របាយការណ៍ឃ្លាំង",
+          subtitle: "របាយការណ៍នាំចូល នាំចេញ ពិនិត្យ ផ្ទេរ និងស្តុក",
+          tabStockIn: "នាំចូលឃ្លាំង",
+          tabStockOut: "នាំចេញឃ្លាំង",
+          tabStockCheck: "ពិនិត្យឃ្លាំង",
+          tabStockTransfer: "ផ្ទេរឃ្លាំង",
+          tabInventory: "ស្តុក",
+          quantityIn: "ចំនួននាំចូល",
+          quantityOut: "ចំនួននាំចេញ",
+          quantityTransfer: "ចំនួនផ្ទេរ",
+          difference: "ភាពខុសគ្នា"
+        },
+        booking: {
+          title: "របាយការណ៍កក់",
+          subtitle: "របាយការណ៍កក់តាមការបញ្ជាទិញ និងទំនិញ",
+          tabBooking: "របាយការណ៍កក់",
+          tabBookingItems: "សរុបទំនិញដែលបានកក់",
+          bookingCode: "លេខកូដកក់"
         },
       },
       setting: {
@@ -4113,6 +4514,13 @@ extraResources.km = {
       }
     },
   components: {
+    commandMenu: {
+      placeholder: "វាយពាក្យបញ្ជា ឬស្វែងរក...",
+      noResults: "រកមិនឃើញលទ្ធផល។",
+      themeLight: "ភ្លឺ",
+      themeDark: "ងងឹត",
+      themeSystem: "ប្រព័ន្ធ"
+    },
     voucherContent: {
       inboundWarehouseLabel: "នាំចូលនៅឃ្លាំង",
       outboundWarehouseLabel: "នាំចេញនៅឃ្លាំង",
@@ -4486,8 +4894,10 @@ extraResources.zh = {
     email: "邮箱",
     customer: "客户",
     supplier: "供应商",
+    employee: "员工",
     product: "商品",
     order: "订单",
+    tax: "税费",
     receiptNo: "发票号",
     cash: "现金",
     transfer: "转账",
@@ -4582,7 +4992,98 @@ extraResources.zh = {
     rows: "行数",
     addChildGroup: "添加子分组",
     editGroup: "编辑分组",
-    deleteGroup: "删除分组"
+    deleteGroup: "删除分组",
+    delete: "删除",
+    edit: "编辑",
+    previous: "上一页",
+    next: "下一页",
+    goBack: "返回",
+    backHome: "返回首页",
+    fullName: "姓名",
+    saveChanges: "保存更改",
+    requestFailed: "无法处理请求",
+    updateFailed: "无法更新",
+    updateSuccess: "更新成功",
+    createSuccess: "创建成功",
+    deleteSuccess: "数据已删除",
+    statusUpdateSuccess: "状态更新成功",
+    requiredName: "请输入名称",
+    content: "内容",
+    createdBy: "创建人",
+    createdDate: "创建日期",
+    images: "图片",
+    selectImage: "选择图片",
+    title: "标题",
+    month: "月",
+    type: "类型",
+    editNamed: "编辑{{name}}",
+    addNamed: "新增{{name}}",
+    selectNamed: "选择{{name}}"
+  },
+  notifications: {
+    title: "通知",
+    count: "{{count}} 条通知",
+    empty: "暂无通知",
+    markRead: "标记为已读",
+    markReadFailed: "无法标记为已读",
+    markAllRead: "全部标记为已读",
+    markAllSuccess: "已全部标记为已读",
+    deleteFailed: "无法删除通知",
+    selectPrompt: "选择通知以查看详情"
+  },
+  profile: {
+    personalInfo: "个人信息",
+    profile: "个人资料",
+    uploadAvatar: "上传头像",
+    requiredFullName: "请输入姓名",
+    updateSuccess: "个人资料更新成功",
+    updateFailed: "个人资料更新失败"
+  },
+  supports: {
+    helpTitle: "帮助",
+    helpDescription: "按功能管理帮助内容。",
+    helpSubtitle: "按系统功能管理帮助内容。",
+    supportTitle: "支持",
+    supportDescription: "跟踪支持请求和用户反馈。",
+    supportSubtitle: "跟踪用户的支持请求和回复内容。",
+    functionLabel: "功能",
+    supportTypeLabel: "支持类型",
+    emptyHelp: "暂无帮助内容",
+    emptySupport: "暂无支持请求",
+    searchHelp: "搜索帮助...",
+    searchSupport: "搜索支持...",
+    supportCode: "支持编码",
+    requiredLookup: "请选择{{field}}"
+  },
+  errors: {
+    notFoundTitle: "页面未找到",
+    notFoundDescription: "你要查找的页面不存在。",
+    noPermissionTitle: "无访问权限",
+    noPermissionDescription: "你没有权限查看此页面。"
+  },
+  humanResources: {
+    salary: {
+      salary: "工资",
+      advancePayment: "预支",
+      remaining: "剩余",
+      emptyPayroll: "暂无工资表"
+    },
+    rewardPunish: {
+      title: "奖惩与纪律",
+      addVoucher: "新增单据",
+      emptyText: "暂无奖惩/纪律单据",
+      confirmDelete: "删除此单据？"
+    }
+  },
+  promotions: {
+    list: {
+      confirmDelete: "删除此活动？",
+      priority: "优先级",
+      apply: "应用",
+      stopApply: "停止应用",
+      addProgram: "新增活动",
+      emptyByTitle: "暂无{{title}}活动"
+    }
   },
   menu: {
     main: "主要",
@@ -4616,6 +5117,7 @@ extraResources.zh = {
     salaryPays: "工资支付",
     shifts: "班次",
     reports: "报表",
+    statistics: "统计",
     salesReport: "销售报表",
     bookingReport: "预订报表",
     cashReport: "收支报表",
@@ -4623,6 +5125,8 @@ extraResources.zh = {
     reportViewer: "报表查看器",
     notifications: "通知",
     settings: "设置",
+    support: "支持",
+    system: "系统",
     actives: "运营",
     orderManager: "销售管理",
     booking: "预订",
@@ -4641,6 +5145,7 @@ extraResources.zh = {
     units: "单位",
     templates: "发票模板",
     discountTotalOrder: "整单总折扣",
+    discountByOrderValue: "按订单金额折扣",
     discountByOrder: "按订单折扣",
     discountByGroup: "按分组折扣",
     discountByProduct: "按商品折扣",
@@ -4953,6 +5458,38 @@ extraResources.zh = {
           colQtyReturned: "退货数量",
           colUnitPrice: "单价",
           colAmount: "金额",
+        },
+        currency: {
+          title: "收支报表",
+          subtitle: "收款单、付款单和资金余额",
+          tabReceiptPayment: "收支列表",
+          tabReceipt: "收款单",
+          tabPayment: "付款单",
+          tabCashBalance: "资金余额",
+          receiptShort: "收入",
+          paymentShort: "支出",
+          addressOrDocument: "地址 / 单据",
+          originalDocument: "原始单据"
+        },
+        stock: {
+          title: "库存报表",
+          subtitle: "入库、出库、盘点、调拨和库存报表",
+          tabStockIn: "入库",
+          tabStockOut: "出库",
+          tabStockCheck: "盘点",
+          tabStockTransfer: "调拨",
+          tabInventory: "库存",
+          quantityIn: "入库数量",
+          quantityOut: "出库数量",
+          quantityTransfer: "调拨数量",
+          difference: "差异"
+        },
+        booking: {
+          title: "预订报表",
+          subtitle: "按订单和商品的预订报表",
+          tabBooking: "预订报表",
+          tabBookingItems: "预订商品汇总",
+          bookingCode: "预订编码"
         },
       },
       setting: {
@@ -5595,6 +6132,13 @@ extraResources.zh = {
       }
     },
   components: {
+    commandMenu: {
+      placeholder: "输入命令或搜索...",
+      noResults: "未找到结果。",
+      themeLight: "浅色",
+      themeDark: "深色",
+      themeSystem: "系统"
+    },
     voucherContent: {
       inboundWarehouseLabel: "入库仓库",
       outboundWarehouseLabel: "出库仓库",
