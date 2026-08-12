@@ -246,7 +246,7 @@ export function translateMenuTitle(title: string, t: TFunction) {
 
 const TEXT_TO_KEY: Record<string, string> = {
   "Tìm kiếm...": "common.search",
-  "Tìm khách hàng...": "common.searchCustomer",
+  " ...": "common.searchCustomer",
   "Tìm nhà cung cấp...": "common.searchSupplier",
   "Tìm mặt hàng...": "common.searchProduct",
   "Tìm nhân viên...": "common.searchEmployee",

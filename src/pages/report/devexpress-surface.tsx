@@ -37,6 +37,12 @@ type DevExpressBinding = {
   dispose?: () => void
 }
 
+type ExportRequestData = {
+  RequestUrl?: string
+  FormData?: Record<string, unknown>
+  QueryParameters?: Record<string, unknown>
+}
+
 type PosMobileReportWindow = Window & {
   __posmobileReportViewer?: DevExpressBinding | null
 }
@@ -81,6 +87,8 @@ function shouldAppendReportRequestBody(data: unknown) {
     || actionKey === 'startBuild'
     || actionKey === 'startExport'
     || actionKey === 'exportTo'
+    || actionKey === 'getExportStatus'
+    || actionKey === 'getExportResult'
 }
 
 function clearFetchSettings() {
@@ -121,6 +129,32 @@ function appendReportRequestBodyToUrl(url: unknown, requestBody: ReportRequestBo
   const payload = encodeURIComponent(JSON.stringify(requestBody))
   const separator = url.includes('?') ? '&' : '?'
   return `${url}${separator}ReportRequestBody=${payload}`
+}
+
+function resolveExportRequestData(value: unknown): ExportRequestData | null {
+  if (!value || typeof value !== 'object') return null
+
+  const request = value as ExportRequestData & { args?: ExportRequestData }
+  if (request.RequestUrl || request.FormData || request.QueryParameters) return request
+  if (request.args?.RequestUrl || request.args?.FormData || request.args?.QueryParameters) return request.args
+
+  return null
+}
+
+function appendReportRequestBodyToExportRequest(
+  request: ExportRequestData,
+  requestBody: ReportRequestBody,
+) {
+  const payload = JSON.stringify(requestBody)
+
+  request.FormData = {
+    ...(request.FormData || {}),
+    ReportRequestBody: payload,
+  }
+  request.QueryParameters = {
+    ...(request.QueryParameters || {}),
+    ReportRequestBody: encodeURIComponent(payload),
+  }
 }
 
 function setAuthorization(token: string) {
@@ -230,6 +264,14 @@ export function DevExpressReportViewer({
         },
         callbacks: {
           BeforeRender: () => setAuthorization(token),
+          OnExport: (...args: unknown[]) => {
+            if (!custom) return
+            const request = resolveExportRequestData(args[args.length - 1])
+            if (request) appendReportRequestBodyToExportRequest(request, requestBodyRef.current)
+          },
+        },
+        exportSettings: {
+          useSameTab: true,
         },
       })
 

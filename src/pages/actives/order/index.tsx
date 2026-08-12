@@ -797,12 +797,16 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
   // us its "now go do the exit/navigate" step to run once the user closes it.
   const pdfCloseCallbackRef = useRef<(() => void) | null>(null)
 
-  const printOrderPdf = async (orderId: number, onClosed?: () => void) => {
+  const printOrderPdf = async (
+    orderId: number,
+    onClosed?: () => void,
+    isTemplateTemp = false,
+  ) => {
     try {
       const blob = await downloadFile({
         url: 'orders/print-order-pdf',
         method: 'POST',
-        body: { OrderId: orderId },
+        body: { OrderId: orderId, IsTemplateTemp: isTemplateTemp },
       }).unwrap()
       const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
       pdfCloseCallbackRef.current = onClosed ?? null
@@ -861,10 +865,13 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
   /** "In tạm" (temporary receipt) — restaurant-only, always the shop's default printer. */
   const printTempReceipt = (orderId: number, onDone?: () => void) => {
     if (settings?.IsPrintProvisionalInvoice) {
-      printOrderPdf(orderId, onDone)
+      printOrderPdf(orderId, onDone, true)
       return
     }
-    printData(settings?.PrinterUrl, 'tables/print-order', settings?.BillPrinterName, { orderId })
+    printData(settings?.PrinterUrl, 'tables/print-order', settings?.BillPrinterName, {
+      orderId,
+      IsTemplateTemp: true,
+    })
     onDone?.()
   }
 
