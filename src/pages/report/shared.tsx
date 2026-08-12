@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import dayjs from 'dayjs'
 import { DataPagination } from '@/components/ui/data-pagination'
+import { DateRangeFilter, toUtcEndOfDay, toUtcStartOfDay } from '@/pages/actives/shared'
 import {
   useLazyFilterCustomersQuery,
   useGetUserShopSettingQuery,
@@ -34,8 +35,8 @@ export function fmtDateOnly(dateStr?: string | null) {
 export function currentMonthRange() {
   const now = new Date()
   return {
-    from: dayjs(now).startOf('month').format('YYYY-MM-DD'),
-    to: dayjs(now).endOf('month').format('YYYY-MM-DD'),
+    from: toUtcStartOfDay(dayjs(now).startOf('month')),
+    to: toUtcEndOfDay(dayjs(now).endOf('month')),
   }
 }
 
@@ -79,23 +80,7 @@ export function ReportDateFilter({
   from: string; to: string
   onFrom: (v: string) => void; onTo: (v: string) => void
 }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <Input
-        type="date"
-        value={from}
-        onChange={e => onFrom(e.target.value)}
-        className="h-8 w-[140px] text-xs"
-      />
-      <span className="text-slate-400 text-xs shrink-0">—</span>
-      <Input
-        type="date"
-        value={to}
-        onChange={e => onTo(e.target.value)}
-        className="h-8 w-[140px] text-xs"
-      />
-    </div>
-  )
+  return <DateRangeFilter from={from} to={to} onFrom={onFrom} onTo={onTo} compact />
 }
 
 // ─── Sub-tab bar ──────────────────────────────────────────────────────────────

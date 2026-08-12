@@ -18,15 +18,15 @@ import {
 } from '@/store/slice/users/api/api'
 import type { TPosOrderInvoice } from '@/store/slice/users/types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE } from '../shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, toUtcEndOfDay, toUtcStartOfDay } from '../shared'
 import { baseUrl } from '@/constants'
 import dayjs from 'dayjs'
 
 function defaultMonthStart() {
-  return dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD')
+  return toUtcStartOfDay(dayjs().subtract(1, 'month').startOf('month'))
 }
 function defaultToday() {
-  return dayjs().format('YYYY-MM-DD')
+  return toUtcEndOfDay(dayjs())
 }
 
 // ─── PDF / HTML viewer drawer ─────────────────────────────────────────────────

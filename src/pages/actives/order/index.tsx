@@ -436,6 +436,8 @@ export type OrderAction =
 interface SalesTabProps {
   tableLabel?: string
   bookingId?: number
+  /** Retail order opened from order-manager via /actives/order?orderId=... */
+  initialOrderId?: number
   /** Set in the restaurant flow — switches to the table button set and `tables/*` saves. */
   tableId?: number
   /** The table's own Guid (not the order's) — what the kitchen-print routes key on. */
@@ -443,7 +445,7 @@ interface SalesTabProps {
   onBack?: () => void
 }
 
-function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTabProps) {
+function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, onBack }: SalesTabProps) {
   const { t } = useTranslation()
   const [cart, setCart] = useState<CartItem[]>([])
   // Bumped after a successful retail payment to force InternalOrderPanel to
@@ -576,6 +578,19 @@ function SalesTab({ tableLabel, bookingId, tableId, tableGuid, onBack }: SalesTa
       toast.error(t('pages.actives.order.loadOrderFailed'))
     }
   }, [applyOrderToCart, loadOrderDetail, t])
+
+  useEffect(() => {
+    if (!initialOrderId || tableId) return
+    let cancelled = false
+    loadOrderDetail(initialOrderId)
+      .unwrap()
+      .then(order => {
+        if (cancelled || !order) return
+        applyOrderToCart(order, true)
+      })
+      .catch(() => toast.error(t('pages.actives.order.loadOrderFailed')))
+    return () => { cancelled = true }
+  }, [applyOrderToCart, initialOrderId, loadOrderDetail, tableId, t])
 
   // Guard shared by both pickers: Angular refuses to open the search dialog
   // while the cart already has items, to avoid silently discarding them.
@@ -1738,7 +1753,8 @@ export default function PosOrderPage({ tableLabel, bookingId, tableId, tableGuid
     <div className="-m-4 overflow-hidden bg-muted/40" style={{ height: 'calc(100vh - 3.5rem)' }}>
       <SalesTab
         tableLabel={tableLabel}
-        bookingId={bookingId ?? (orderId ? Number(orderId) : undefined)}
+        bookingId={bookingId}
+        initialOrderId={orderId ? Number(orderId) : undefined}
         tableId={tableId}
         tableGuid={tableGuid}
         onBack={onBack}

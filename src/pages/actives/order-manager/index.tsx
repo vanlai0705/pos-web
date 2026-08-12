@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ClipboardList, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ClipboardList, ExternalLink, Trash2, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
 import {
   useFilterOrdersQuery,
@@ -12,6 +14,7 @@ import {
 import type { TPosOrder } from '@/store/slice/users/types/pos-types'
 import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, StatusBadge, fmtDateTime, useListFilter } from '../shared'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
+import { withDomainPath } from '@/utils/domain-route'
 
 function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () => void }) {
   const { t } = useTranslation()
@@ -110,9 +113,17 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
       {/* Actions */}
       {order.Status?.Id === 1 && (
         <div className="px-4 py-3 border-t flex gap-2">
-          <Button variant="destructive" size="sm" onClick={onCancel} className="flex-1">
-            <X className="h-3.5 w-3.5 mr-1" /> {t('pages.actives.orderManager.cancelOrderButton')}
-          </Button>
+          <ConfirmDialog
+            title={t('pages.actives.orderManager.deleteOrderButton')}
+            description={t('pages.actives.orderManager.confirmDeleteOrder', { name: order.Name ?? order.Code })}
+            confirmText={t('common.delete')}
+            trigger={(
+              <Button variant="destructive" size="sm" className="flex-1">
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> {t('pages.actives.orderManager.deleteOrderButton')}
+              </Button>
+            )}
+            onConfirm={onCancel}
+          />
         </div>
       )}
     </div>
@@ -121,6 +132,7 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
 
 export default function OrderManagerPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
   const [selected, setSelected] = useState<TPosOrder | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -151,15 +163,23 @@ export default function OrderManagerPage() {
     }
   }
 
-  const handleCancel = async () => {
-    if (!selected?.Id) return
-    if (!window.confirm(t('pages.actives.orderManager.confirmCancelOrder', { name: selected.Name ?? selected.Code }))) return
+  const openOrderDetail = (item: TPosOrder) => {
+    if (!item.Id) return
+    navigate(withDomainPath(`/actives/order?orderId=${item.Id}&fromOrderManager=1`))
+  }
+
+  const handleDeleteOrder = async (order: TPosOrder) => {
+    if (!order?.Id) return
     try {
-      await cancelOrder(selected.Id).unwrap()
-      toast.success(t('pages.actives.orderManager.cancelOrderSuccess'))
-      setSelected(null)
+      await cancelOrder(order.Id).unwrap()
+      toast.success(t('pages.actives.orderManager.deleteOrderSuccess'))
+      if (selected?.Id === order.Id) setSelected(null)
       refetch()
-    } catch { toast.error(t('pages.actives.orderManager.cancelOrderError')) }
+    } catch { toast.error(t('pages.actives.orderManager.deleteOrderError')) }
+  }
+
+  const handleDeleteSelected = () => {
+    if (selected) handleDeleteOrder(selected)
   }
 
   return (
@@ -185,6 +205,7 @@ export default function OrderManagerPage() {
                     t('pages.actives.orderManager.employeeLabel'),
                     t('pages.actives.orderManager.subTotalLabel'),
                     t('common.statusShort'),
+                    t('common.actions'),
                   ].map(h => (
                     <th key={h} className="text-left px-3 py-2.5 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
                   ))}
@@ -193,16 +214,17 @@ export default function OrderManagerPage() {
               <tbody className="divide-y">
                 {isLoading
                   ? Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
+                    <tr key={i}>{Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-3 py-2.5"><Skeleton className="h-4 w-full" /></td>
                     ))}</tr>
                   ))
                   : items.length === 0
-                    ? <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">{t('pages.actives.orderManager.noOrdersText')}</td></tr>
+                    ? <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">{t('pages.actives.orderManager.noOrdersText')}</td></tr>
                     : items.map((item, idx) => (
                       <tr
                         key={item.Id ?? idx}
                         onClick={() => handleSelect(item)}
+                        onDoubleClick={() => openOrderDetail(item)}
                         className={`cursor-pointer transition-colors hover:bg-accent/50 ${selected?.Id === item.Id ? 'bg-primary/8 border-l-2 border-l-primary' : ''}`}
                       >
                         <td className="px-3 py-2.5 text-muted-foreground">{(page - 1) * pageSize + idx + 1}</td>
@@ -212,6 +234,41 @@ export default function OrderManagerPage() {
                         <td className="px-3 py-2.5">{item.User?.Name ?? '—'}</td>
                         <td className="px-3 py-2.5"><MoneyTag value={item.Total ?? item.SubTotal} /></td>
                         <td className="px-3 py-2.5"><StatusBadge status={item.Status} /></td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-sky-600 hover:text-sky-700"
+                              title={t('common.detailEdit')}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openOrderDetail(item)
+                              }}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                            <ConfirmDialog
+                              title={t('pages.actives.orderManager.deleteOrderButton')}
+                              description={t('pages.actives.orderManager.confirmDeleteOrder', { name: item.Name ?? item.Code })}
+                              confirmText={t('common.delete')}
+                              trigger={(
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-rose-600 hover:text-rose-700"
+                                  title={t('pages.actives.orderManager.deleteOrderButton')}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                              onConfirm={() => handleDeleteOrder(item)}
+                            />
+                          </div>
+                        </td>
                       </tr>
                     ))
                 }
@@ -238,7 +295,7 @@ export default function OrderManagerPage() {
                   {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)}
                 </div>
               )
-              : <OrderDetailPanel order={selected} onCancel={handleCancel} />
+              : <OrderDetailPanel order={selected} onCancel={handleDeleteSelected} />
             }
           </div>
         )}

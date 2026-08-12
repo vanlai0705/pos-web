@@ -1,10 +1,21 @@
 import { useState, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { DataPagination } from '@/components/ui/data-pagination'
-import { Search } from 'lucide-react'
+import { CalendarRange, Search } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { translateKnownText, translateMenuTitle } from '@/i18n/nav-title-map'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 export { StatusBadge } from '@/components/ui/status-badge'
 
 // ─── Currency format ──────────────────────────────────────────────────────────
@@ -26,26 +37,187 @@ export function fmtDateTime(dateStr?: string | null) {
 
 // ─── Default date range: last 30 days ────────────────────────────────────────
 
+export function toUtcStartOfDay(value: string | Date | dayjs.Dayjs) {
+  const date = dayjs(value)
+  return date.isValid() ? date.startOf('day').toISOString() : ''
+}
+
+export function toUtcEndOfDay(value: string | Date | dayjs.Dayjs) {
+  const date = dayjs(value)
+  return date.isValid() ? date.endOf('day').toISOString() : ''
+}
+
+export function toDateInputValue(value?: string | null) {
+  if (!value) return ''
+  const date = dayjs(value)
+  return date.isValid() ? date.format('YYYY-MM-DD') : ''
+}
+
 export function defaultDateFrom() {
-  return dayjs().subtract(30, 'day').format('YYYY-MM-DD')
+  return toUtcStartOfDay(dayjs().subtract(30, 'day'))
 }
 export function defaultDateTo() {
-  return dayjs().format('YYYY-MM-DD')
+  return toUtcEndOfDay(dayjs())
 }
 
 // ─── DateRange filter ─────────────────────────────────────────────────────────
 
+type DateRange = { from: string; to: string }
+
+function startOfBusinessWeek(date = dayjs()) {
+  const offset = (date.day() + 6) % 7
+  return date.subtract(offset, 'day').startOf('day')
+}
+
+function utcRange(from: dayjs.Dayjs, to: dayjs.Dayjs): DateRange {
+  return { from: toUtcStartOfDay(from), to: toUtcEndOfDay(to) }
+}
+
+function rangeForQuarter(year: number, quarter: number): DateRange {
+  const start = dayjs(`${year}-${String((quarter - 1) * 3 + 1).padStart(2, '0')}-01`)
+  return utcRange(start, start.add(2, 'month').endOf('month'))
+}
+
+function applyRange(range: DateRange, onFrom: (v: string) => void, onTo: (v: string) => void) {
+  onFrom(range.from)
+  onTo(range.to)
+}
+
+function DateRangePresetPicker({ onFrom, onTo, compact = false }: {
+  onFrom: (v: string) => void
+  onTo: (v: string) => void
+  compact?: boolean
+}) {
+  const { t } = useTranslation()
+  const now = dayjs()
+  const yesterdayDate = now.subtract(1, 'day')
+  const weekStart = startOfBusinessWeek(now)
+  const lastWeekStart = weekStart.subtract(1, 'week')
+  const monthItems = Array.from({ length: 12 }, (_, i) => {
+    const start = dayjs(`${now.year()}-${String(i + 1).padStart(2, '0')}-01`)
+    return {
+      label: t('common.datePresets.monthNumber', { month: i + 1 }),
+      range: utcRange(start, start.endOf('month')),
+    }
+  })
+  const quarterItems = Array.from({ length: 4 }, (_, i) => ({
+    label: t('common.datePresets.quarterNumber', { quarter: i + 1 }),
+    range: rangeForQuarter(now.year(), i + 1),
+  }))
+  const presets = [
+    { key: 'beforeToday', range: { from: '', to: toUtcEndOfDay(yesterdayDate) } },
+    { key: 'today', range: utcRange(now, now) },
+    { key: 'yesterday', range: utcRange(yesterdayDate, yesterdayDate) },
+    { key: 'thisWeek', range: utcRange(weekStart, weekStart.add(6, 'day')) },
+    { key: 'lastWeek', range: utcRange(lastWeekStart, lastWeekStart.add(6, 'day')) },
+    { key: 'thisMonth', range: utcRange(now.startOf('month'), now.endOf('month')) },
+    { key: 'lastMonth', range: utcRange(now.subtract(1, 'month').startOf('month'), now.subtract(1, 'month').endOf('month')) },
+  ]
+  const tailPresets = [
+    { key: 'thisQuarter', range: rangeForQuarter(now.year(), Math.floor(now.month() / 3) + 1) },
+    { key: 'lastQuarter', range: rangeForQuarter(now.subtract(3, 'month').year(), Math.floor(now.subtract(3, 'month').month() / 3) + 1) },
+    { key: 'thisYear', range: utcRange(now.startOf('year'), now.endOf('year')) },
+    { key: 'lastYear', range: utcRange(now.subtract(1, 'year').startOf('year'), now.subtract(1, 'year').endOf('year')) },
+  ]
+  const selectRange = (range: DateRange) => applyRange(range, onFrom, onTo)
+
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className={compact ? 'h-8 w-8 shrink-0' : 'h-8 w-8 shrink-0'}
+          title={t('common.datePresets.title')}
+        >
+          <CalendarRange className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56 p-2">
+        {presets.map(preset => (
+          <DropdownMenuItem
+            key={preset.key}
+            className="px-3 py-2 text-sm font-semibold"
+            onSelect={() => selectRange(preset.range)}
+          >
+            {t(`common.datePresets.${preset.key}`)}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="px-3 py-2 text-sm font-semibold">
+            {t('common.datePresets.month')}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
+            {monthItems.map(item => (
+              <DropdownMenuItem key={item.label} onSelect={() => selectRange(item.range)}>
+                {item.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        {tailPresets.slice(0, 2).map(preset => (
+          <DropdownMenuItem
+            key={preset.key}
+            className="px-3 py-2 text-sm font-semibold"
+            onSelect={() => selectRange(preset.range)}
+          >
+            {t(`common.datePresets.${preset.key}`)}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="px-3 py-2 text-sm font-semibold">
+            {t('common.datePresets.quarter')}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {quarterItems.map(item => (
+              <DropdownMenuItem key={item.label} onSelect={() => selectRange(item.range)}>
+                {item.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        {tailPresets.slice(2).map(preset => (
+          <DropdownMenuItem
+            key={preset.key}
+            className="px-3 py-2 text-sm font-semibold"
+            onSelect={() => selectRange(preset.range)}
+          >
+            {t(`common.datePresets.${preset.key}`)}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="px-3 py-2 text-sm font-semibold" onSelect={() => selectRange({ from: '', to: '' })}>
+          {t('common.all')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function DateRangeFilter({
-  from, to, onFrom, onTo,
+  from, to, onFrom, onTo, compact = false,
 }: {
   from: string; to: string
   onFrom: (v: string) => void; onTo: (v: string) => void
+  compact?: boolean
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Input type="date" value={from} onChange={e => onFrom(e.target.value)} className="h-8 w-36 text-sm" />
+      <DateRangePresetPicker onFrom={onFrom} onTo={onTo} compact={compact} />
+      <Input
+        type="date"
+        value={toDateInputValue(from)}
+        onChange={e => onFrom(e.target.value ? toUtcStartOfDay(e.target.value) : '')}
+        className={compact ? 'h-8 w-[140px] text-xs' : 'h-8 w-36 text-sm'}
+      />
       <span className="text-muted-foreground text-xs">—</span>
-      <Input type="date" value={to} onChange={e => onTo(e.target.value)} className="h-8 w-36 text-sm" />
+      <Input
+        type="date"
+        value={toDateInputValue(to)}
+        onChange={e => onTo(e.target.value ? toUtcEndOfDay(e.target.value) : '')}
+        className={compact ? 'h-8 w-[140px] text-xs' : 'h-8 w-36 text-sm'}
+      />
     </div>
   )
 }
