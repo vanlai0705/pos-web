@@ -587,6 +587,8 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
   const [transferCost, setTransferCost] = useState(0)
   const [taxOverride, setTaxOverride] = useState<number | null>(null)
   const [payment, setPayment] = useState<number | ''>('')
+  const [isCustomersDebt, setIsCustomersDebt] = useState(false)
+  const [shortage, setShortage] = useState(0)
   const taxPct = taxOverride ?? (settings?.IsTax ? (settings.TaxPercent ?? 0) : 0)
 
   // Opening an occupied table pulls its order in so the cart shows what the
@@ -647,6 +649,8 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
     setTransferCost(order.TransferCost ?? 0)
     setTaxOverride(order.Tax ?? null)
     setPayment(order.Payment ?? '')
+    setIsCustomersDebt(!!order.IsCustomersDebt)
+    setShortage(order.Shortage ?? 0)
   }, [])
 
   const applyPickedOrder = useCallback(async (id?: number) => {
@@ -913,7 +917,9 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
     const isCard = /ca the|card/.test(normalizeName(fund.type?.Name))
     // Retail opens a payment dialog that pre-fills "Khách đưa" with the total;
     // the table view has no such dialog, so it stays at whatever was typed.
-    const paid = payment === '' ? (isTableMode ? 0 : total) : Number(payment)
+    const debtEnabled = !!selectedCustomer && isCustomersDebt
+    const shortageValue = debtEnabled ? Math.min(total, Math.max(0, shortage)) : 0
+    const paid = debtEnabled ? Math.max(0, total - shortageValue) : (payment === '' ? (isTableMode ? 0 : total) : Number(payment))
     const now = new Date().toISOString()
     // A picked account wins over the fund type itself — same as sell-payment.
     // If nothing was ever picked (e.g. the picker had nothing to show yet),
@@ -949,8 +955,9 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
       Tax: taxPct,
       TransferCost: transferCost,
       OldDebit: 0,
-      Cash: isCard ? 0 : total,
-      Card: isCard ? total : 0,
+      Cash: isCard ? 0 : paid,
+      Card: isCard ? paid : 0,
+      Shortage: shortageValue,
       Round: 0,
       Payment: paid,
       Change: Math.max(0, paid - total),
@@ -958,7 +965,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
       Voucher: voucher,
       Type: 0,
       PaymentType: 0,
-      IsCustomersDebt: false,
+      IsCustomersDebt: debtEnabled,
       // Angular never sends IsPrint at all — every order-save endpoint
       // (temp/complete/table) omits it entirely; printing is a fully
       // separate client-side step (printBill/printKitchenTicket/
@@ -1028,6 +1035,8 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
         setTransferCost(0)
         setTaxOverride(null)
         setPayment('')
+        setIsCustomersDebt(false)
+        setShortage(0)
         setInvoiceForm(EMPTY_INVOICE_FORM)
         setFund({ type: null })
         setResetKey(k => k + 1)
@@ -1074,6 +1083,8 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
             transferCost, setTransferCost,
             taxPct, setTaxOverride,
             payment, setPayment,
+            isCustomersDebt, setIsCustomersDebt,
+            shortage, setShortage,
           }}
         />
       </div>
@@ -1238,6 +1249,8 @@ interface MoneyControls {
   transferCost: number; setTransferCost: (v: number) => void
   taxPct: number; setTaxOverride: (v: number) => void
   payment: number | ''; setPayment: (v: number | '') => void
+  isCustomersDebt: boolean; setIsCustomersDebt: (v: boolean) => void
+  shortage: number; setShortage: (v: number) => void
 }
 
 function InternalOrderPanel({
@@ -1258,8 +1271,10 @@ function InternalOrderPanel({
   const [qrAccount, setQrAccount] = useState<TPosFundAccount | null>(null)
 
   const { subTotal, orderDiscount, totalTax, total } = totals
-  const { payment } = money
-  const change = payment !== '' ? Math.max(0, Number(payment) - total) : null
+  const debtEnabled = !!selectedCustomer && money.isCustomersDebt
+  const normalizedShortage = debtEnabled ? Math.min(total, Math.max(0, money.shortage)) : 0
+  const paymentValue = debtEnabled ? Math.max(0, total - normalizedShortage) : money.payment
+  const change = !debtEnabled && money.payment !== '' ? Math.max(0, Number(money.payment) - total) : null
 
   useEffect(() => {
     setSelectedCustomer(customerValue)
@@ -1272,6 +1287,18 @@ function InternalOrderPanel({
   useEffect(() => {
     setNote(noteValue)
   }, [noteValue])
+
+  useEffect(() => {
+    if (!selectedCustomer && money.isCustomersDebt) {
+      money.setIsCustomersDebt(false)
+      money.setShortage(0)
+    }
+  }, [money, selectedCustomer])
+
+  useEffect(() => {
+    if (!debtEnabled || money.shortage <= total) return
+    money.setShortage(total)
+  }, [debtEnabled, money, total])
 
   // Default to the first fund type once the list arrives.
   useEffect(() => {
@@ -1320,6 +1347,30 @@ function InternalOrderPanel({
   }
   const setStaff = (u: TPosUser | null) => { setSelectedStaff(u); onStaffChange(u) }
   const setNoteVal = (v: string) => { setNote(v); onNoteChange(v) }
+  const setCustomerDebt = (checked: boolean) => {
+    money.setIsCustomersDebt(checked)
+    if (checked) {
+      money.setPayment(0)
+      money.setShortage(total)
+      return
+    }
+    money.setShortage(0)
+    money.setPayment(total)
+  }
+  const setPaymentValue = (value: number | '') => {
+    if (debtEnabled) {
+      const paid = value === '' ? 0 : Math.min(total, Math.max(0, Number(value)))
+      money.setPayment(paid)
+      money.setShortage(Math.max(0, total - paid))
+      return
+    }
+    money.setPayment(value)
+  }
+  const setShortageValue = (value: number) => {
+    const next = Math.min(total, Math.max(0, value))
+    money.setShortage(next)
+    money.setPayment(Math.max(0, total - next))
+  }
 
   return (
     <div className="h-full flex flex-col min-h-0 rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -1590,11 +1641,29 @@ function InternalOrderPanel({
             </div>
 
             <MoneyRow label={t('pages.actives.order.customerPaidLabel')}>
-              <input type="number" min={0} value={payment}
-                onChange={e => money.setPayment(e.target.value === '' ? '' : Number(e.target.value))}
+              <input type="number" min={0} value={paymentValue}
+                onChange={e => setPaymentValue(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder={String(Math.round(total))}
                 className="flex-1 w-0 border border-input rounded px-1.5 py-0.5 text-xs bg-background focus:outline-none placeholder:text-muted-foreground/50 text-foreground tabular-nums text-right" />
             </MoneyRow>
+            {selectedCustomer && (
+              <MoneyRow label={t('pages.actives.order.customerDebtLabel')}>
+                <label className="flex h-8 flex-1 items-center gap-2 rounded border bg-background px-2 text-xs font-semibold text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={money.isCustomersDebt}
+                    onChange={e => setCustomerDebt(e.target.checked)}
+                  />
+                  <span>{t('pages.actives.order.customerDebtLabel')}</span>
+                </label>
+              </MoneyRow>
+            )}
+            {debtEnabled && (
+              <MoneyRow label={t('pages.actives.order.shortageLabel')}>
+                <NumInput value={normalizedShortage} onChange={setShortageValue} className="flex-1 text-rose-600" />
+              </MoneyRow>
+            )}
             {change != null && change > 0 && (
               <div className="flex justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
                 <span>{t('pages.actives.order.changeLabel')}</span><span className="tabular-nums">{fmtCurrency(change)}</span>
