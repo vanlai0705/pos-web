@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Users, Plus, MoreHorizontal, Check, Lock, Trash2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,8 +47,8 @@ export default function UserGroupsPage() {
     { onSuccess: refetch, onError: () => toast.error('Không thể cập nhật trạng thái') }
   )
 
-  const changeStatus = (id: number, statusId: number) => {
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá nhóm quyền này?')) return
+  const changeStatus = async (id: number, statusId: number) => {
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: 'Xoá nhóm quyền này?' })) return
     toggleStatus({ id, statusId })
   }
 

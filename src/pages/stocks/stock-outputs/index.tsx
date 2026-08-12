@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { ArrowUpFromLine, Plus, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -39,7 +40,7 @@ export default function StockOutputsPage() {
 
   const changeStatus = async (row: { Id?: number }, statusId: number) => {
     if (!row.Id) return
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá phiếu này?')) return
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: 'Xoá phiếu này?' })) return
     try {
       await request({ url: `stockoutputs/update-status?id=${row.Id}&statusId=${statusId}`, method: 'POST', body: {} }).unwrap()
       toast.success('Lưu thành công')

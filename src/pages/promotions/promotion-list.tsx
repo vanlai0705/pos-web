@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Tag, Plus, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -62,7 +63,7 @@ export default function PromotionListPage({ type, titleKey }: Props) {
 
   const changeStatus = async (row: TPromotion, statusId: number) => {
     if (!row.Id) return
-    if (statusId === STATUS.DELETED && !window.confirm(t('promotions.list.confirmDelete'))) return
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: t('promotions.list.confirmDelete') })) return
     try {
       await request({ url: `promotions/update-status?id=${row.Id}&statusId=${statusId}`, method: 'POST', body: {} }).unwrap()
       toast.success(t('common.updateSuccess'))

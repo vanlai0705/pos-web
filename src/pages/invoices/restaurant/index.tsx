@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useNavigate } from 'react-router-dom'
 import { UtensilsCrossed, Plus, RefreshCw, Clock } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -134,7 +135,7 @@ export default function RestaurantInvoicePage() {
 
   const handleCancel = async () => {
     if (!selected?.Id) return
-    if (!window.confirm(`Huỷ đơn ${selected.Code}?`)) return
+    if (!await confirmAction({ description: `Huỷ đơn ${selected.Code}?` })) return
     try {
       await cancelBooking(selected.Id).unwrap()
       toast.success('Đã huỷ đơn')

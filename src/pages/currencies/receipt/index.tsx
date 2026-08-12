@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { TrendingUp, Plus, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -56,7 +57,7 @@ export default function ReceiptPage() {
 
   const removeRow = async (row: { Id?: number }) => {
     if (!row.Id) return
-    if (!window.confirm('Xoá phiếu thu này?')) return
+    if (!await confirmAction({ description: 'Xoá phiếu thu này?' })) return
     try {
       await request({ url: `Receipt/update-status?id=${row.Id}&statusId=2`, method: 'POST', body: {} }).unwrap()
       toast.success('Xoá thành công')

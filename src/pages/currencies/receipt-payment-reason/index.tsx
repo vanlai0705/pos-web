@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { FileText, Plus, MoreHorizontal, Trash2, Check, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -78,7 +79,7 @@ export default function ReceiptPaymentReasonPage() {
 
   const changeStatus = async (row: TReason, statusId: number) => {
     if (!row.Id) return
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá lý do này?')) return
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: 'Xoá lý do này?' })) return
     try {
       await request({ url: `receiptpaymentreason/update-status?id=${row.Id}&statusId=${statusId}`, method: 'POST', body: {} }).unwrap()
       toast.success('Lưu thành công')

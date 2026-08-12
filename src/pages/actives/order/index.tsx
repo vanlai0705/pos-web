@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -36,6 +37,7 @@ import {
   useGenericDownloadMutation,
   useLazyGetOrderKitchenQuery,
   useLazyGetOrderDetailQuery,
+  useGetActiveProductsSimpleQuery,
 } from '@/store/slice/users/api/api'
 import { OrderSearchDialog } from './order-search-dialog'
 import { printData, printDatas, type PrinterSetting } from '@/utils/print-service'
@@ -268,6 +270,7 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
   const appendedPage = useRef(-1)
 
   const { data: groups = [] } = useGetProductGroupsSimpleQuery()
+  const { data: simpleProducts = [] } = useGetActiveProductsSimpleQuery()
   const { data, isFetching, isLoading } = useFilterActiveProductsQuery({
     PageIndex: pageIndex, PageSize: PRODUCT_PAGE_SIZE,
     Keyword: keyword || undefined,
@@ -297,6 +300,21 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
       setPageIndex(p => p + 1)
     }
+  }
+
+  const scanBarcode = (value: string) => {
+    const scanned = value.trim().toLowerCase()
+    if (!scanned) return
+    const exactMatch = (p: TPosActiveProduct) => {
+      const barcode = String(p.Barcode ?? '').trim().toLowerCase()
+      const productCode = String(p.ProductCode ?? '').trim().toLowerCase()
+      const code = String(p.Code ?? '').trim().toLowerCase()
+      return barcode === scanned || productCode === scanned || code === scanned
+    }
+    const matched = simpleProducts.find(exactMatch) ?? products.find(exactMatch)
+    if (!matched) return
+    onAdd(matched)
+    setKeyword('')
   }
 
   return (
@@ -341,6 +359,11 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
           <input
             type="text" placeholder={t('pages.actives.order.searchProductPlaceholder')}
             value={keyword} onChange={e => setKeyword(e.target.value)}
+            onKeyDown={e => {
+              if (e.key !== 'Enter') return
+              e.preventDefault()
+              scanBarcode(e.currentTarget.value)
+            }}
             className="w-full h-9 pl-8 pr-8 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground text-foreground"
           />
           {keyword && (
@@ -892,7 +915,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
     // Cancelling an existing table order is the one action that needs no cart.
     if (action === 'cancel-order') {
       if (!tableId) return
-      if (!window.confirm(t('pages.actives.order.confirmDeleteOrder'))) return
+      if (!await confirmAction({ description: t('pages.actives.order.confirmDeleteOrder') })) return
       try {
         await deleteTableOrder(tableId).unwrap()
         toast.success(t('pages.actives.order.orderDeletedSuccess'))
@@ -994,19 +1017,15 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
         const res = await saveTableOrder({ order: withTable(order), isUpdate: !!bookingId }).unwrap()
         const savedId = res?.OrderId ?? bookingId
         toast.success(t('pages.actives.order.orderSavedSuccess'))
-        setCart([])
         const finish = () => onBack?.()
 
         // "Lưu & Thoát" auto-fires a kitchen ticket, same as a plain save in Angular.
-        if (action === 'save-exit') { printKitchenTicket('tables/print-kitchen', res?.Printers); finish(); return }
+        if (action === 'save-exit') { setCart([]); printKitchenTicket('tables/print-kitchen', res?.Printers); finish(); return }
         // "In bếp" keeps the order open so more items can be sent.
         if (action === 'print-kitchen') { await printKitchen(); return }
-        if (action === 'print-label') { printKitchenTicket('tables/print-kitchen-label', res?.Printers); finish(); return }
+        if (action === 'print-label') { setCart([]); printKitchenTicket('tables/print-kitchen-label', res?.Printers); finish(); return }
         if (action === 'print-temp') {
-          // A provisional-invoice PDF opens a sheet on this same screen — only
-          // leave once the user closes it, or the sheet never gets to render.
-          if (savedId) printTempReceipt(savedId, finish)
-          else finish()
+          if (savedId) printTempReceipt(savedId)
           return
         }
       } catch { toast.error(t('pages.actives.order.orderSaveFailed')) }

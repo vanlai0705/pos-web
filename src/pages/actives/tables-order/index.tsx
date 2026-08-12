@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
@@ -252,7 +253,7 @@ export default function TablesOrderPage() {
 
   const runMergeOrMove = async (from: TPosTable, to: TPosTable) => {
     const verb = mode === 'MOVE' ? t('pages.actives.tablesOrder.moveVerb') : t('pages.actives.tablesOrder.mergeVerb')
-    if (!window.confirm(t('pages.actives.tablesOrder.confirmActionTable', { verb, from: from.Name, to: to.Name }))) return
+    if (!await confirmAction({ description: t('pages.actives.tablesOrder.confirmActionTable', { verb, from: from.Name, to: to.Name }) })) return
     try {
       if (mode === 'MOVE') await transferTable({ fromTableId: from.Id, toTableId: to.Id }).unwrap()
       else await mergeTables({ fromTableId: from.Id, toTableId: to.Id }).unwrap()

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Wallet, Plus, MoreHorizontal, Trash2, Check, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -84,7 +85,7 @@ export default function FundPage() {
 
   const changeStatus = async (row: TFund, statusId: number) => {
     if (!row.Id) return
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá phiếu chuyển quỹ này?')) return
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: 'Xoá phiếu chuyển quỹ này?' })) return
     try {
       await request({ url: `fund/update-status?id=${row.Id}&statusId=${statusId}`, method: 'POST', body: {} }).unwrap()
       toast.success('Lưu thành công')

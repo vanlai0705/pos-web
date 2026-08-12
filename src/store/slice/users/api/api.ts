@@ -949,6 +949,14 @@ export const userApiSlice = createApi({
         res.Data ?? { Items: [], TotalItemCount: 0 },
     }),
 
+    getActiveProductsSimple: builder.query<TPosActiveProduct[], void>({
+      query: () => ({ url: 'products/get-list-simple', method: 'GET' }),
+      transformResponse: (res: TPosResponse<TPosActiveProduct[] | TPosFilterData<TPosActiveProduct>>) => {
+        const data = res.Data
+        return Array.isArray(data) ? data : data?.Items ?? []
+      },
+    }),
+
     getActiveProductDetail: builder.query<TPosActiveProduct, number>({
       query: (id) => ({ url: `products/detail?id=${id}` }),
       transformResponse: (res: TPosResponse<TPosActiveProduct>) => res.Data,
@@ -1358,6 +1366,7 @@ export const {
   // Actives: Products
   useFilterActiveProductsQuery,
   useLazyFilterActiveProductsQuery,
+  useGetActiveProductsSimpleQuery,
   useGetActiveProductDetailQuery,
   useUpdateActiveProductStatusMutation,
   useSaveActiveProductMutation,

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Package, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -46,7 +47,7 @@ export default function ActiveProductsPage() {
   const total = data?.TotalItemCount ?? 0
 
   const changeStatus = async (id: number, statusId: number) => {
-    if (statusId === STATUS.DELETED && !window.confirm(t('pages.actives.products.confirmDelete'))) return
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: t('pages.actives.products.confirmDelete') })) return
     try {
       await updateStatus({ id, statusId }).unwrap()
       refetch()

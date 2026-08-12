@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { FileDown, Image as ImageIcon, MoreHorizontal, Plus, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
@@ -149,7 +150,7 @@ export default function CustomersPage() {
 
   const deleteCustomer = useCallback(async (customer: TPosCustomer) => {
     if (!customer.Id) return
-    if (!window.confirm(t('pages.actives.customers.confirmDeleteCustomer', { name: customer.Name }))) return
+    if (!await confirmAction({ description: t('pages.actives.customers.confirmDeleteCustomer', { name: customer.Name }) })) return
     try {
       await updateCustomerStatus({ id: customer.Id, statusId: STATUS_DELETED }).unwrap()
       toast.success(t('pages.actives.customers.customerDeleted'))
@@ -192,7 +193,7 @@ export default function CustomersPage() {
   }
 
   const deleteCustomerGroup = async (group: CustomerGroupNode) => {
-    if (!window.confirm(t('pages.actives.customers.confirmDeleteGroup', { name: group.Name }))) return
+    if (!await confirmAction({ description: t('pages.actives.customers.confirmDeleteGroup', { name: group.Name }) })) return
     try {
       await updateGroupStatus({ id: group.Id, statusId: STATUS_DELETED }).unwrap()
       toast.success(t('pages.actives.customers.groupDeleted'))
@@ -472,4 +473,3 @@ function Avatar({ image, size = 'md' }: { image?: string | null; size?: 'sm' | '
     </span>
   )
 }
-

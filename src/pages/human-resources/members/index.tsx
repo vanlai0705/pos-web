@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { UserCheck, Plus, Lock, Check, Trash2, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -146,7 +147,7 @@ export default function MembersPage() {
 
   const changeStatus = async (id?: number, next?: number) => {
     if (!id || next == null) return
-    if (next === STATUS.DELETED && !window.confirm('Xoá nhân viên này?')) return
+    if (next === STATUS.DELETED && !await confirmAction({ description: 'Xoá nhân viên này?' })) return
     try {
       await updateStatus({ id, statusId: next }).unwrap()
       toast.success('Lưu thành công')

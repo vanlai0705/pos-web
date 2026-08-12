@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Warehouse, Plus, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -63,7 +64,7 @@ export default function WarehousesPage() {
   }
 
   const changeStatus = async (id: number, statusId: number) => {
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá kho này?')) return
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: 'Xoá kho này?' })) return
     try {
       await updateStatus({ id, statusId }).unwrap()
       refetch()

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useParams } from 'react-router-dom'
 import {
   FileDown,
@@ -124,7 +125,7 @@ export default function ProductsNewPage() {
 
   const deleteProduct = async (product: TPosActiveProduct) => {
     if (!product.Id) return
-    if (!window.confirm(t('pages.actives.productsNewIndex.confirmDeleteProduct', { name: product.Name }))) return
+    if (!await confirmAction({ description: t('pages.actives.productsNewIndex.confirmDeleteProduct', { name: product.Name }) })) return
     try {
       await updateProductStatus({ id: product.Id, statusId: STATUS_DELETED }).unwrap()
       toast.success(t('pages.actives.productsNewIndex.productDeleted'))
@@ -140,7 +141,7 @@ export default function ProductsNewPage() {
       toast.warning(t('pages.actives.productsNewIndex.selectProductsToDelete'))
       return
     }
-    if (!window.confirm(t('pages.actives.productsNewIndex.confirmDeleteSelectedProducts', { count: ids.length }))) return
+    if (!await confirmAction({ description: t('pages.actives.productsNewIndex.confirmDeleteSelectedProducts', { count: ids.length }) })) return
     try {
       await request({ url: 'products/patch-delete', method: 'DELETE', body: ids }).unwrap()
       toast.success(t('pages.actives.productsNewIndex.productsDeleted'))
@@ -181,7 +182,7 @@ export default function ProductsNewPage() {
   }
 
   const deleteProductGroup = async (group: ProductGroupNode) => {
-    if (!window.confirm(t('pages.actives.productsNewIndex.confirmDeleteGroup', { name: group.Name }))) return
+    if (!await confirmAction({ description: t('pages.actives.productsNewIndex.confirmDeleteGroup', { name: group.Name }) })) return
     try {
       await updateGroupStatus({ id: group.Id, statusId: STATUS_DELETED }).unwrap()
       toast.success(t('pages.actives.productsNewIndex.groupDeleted'))

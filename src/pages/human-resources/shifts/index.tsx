@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Clock, Plus, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,7 +57,7 @@ export default function ShiftsPage() {
   }
 
   const changeStatus = async (id: number, statusId: number) => {
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá ca làm việc này?')) return
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: 'Xoá ca làm việc này?' })) return
     try {
       await updateStatus({ id, statusId }).unwrap()
       refetch()

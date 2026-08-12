@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useNavigate } from 'react-router-dom'
 import { Receipt, Plus, RefreshCw } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -49,7 +50,7 @@ export default function SalesInvoicePage() {
 
   const handleCancel = async () => {
     if (!selected?.Id) return
-    if (!window.confirm(`Huỷ hoá đơn ${selected.Code}?`)) return
+    if (!await confirmAction({ description: `Huỷ hoá đơn ${selected.Code}?` })) return
     try {
       await cancelOrder(selected.Id).unwrap()
       toast.success('Đã huỷ hoá đơn')

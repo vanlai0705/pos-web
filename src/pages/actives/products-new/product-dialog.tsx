@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Package, Tag, Scale, Store, Printer, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
@@ -203,7 +204,7 @@ export function ProductDialog({
       setSelectedRecipeIndex(-1)
       return
     }
-    if (!window.confirm(t('pages.actives.productDialog.confirmDeleteRecipe'))) return
+    if (!await confirmAction({ description: t('pages.actives.productDialog.confirmDeleteRecipe') })) return
     if (!form.Id || !row.Id) return
     try {
       await deleteProductRecipe({ productId: form.Id, id: row.Id }).unwrap()

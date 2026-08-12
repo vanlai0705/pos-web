@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Download, FileDown, MoreHorizontal, Plus, QrCode, RefreshCw, Table2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
@@ -249,7 +250,7 @@ export default function TablesManagePage() {
   }
 
   const deleteArea = async (area: Area) => {
-    if (!window.confirm(t('pages.actives.tables.deleteAreaConfirm', { name: area.Name || area.Code }))) return
+    if (!await confirmAction({ description: t('pages.actives.tables.deleteAreaConfirm', { name: area.Name || area.Code }) })) return
     try {
       await request({ url: `area/delete${query({ id: area.Id })}`, method: 'DELETE' }).unwrap()
       toast.success(t('pages.actives.tables.areaDeleteSuccess'))
@@ -325,7 +326,7 @@ export default function TablesManagePage() {
   }
 
   const deleteTable = async (table: RestaurantTable) => {
-    if (!window.confirm(t('pages.actives.tables.deleteTableConfirm', { name: table.Name || table.Code }))) return
+    if (!await confirmAction({ description: t('pages.actives.tables.deleteTableConfirm', { name: table.Name || table.Code }) })) return
     try {
       await request({ url: `tables/delete${query({ id: table.Id })}`, method: 'DELETE' }).unwrap()
       toast.success(t('pages.actives.tables.tableDeleteSuccess'))

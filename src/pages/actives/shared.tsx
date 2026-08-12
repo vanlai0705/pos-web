@@ -83,10 +83,11 @@ function applyRange(range: DateRange, onFrom: (v: string) => void, onTo: (v: str
   onTo(range.to)
 }
 
-function DateRangePresetPicker({ onFrom, onTo, compact = false }: {
+function DateRangePresetPicker({ onFrom, onTo, compact = false, disablePortal = false }: {
   onFrom: (v: string) => void
   onTo: (v: string) => void
   compact?: boolean
+  disablePortal?: boolean
 }) {
   const { t } = useTranslation()
   const now = dayjs()
@@ -134,7 +135,7 @@ function DateRangePresetPicker({ onFrom, onTo, compact = false }: {
           <CalendarRange className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56 p-2">
+      <DropdownMenuContent align="start" disablePortal={disablePortal} className="z-[70] w-56 p-2">
         {presets.map(preset => (
           <DropdownMenuItem
             key={preset.key}
@@ -148,7 +149,7 @@ function DateRangePresetPicker({ onFrom, onTo, compact = false }: {
           <DropdownMenuSubTrigger className="px-3 py-2 text-sm font-semibold">
             {t('common.datePresets.month')}
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
+          <DropdownMenuSubContent disablePortal={disablePortal} className="z-[70] max-h-80 overflow-y-auto">
             {monthItems.map(item => (
               <DropdownMenuItem key={item.label} onSelect={() => selectRange(item.range)}>
                 {item.label}
@@ -169,7 +170,7 @@ function DateRangePresetPicker({ onFrom, onTo, compact = false }: {
           <DropdownMenuSubTrigger className="px-3 py-2 text-sm font-semibold">
             {t('common.datePresets.quarter')}
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
+          <DropdownMenuSubContent disablePortal={disablePortal} className="z-[70]">
             {quarterItems.map(item => (
               <DropdownMenuItem key={item.label} onSelect={() => selectRange(item.range)}>
                 {item.label}
@@ -196,15 +197,16 @@ function DateRangePresetPicker({ onFrom, onTo, compact = false }: {
 }
 
 export function DateRangeFilter({
-  from, to, onFrom, onTo, compact = false,
+  from, to, onFrom, onTo, compact = false, disablePortal = false,
 }: {
   from: string; to: string
   onFrom: (v: string) => void; onTo: (v: string) => void
   compact?: boolean
+  disablePortal?: boolean
 }) {
   return (
     <div className="flex items-center gap-2">
-      <DateRangePresetPicker onFrom={onFrom} onTo={onTo} compact={compact} />
+      <DateRangePresetPicker onFrom={onFrom} onTo={onTo} compact={compact} disablePortal={disablePortal} />
       <Input
         type="date"
         value={toDateInputValue(from)}

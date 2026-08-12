@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useTranslation } from 'react-i18next'
 import { Copy, Download, FileText, MoreHorizontal, Plus, RefreshCw, Upload } from 'lucide-react'
 import { toast } from 'sonner'
@@ -375,7 +376,7 @@ export default function TemplatesPage() {
       toast.error(t('pages.managers.templates.selectGroupToDelete'))
       return
     }
-    if (!window.confirm(t('pages.managers.templates.deleteGroupConfirm', { name: group.Name || group.Code }))) return
+    if (!await confirmAction({ description: t('pages.managers.templates.deleteGroupConfirm', { name: group.Name || group.Code }) })) return
 
     try {
       await request({ url: `report-template-groups/delete${query({ id: group.Id })}`, method: 'DELETE' }).unwrap()
@@ -574,7 +575,7 @@ export default function TemplatesPage() {
 
   const deleteTemplate = async (item: InvoiceTemplate) => {
     if (!item.Id) return
-    if (!window.confirm(t('pages.managers.templates.deleteTemplateConfirm', { name: item.Name || item.Code }))) return
+    if (!await confirmAction({ description: t('pages.managers.templates.deleteTemplateConfirm', { name: item.Name || item.Code }) })) return
     try {
       await request({ url: `report-templates/delete${query({ id: item.Id })}`, method: 'DELETE' }).unwrap()
       toast.success(t('pages.managers.templates.templateDeleteSuccess'))

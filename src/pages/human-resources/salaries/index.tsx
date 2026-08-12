@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Banknote, Plus, MoreHorizontal, Trash2, Check, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import { buildModelFormData } from '@/utils/multipart'
@@ -150,7 +151,7 @@ export default function SalariesPage() {
 
   const changeStatus = async (row: TSalary, statusId: number) => {
     if (!row.Id) return
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá bảng lương này?')) return
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: 'Xoá bảng lương này?' })) return
     try {
       await request({ url: `salary/update-status?id=${row.Id}&statusId=${statusId}`, method: 'POST', body: {} }).unwrap()
       toast.success('Lưu thành công')

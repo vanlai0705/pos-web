@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { TrendingDown, Plus, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -56,7 +57,7 @@ export default function PaymentPage() {
 
   const removeRow = async (row: { Id?: number }) => {
     if (!row.Id) return
-    if (!window.confirm('Xoá phiếu chi này?')) return
+    if (!await confirmAction({ description: 'Xoá phiếu chi này?' })) return
     try {
       await request({ url: `Payment/update-status?id=${row.Id}&statusId=2`, method: 'POST', body: {} }).unwrap()
       toast.success('Xoá thành công')

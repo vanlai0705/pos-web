@@ -73,7 +73,7 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-w-5xl flex-col gap-0 p-0 max-h-[85vh]">
+      <DialogContent className="flex w-[92vw] max-w-[1280px] flex-col gap-0 p-0 max-h-[88vh]">
         <DialogHeader className="border-b px-4 py-3">
           <DialogTitle className="flex items-center gap-2 text-sm">
             <History className="h-4 w-4" />
@@ -81,13 +81,13 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
           <SearchBar value={keyword} onChange={setKeyword} />
-          <CustomerSelect value={customer} onChange={setCustomer} className="w-52" />
-          <DateRangeFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
+          <CustomerSelect value={customer} onChange={setCustomer} className="w-80 min-w-[240px]" />
+          <DateRangeFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} disablePortal />
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-4 md:grid-cols-12">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:grid-cols-12">
           {/* Preview panel — read-only line items of the currently selected row */}
           <div className="md:col-span-5 rounded-lg border">
             <div className="border-b bg-muted/30 px-3 py-2 text-xs font-semibold">

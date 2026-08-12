@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Building2,
@@ -489,8 +490,8 @@ export default function ShopsPage() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-red-600 focus:text-red-600"
-                onClick={() => {
-                  if (window.confirm('Xóa cửa hàng này?')) updateStatus(item.Id, STATUS_DELETED)
+                onClick={async () => {
+                  if (await confirmAction({ description: 'Xóa cửa hàng này?' })) updateStatus(item.Id, STATUS_DELETED)
                 }}
               >
                 <Trash2 className="mr-2 h-4 w-4" />

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { Truck, Plus, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,8 +67,8 @@ export default function SuppliersPage() {
     { onSuccess: refetch, onError: () => toast.error('Không thể cập nhật trạng thái') }
   )
 
-  const changeStatus = (id: number, statusId: number) => {
-    if (statusId === STATUS.DELETED && !window.confirm('Xoá nhà cung cấp này?')) return
+  const changeStatus = async (id: number, statusId: number) => {
+    if (statusId === STATUS.DELETED && !await confirmAction({ description: 'Xoá nhà cung cấp này?' })) return
     toggleStatus({ id, statusId })
   }
 

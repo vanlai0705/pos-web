@@ -5,6 +5,7 @@ import { PersistGate } from "redux-persist/integration/react";
 import { Toaster } from "sonner";
 import AppRoute from "./AppRoute.tsx";
 import { AppProvider } from "./context/app-provider.tsx";
+import { ConfirmActionHost } from "./components/ui/use-confirm-action.tsx";
 import "./globals.css";
 import { ToastProvider } from "./hooks/useToast.tsx";
 import i18next from "./i18n";
@@ -50,6 +51,7 @@ createRoot(document.getElementById("root")!).render(
           </AppProvider>
         </I18nextProvider>
       </ToastProvider>
+      <ConfirmActionHost />
       <Toaster position="top-right" richColors expand visibleToasts={5} />
     </PersistGate>
   </Provider>,
