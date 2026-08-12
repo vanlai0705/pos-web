@@ -412,6 +412,7 @@ export interface TPosTable {
 export interface TPosProductGroup {
   Id: number
   Name: string
+  Image?: TPosItemImage
 }
 
 // ─── Manager shared ───────────────────────────────────────────────────────────
@@ -683,7 +684,7 @@ export interface TPosActiveProduct {
   Barcode?: string
   Name: string
   Unit?: TPosUnit
-  ProductGroup?: { Id?: number; Name?: string }
+  ProductGroup?: { Id?: number; Name?: string; Image?: TPosItemImage }
   ProductType?: { Id?: number; Code?: string; Name?: string }
   Price?: number
   PriceInput?: number

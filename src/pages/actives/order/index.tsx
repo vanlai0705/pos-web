@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next'
 import {
   Search, Plus, Minus, Trash2, X,
   Printer, Banknote, Smartphone, CreditCard,
-  ShoppingCart, Package, ChevronRight, Save,
+  ShoppingCart, Package, Save,
   FileText, Info, Wallet, RefreshCw, BookOpen, Eye, EyeOff,
+  LayoutGrid, Table2,
 } from 'lucide-react'
 import { CustomerSelect } from '@/components/pos/customer-select'
 import { StaffSelect } from '@/components/pos/staff-select'
@@ -259,6 +260,7 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
   const [keyword, setKeyword] = useState('')
   const [groupId, setGroupId] = useState<number | null>(null)
   const [showCost, setShowCost] = useState(false)
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card')
   const [pageIndex, setPageIndex] = useState(0)
   const [products, setProducts] = useState<TPosActiveProduct[]>([])
   const gridRef = useRef<HTMLDivElement>(null)
@@ -305,6 +307,21 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
           <span className="flex-1 text-sm font-semibold text-foreground">{t('pages.actives.order.chooseProductHeading')}</span>
           <button
             type="button"
+            onClick={() => setViewMode(v => v === 'card' ? 'table' : 'card')}
+            title={t(viewMode === 'card' ? 'pages.actives.order.switchToTableView' : 'pages.actives.order.switchToCardView')}
+            aria-label={t(viewMode === 'card' ? 'pages.actives.order.switchToTableView' : 'pages.actives.order.switchToCardView')}
+            aria-pressed={viewMode === 'table'}
+            className={cn(
+              'flex items-center justify-center h-7 w-7 rounded-lg border transition-colors',
+              viewMode === 'table'
+                ? 'border-primary/40 bg-primary/10 text-primary'
+                : 'border-input text-muted-foreground hover:bg-muted',
+            )}
+          >
+            {viewMode === 'card' ? <Table2 className="h-3.5 w-3.5" /> : <LayoutGrid className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
             onClick={() => setShowCost(v => !v)}
             title={t('pages.actives.order.toggleCostPrice')}
             aria-label={t('pages.actives.order.toggleCostPrice')}
@@ -345,16 +362,71 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
         </div>
       </div>
 
-      <div ref={gridRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-2">
+      <div ref={gridRef} onScroll={handleScroll} className={cn('flex-1 overflow-y-auto', viewMode === 'table' ? 'p-0' : 'p-2')}>
         {isLoading && pageIndex === 0 ? (
-          <div className={PRODUCT_GRID}>
-            {Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} className="aspect-[5/4] rounded-lg" />)}
-          </div>
+          viewMode === 'table' ? (
+            <div className="p-2 space-y-1.5">
+              {Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="h-9 rounded-md" />)}
+            </div>
+          ) : (
+            <div className={PRODUCT_GRID}>
+              {Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} className="aspect-[5/4] rounded-lg" />)}
+            </div>
+          )
         ) : products.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 gap-2 text-muted-foreground">
             <Package className="h-8 w-8 opacity-30" />
             <p className="text-sm">{t('pages.actives.order.productsNotFound')}</p>
           </div>
+        ) : viewMode === 'table' ? (
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur border-b">
+              <tr>
+                <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t('common.productName')}</th>
+                <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t('common.barcode')}</th>
+                <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t('common.unit')}</th>
+                <th className="px-2 py-2 text-right font-semibold text-muted-foreground">{t('common.quantity')}</th>
+                <th className="px-2 py-2 text-right font-semibold text-muted-foreground">{t('common.price')}</th>
+                {showCost && (
+                  <th className="px-2 py-2 text-right font-semibold text-muted-foreground">{t('pages.actives.order.costShort')}</th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {products.map((p, i) => {
+                const barcode = p.Barcode || p.Code || p.ProductCode || ''
+                const cost = p.PriceInput ?? p.ImportPrice
+                return (
+                  <tr
+                    key={p.Id ?? i}
+                    onClick={() => onAdd(p)}
+                    className="cursor-pointer transition-colors hover:bg-primary/5 active:bg-primary/10"
+                  >
+                    <td className="px-2 py-2 min-w-0">
+                      <div className="font-semibold text-foreground line-clamp-1">{p.Name}</div>
+                      {p.ProductGroup?.Name && <div className="text-[10px] text-muted-foreground truncate">{p.ProductGroup.Name}</div>}
+                    </td>
+                    <td className="px-2 py-2 font-mono text-muted-foreground whitespace-nowrap">{barcode || '—'}</td>
+                    <td className="px-2 py-2 text-muted-foreground whitespace-nowrap">{p.Unit?.Name || '—'}</td>
+                    <td className="px-2 py-2 text-right">
+                      <span className={cn(
+                        'inline-flex min-w-10 justify-center rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums',
+                        (p.Quantity ?? 0) > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700',
+                      )}>
+                        {fmt(p.Quantity)}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 text-right font-extrabold text-primary tabular-nums whitespace-nowrap">{fmt(p.Price)}</td>
+                    {showCost && (
+                      <td className="px-2 py-2 text-right text-amber-700 font-semibold tabular-nums whitespace-nowrap">
+                        {cost != null ? fmt(cost) : '—'}
+                      </td>
+                    )}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         ) : (
           <div className={PRODUCT_GRID}>
             {products.map((p, i) => {
@@ -414,9 +486,15 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
           </div>
         )}
         {isFetching && pageIndex > 0 && (
-          <div className={cn(PRODUCT_GRID, 'mt-1.5')}>
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3] rounded-lg" />)}
-          </div>
+          viewMode === 'table' ? (
+            <div className="p-2 space-y-1.5">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-9 rounded-md" />)}
+            </div>
+          ) : (
+            <div className={cn(PRODUCT_GRID, 'mt-1.5')}>
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-[4/3] rounded-lg" />)}
+            </div>
+          )
         )}
       </div>
     </div>
@@ -531,10 +609,13 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
         })))
         if (order.Note) setNote(order.Note)
         if (order.Detail) setDetail(order.Detail)
+        setSelectedCustomer(order.Customer ?? null)
+        if (order.User) setSelectedStaff(order.User as TPosUser)
+        else setSelectedStaff(null)
       })
       .catch(() => toast.error(t('pages.actives.order.loadTableOrderFailed')))
     return () => { cancelled = true }
-  }, [tableId, bookingId, loadTableOrder])
+  }, [tableId, bookingId, loadTableOrder, t])
 
   // "Đặt hàng" / "Báo giá" — search-and-resume an existing booking/quotation.
   // Bookings and quotations live in the same Orders table under a different
@@ -976,6 +1057,9 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
           hasTableOrder={!!bookingId && !!tableId}
           onBack={onBack}
           onFundTypeChange={onFundTypeChange}
+          customerValue={selectedCustomer}
+          staffValue={selectedStaff}
+          noteValue={note}
           onCustomerChange={setSelectedCustomer}
           onStaffChange={setSelectedStaff}
           onNoteChange={setNote}
@@ -1133,6 +1217,9 @@ interface InternalOrderPanelProps {
   hasTableOrder?: boolean
   onBack?: () => void
   onFundTypeChange: (fund: TPosFundType | null, accountId?: number) => void
+  customerValue: TPosCustomerSimple | null
+  staffValue: TPosUser | null
+  noteValue: string
   onCustomerChange: (customer: TPosCustomerSimple | null) => void
   onStaffChange: (user: TPosUser | null) => void
   onNoteChange: (v: string) => void
@@ -1156,16 +1243,16 @@ interface MoneyControls {
 function InternalOrderPanel({
   cart, onQty, onRemove, onClear, onUpdateItem, onSave, onOpenOrderSearch, saving, settings, totals, perItemTax,
   tableLabel, hasTableOrder, onBack,
-  onFundTypeChange, onCustomerChange, onStaffChange, onNoteChange,
+  onFundTypeChange, customerValue, staffValue, noteValue, onCustomerChange, onStaffChange, onNoteChange,
   detail, setDetail, invoiceForm, setInvoiceForm, money,
 }: InternalOrderPanelProps) {
   const { t } = useTranslation()
   const [panelTab, setPanelTab] = useState<PanelTab>('sales')
   const { data: fundTypes = [] } = useGetPaymentTypesQuery()
   const [fundTypeId, setFundTypeId] = useState<number | null>(null)
-  const [selectedCustomer, setSelectedCustomer] = useState<TPosCustomerSimple | null>(null)
-  const [selectedStaff, setSelectedStaff] = useState<TPosUser | null>(null)
-  const [note, setNote] = useState('')
+  const [selectedCustomer, setSelectedCustomer] = useState<TPosCustomerSimple | null>(customerValue)
+  const [selectedStaff, setSelectedStaff] = useState<TPosUser | null>(staffValue)
+  const [note, setNote] = useState(noteValue)
   // Picking a QR-bearing payment method pops the code up big enough to scan,
   // instead of relying on the small inline thumbnail.
   const [qrAccount, setQrAccount] = useState<TPosFundAccount | null>(null)
@@ -1173,6 +1260,18 @@ function InternalOrderPanel({
   const { subTotal, orderDiscount, totalTax, total } = totals
   const { payment } = money
   const change = payment !== '' ? Math.max(0, Number(payment) - total) : null
+
+  useEffect(() => {
+    setSelectedCustomer(customerValue)
+  }, [customerValue])
+
+  useEffect(() => {
+    setSelectedStaff(staffValue)
+  }, [staffValue])
+
+  useEffect(() => {
+    setNote(noteValue)
+  }, [noteValue])
 
   // Default to the first fund type once the list arrives.
   useEffect(() => {
@@ -1564,13 +1663,6 @@ function InternalOrderPanel({
             </button>
           </div>
           </>
-        )}
-
-        {cart.length > 0 && (
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <ChevronRight className="h-3 w-3" />
-            <span>{t('pages.actives.order.cartSummary', { count: cart.length, units: cart.reduce((s, c) => s + c.qty, 0) })}</span>
-          </div>
         )}
       </div>
         </>

@@ -971,6 +971,9 @@ export const extraResources: Record<string, any> = {
         order: {
           chooseProductHeading: "Chọn sản phẩm",
           toggleCostPrice: "Ẩn/Hiện giá vốn",
+          switchToTableView: "Chuyển sang dạng bảng",
+          switchToCardView: "Chuyển sang dạng thẻ",
+          costShort: "Giá vốn",
           searchProductPlaceholder: "Tìm sản phẩm, mã vạch...",
           productsNotFound: "Không tìm thấy sản phẩm",
           loadTableOrderFailed: "Không tải được đơn hàng của bàn",
@@ -2613,6 +2616,9 @@ export const extraResources: Record<string, any> = {
         order: {
           chooseProductHeading: "Select Products",
           toggleCostPrice: "Show/Hide Cost Price",
+          switchToTableView: "Switch to table view",
+          switchToCardView: "Switch to card view",
+          costShort: "Cost",
           searchProductPlaceholder: "Search product, barcode...",
           productsNotFound: "No products found",
           loadTableOrderFailed: "Unable to load table's order",
@@ -4261,6 +4267,9 @@ extraResources.km = {
         order: {
           chooseProductHeading: "ជ្រើសរើសផលិតផល",
           toggleCostPrice: "លាក់/បង្ហាញតម្លៃដើម",
+          switchToTableView: "ប្តូរទៅទម្រង់តារាង",
+          switchToCardView: "ប្តូរទៅទម្រង់កាត",
+          costShort: "ថ្លៃដើម",
           searchProductPlaceholder: "ស្វែងរកផលិតផល, បាកូដ...",
           productsNotFound: "រកមិនឃើញផលិតផលទេ",
           loadTableOrderFailed: "មិនអាចទាញយកការបញ្ជាទិញរបស់តុបានទេ",
@@ -5905,6 +5914,9 @@ extraResources.zh = {
         order: {
           chooseProductHeading: "选择商品",
           toggleCostPrice: "隐藏/显示成本价",
+          switchToTableView: "切换到表格视图",
+          switchToCardView: "切换到卡片视图",
+          costShort: "成本价",
           searchProductPlaceholder: "搜索商品、条码...",
           productsNotFound: "未找到商品",
           loadTableOrderFailed: "无法加载该桌订单",

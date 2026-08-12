@@ -3,7 +3,7 @@ import { Camera, ImageIcon, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils'
-import { getImageUrl } from '@/utils/common'
+import { PosImage } from '@/components/ui/pos-image'
 
 const MAX_SIZE_MB = 3
 const MAX_SLOTS = 6
@@ -60,7 +60,7 @@ export function ProductImageUploads({ images, onChange }: { images: ImageSlot[];
   return (
     <div className="flex flex-wrap gap-2">
       {images.map((image, index) => {
-        const preview = image.File ? URL.createObjectURL(image.File) : (image.Url ? getImageUrl(image.Url) : null)
+        const preview = image.File ? URL.createObjectURL(image.File) : null
         const filled = !!(image.Url || image.File)
         return (
           <div key={index} className="group relative h-[100px] w-[100px] shrink-0">
@@ -71,6 +71,8 @@ export function ProductImageUploads({ images, onChange }: { images: ImageSlot[];
             >
               {preview ? (
                 <img src={preview} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              ) : image.Url ? (
+                <PosImage url={image.Url} alt="" className="absolute inset-0 h-full w-full" />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-background text-primary shadow-sm">

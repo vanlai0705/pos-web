@@ -3,11 +3,11 @@ import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { PosImage } from '@/components/ui/pos-image'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useLazyFilterActiveProductsQuery } from '@/store/slice/users/api/api'
 import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
-import { getImageUrl } from '@/utils/common'
 
 /**
  * "Thêm định lượng" picker — mirrors Angular's recipe-picker-dialog exactly:
@@ -105,7 +105,6 @@ export function RecipePickerDialog({
               <div className="divide-y">
                 {items.map(item => {
                   const isSelected = selected.some(p => p.Id === item.Id)
-                  const image = getImageUrl(item.Images?.[0]?.Url || item.Image?.Url)
                   return (
                     <button
                       key={item.Id}
@@ -113,9 +112,7 @@ export function RecipePickerDialog({
                       onClick={() => pick(item)}
                       className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted ${isSelected ? 'bg-primary/5' : ''}`}
                     >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
-                        {image ? <img src={image} alt="" className="h-full w-full object-cover" /> : null}
-                      </div>
+                      <PosImage url={item.Images?.[0]?.Url || item.Image?.Url} alt="" className="h-9 w-9 shrink-0 rounded-md border" />
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-medium text-foreground">{item.Name}</div>
                         <div className="truncate text-xs text-muted-foreground">

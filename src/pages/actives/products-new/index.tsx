@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { PosImage } from '@/components/ui/pos-image'
 import { ProductDialog } from './product-dialog'
 import {
   useFilterActiveProductsQuery,
@@ -39,7 +40,6 @@ import {
 } from '@/store/slice/users/api/api'
 import type { TPosActiveProduct, TPosProductGroupFull } from '@/store/slice/users/types/pos-types'
 import { query, downloadBlob } from '@/utils'
-import { getImageUrl } from '@/utils/common'
 import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 
 const PAGE_SIZE = 15
@@ -49,10 +49,6 @@ const STATUS_DELETED = 2
 
 interface ProductGroupNode extends TreeSidebarNode {
   Image?: { Url?: string }
-}
-
-function imgUrl(url?: string | null) {
-  return getImageUrl(url ?? undefined) ?? null
 }
 
 export default function ProductsNewPage() {
@@ -274,13 +270,14 @@ export default function ProductsNewPage() {
       header: t('common.image'),
       meta: { className: 'w-16 text-center' },
       cell: ({ row }) => {
-        const image = imgUrl(row.original.Images?.[0]?.Url || row.original.Image?.Url)
-        return image ? (
-          <img src={image} alt="" className="mx-auto h-9 w-9 rounded-md border object-cover" />
-        ) : (
-          <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-md border bg-slate-50">
-            <ImageIcon className="h-4 w-4 text-slate-300" />
-          </div>
+        const image = row.original.Images?.[0]?.Url || row.original.Image?.Url
+        return (
+          <PosImage
+            url={image}
+            alt={row.original.Name}
+            className="mx-auto h-9 w-9 rounded-md border"
+            fallbackIcon={<ImageIcon className="h-4 w-4 text-slate-300" />}
+          />
         )
       },
     },
@@ -306,7 +303,14 @@ export default function ProductsNewPage() {
       id: 'group',
       header: t('common.group'),
       meta: { cellClassName: 'text-xs' },
-      cell: ({ row }) => row.original.ProductGroup?.Name || '-',
+      cell: ({ row }) => (
+        <span className="flex items-center gap-1.5">
+          {row.original.ProductGroup?.Image?.Url && (
+            <PosImage url={row.original.ProductGroup.Image.Url} alt="" className="h-5 w-5 shrink-0 rounded border" />
+          )}
+          <span className="truncate">{row.original.ProductGroup?.Name || '-'}</span>
+        </span>
+      ),
     },
     {
       id: 'note',
@@ -388,7 +392,7 @@ export default function ProductsNewPage() {
           onEditItem={openEditGroup}
           onDeleteItem={deleteProductGroup}
           renderMeta={group => group.Id > 0 && group.Image?.Url ? (
-            <img src={imgUrl(group.Image.Url) || ''} alt="" className="h-5 w-5 rounded object-cover" />
+            <PosImage url={group.Image.Url} alt="" className="h-5 w-5 rounded object-cover" />
           ) : null}
         />
 
@@ -495,4 +499,3 @@ export default function ProductsNewPage() {
     </div>
   )
 }
-

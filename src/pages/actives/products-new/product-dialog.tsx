@@ -3,6 +3,7 @@ import { Package, Tag, Scale, Store, Printer, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { PosImage } from '@/components/ui/pos-image'
 import {
   Dialog, FormDialogContent, FormDialogHeader, FormDialogBody, FormDialogFooter, DialogTitle,
 } from '@/components/ui/dialog'
@@ -29,7 +30,6 @@ import type {
   TPosActiveProduct, TPosProductPriceRow, TPosProductRecipeRow, TPosProductType, TPosShop,
 } from '@/store/slice/users/types/pos-types'
 import { printData } from '@/utils/print-service'
-import { getImageUrl } from '@/utils/common'
 import { cn } from '@/utils'
 
 function emptyProduct(groupId?: number): TPosActiveProduct {
@@ -622,9 +622,7 @@ function ShopTab({ shops, onToggle }: { shops: TPosShop[]; onToggle: (shop: TPos
               <td className="px-3 py-2 text-center">{i + 1}</td>
               <td className="px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 shrink-0 overflow-hidden rounded bg-muted">
-                    {shop.Image?.Url && <img src={getImageUrl(shop.Image.Url) || ''} alt="" className="h-full w-full object-cover" />}
-                  </div>
+                  <PosImage url={shop.Image?.Url} alt="" className="h-6 w-6 shrink-0 rounded" />
                   <span className="text-foreground">{shop.Name}</span>
                 </div>
               </td>

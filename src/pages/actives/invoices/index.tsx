@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Receipt, RefreshCw, X } from 'lucide-react'
+import { Eye, Receipt, RefreshCw, SearchCheck, Send, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { withDomainPath } from '@/utils/domain-route'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,6 @@ import {
   useImportOrderInvoiceMutation,
   useLazyViewOrderInvoiceHtmlQuery,
   useCheckOrderInvoiceMutation,
-  useCancelOrderMutation,
 } from '@/store/slice/users/api/api'
 import type { TPosOrderInvoice } from '@/store/slice/users/types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
@@ -99,7 +98,6 @@ export default function InvoicesPage() {
   const [importInvoice, { isLoading: importing }] = useImportOrderInvoiceMutation()
   const [viewHtml] = useLazyViewOrderInvoiceHtmlQuery()
   const [checkInvoice, { isLoading: checking }] = useCheckOrderInvoiceMutation()
-  const [cancelOrder] = useCancelOrderMutation()
 
   const items = data?.Items ?? []
   const total = data?.TotalItemCount ?? 0
@@ -169,21 +167,6 @@ export default function InvoicesPage() {
     if (invoice.PublishStatus === 2 || !invoice.OrderId) return
     navigate(withDomainPath(`/actives/order?orderId=${invoice.OrderId}`))
   }, [navigate])
-
-  const handleCancel = useCallback(async (invoice: TPosOrderInvoice) => {
-    if (!invoice.OrderId) {
-      toast.warning(t('pages.actives.invoices.cancelMissingOrderId'))
-      return
-    }
-    if (!window.confirm(t('pages.actives.invoices.confirmCancel'))) return
-    try {
-      await cancelOrder(invoice.OrderId).unwrap()
-      toast.success(t('pages.actives.invoices.cancelSuccess'))
-      refetch()
-    } catch {
-      toast.error(t('pages.actives.invoices.cancelError'))
-    }
-  }, [cancelOrder, refetch, t])
 
   const onKeyword = useCallback((v: string) => { setKeyword(v); setPage(1) }, [])
   const onDateFrom = useCallback((v: string) => { setDateFrom(v); setPage(1) }, [])
@@ -316,51 +299,44 @@ export default function InvoicesPage() {
       id: 'actions',
       header: t('common.actions'),
       meta: {
-        headClassName: 'sticky right-0 bg-muted/40 border-l z-10',
-        cellClassName: 'sticky right-0 bg-card border-l z-10',
+        headClassName: 'sticky right-0 bg-muted/90 border-l z-20 w-[190px] min-w-[190px] text-center',
+        cellClassName: 'sticky right-0 bg-card border-l z-20 w-[190px] min-w-[190px]',
       },
       cell: ({ row }) => {
         const inv = row.original
         return (
-          <div className="flex gap-1.5">
+          <div className="flex items-center justify-end gap-1.5">
             {(inv.PublishStatus === 0 || inv.PublishStatus === 1) && (
               <Button
                 size="sm"
-                className="h-7 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                className="h-7 min-w-[86px] gap-1 rounded-md px-2 text-xs font-semibold whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
                 disabled={importing}
                 onClick={() => handleImport(inv)}
               >
+                <Send className="h-3.5 w-3.5 shrink-0" />
                 {t('pages.actives.invoices.publishAction')}
               </Button>
             )}
             {inv.PublishStatus === 2 && (
               <Button
                 size="sm"
-                className="h-7 px-2 text-xs bg-green-600 hover:bg-green-700 text-white"
+                className="h-7 min-w-[86px] gap-1 rounded-md px-2 text-xs font-semibold whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
                 onClick={() => handleView(inv)}
               >
+                <Eye className="h-3.5 w-3.5 shrink-0" />
                 {t('pages.actives.invoices.viewInvoiceAction')}
               </Button>
             )}
             <Button
               size="sm"
               variant="outline"
-              className="h-7 px-2 text-xs border-cyan-400 text-cyan-700 hover:bg-cyan-50"
+              className="h-7 min-w-[82px] gap-1 rounded-md px-2 text-xs font-semibold whitespace-nowrap border-cyan-400 text-cyan-700 hover:bg-cyan-50"
               disabled={checking}
               onClick={() => handleCheck(inv)}
             >
+              <SearchCheck className="h-3.5 w-3.5 shrink-0" />
               {t('pages.actives.invoices.checkAction')}
             </Button>
-            {inv.PublishStatus === 2 && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs border-rose-400 text-rose-600 hover:bg-rose-50"
-                onClick={() => handleCancel(inv)}
-              >
-                {t('common.cancel')}
-              </Button>
-            )}
           </div>
         )
       },
@@ -369,7 +345,7 @@ export default function InvoicesPage() {
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="flex h-[calc(100vh-7rem)] min-h-0 flex-col gap-3 overflow-hidden">
         <ListPageHeader title={t('pages.actives.invoices.pageTitle')} icon={Receipt}>
           <SearchBar value={keyword} onChange={onKeyword} placeholder={t('common.search')} />
           <select
