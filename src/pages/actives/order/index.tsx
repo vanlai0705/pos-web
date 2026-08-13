@@ -7,7 +7,7 @@ import {
   Printer, Banknote, Smartphone, CreditCard,
   ShoppingCart, Package, Save,
   FileText, Info, Wallet, RefreshCw, BookOpen, Eye, EyeOff,
-  LayoutGrid, Table2,
+  LayoutGrid, Table2, Pencil, CheckCircle2, Ban,
 } from 'lucide-react'
 import { CustomerSelect } from '@/components/pos/customer-select'
 import { StaffSelect } from '@/components/pos/staff-select'
@@ -128,6 +128,7 @@ interface CartItem {
   qty: number
   price: number
   discountPct: number
+  discountAmt: number
   note: string
   /**
    * Per-line tax percent, seeded from the product's own Tax when added to
@@ -139,7 +140,8 @@ interface CartItem {
 }
 
 function itemDiscount(item: CartItem) {
-  return item.price * item.qty * item.discountPct / 100
+  const base = item.price * item.qty
+  return Math.min(base, base * item.discountPct / 100 + item.discountAmt)
 }
 
 /** Line total after discount, before tax. */
@@ -254,6 +256,102 @@ function calcTotals(
 const PRODUCT_GRID = 'grid grid-cols-3 lg:grid-cols-4 gap-1.5'
 
 const PRODUCT_PAGE_SIZE = 30
+
+function createCartItemFromProduct(product: TPosActiveProduct): CartItem {
+  // Angular's createOrderItem: a tax-exempt product (Tax === null/undefined)
+  // stays null forever on this line; anything else seeds a real number.
+  const tax = product.Tax == null ? null : Number(product.Tax) || 0
+  return {
+    product,
+    qty: 1,
+    price: product.Price ?? 0,
+    discountPct: 0,
+    discountAmt: 0,
+    note: '',
+    tax,
+  }
+}
+
+function ProductItemDialog({
+  product,
+  open,
+  onOpenChange,
+  onConfirm,
+}: {
+  product: TPosActiveProduct | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: (item: CartItem) => void
+}) {
+  const { t } = useTranslation()
+  const [draft, setDraft] = useState<CartItem | null>(null)
+
+  useEffect(() => {
+    setDraft(product ? createCartItemFromProduct(product) : null)
+  }, [product])
+
+  const setField = (field: 'qty' | 'price' | 'discountPct' | 'discountAmt', value: number) => {
+    setDraft(current => current ? { ...current, [field]: value } : current)
+  }
+
+  const setNote = (value: string) => {
+    setDraft(current => current ? { ...current, note: value } : current)
+  }
+
+  const handleConfirm = () => {
+    if (!draft) return
+    const qty = Math.max(1, Math.round(Number(draft.qty) || 1))
+    const price = Math.max(0, Number(draft.price) || 0)
+    const discountPct = Math.min(100, Math.max(0, Number(draft.discountPct) || 0))
+    const discountAmt = Math.max(0, Number(draft.discountAmt) || 0)
+    onConfirm({ ...draft, qty, price, discountPct, discountAmt })
+    onOpenChange(false)
+  }
+
+  const total = draft ? itemSubtotal(draft) : 0
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl p-0 overflow-hidden">
+        <DialogHeader className="border-b bg-muted/20 px-5 py-4">
+          <DialogTitle className="flex items-center gap-3 text-base">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Pencil className="h-5 w-5" />
+            </span>
+            <span className="truncate">{product?.Name || t('common.productName')}</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        {draft && (
+          <div className="space-y-5 px-5 py-5">
+            <div className="grid grid-cols-2 gap-4">
+              <NumInput value={draft.qty} onChange={v => setField('qty', Math.max(1, Math.round(v)))} className="h-12" />
+              <NumInput value={draft.price} onChange={v => setField('price', Math.max(0, v))} className="h-12" />
+              <NumInput value={draft.discountPct} onChange={v => setField('discountPct', Math.min(100, Math.max(0, v)))} suffix="%" className="h-12" />
+              <NumInput value={draft.discountAmt} onChange={v => setField('discountAmt', Math.max(0, v))} className="h-12" />
+              <NumInput value={total} onChange={() => undefined} className="h-12 pointer-events-none opacity-70" />
+            </div>
+            <Textarea
+              value={draft.note}
+              onChange={e => setNote(e.target.value)}
+              placeholder={t('common.note')}
+              className="min-h-12 resize-none"
+            />
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 border-t bg-muted/20 px-5 py-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="min-w-28">
+            <Ban className="mr-2 h-4 w-4" /> {t('common.cancel')}
+          </Button>
+          <Button onClick={handleConfirm} className="min-w-32 bg-emerald-600 hover:bg-emerald-700">
+            <CheckCircle2 className="mr-2 h-4 w-4" /> {t('pages.actives.order.searchDialogConfirm')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 interface ProductPanelProps { onAdd: (p: TPosActiveProduct) => void }
 
@@ -629,6 +727,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
           qty: it.Quantity ?? 1,
           price: it.Price ?? it.Product?.Price ?? 0,
           discountPct: it.DiscountPercent ?? 0,
+          discountAmt: it.Discount ?? 0,
           note: it.Note ?? '',
           tax: it.Tax ?? it.Product?.Tax ?? null,
         })))
@@ -658,6 +757,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
       qty: it.Quantity ?? 1,
       price: it.Price ?? it.Product?.Price ?? 0,
       discountPct: it.DiscountPercent ?? 0,
+      discountAmt: it.Discount ?? 0,
       note: it.Note ?? '',
       tax: it.Tax ?? it.Product?.Tax ?? null,
     })))
@@ -709,7 +809,34 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
     else setTemporarySearchOpen(true)
   }
 
+  const [editingProduct, setEditingProduct] = useState<TPosActiveProduct | null>(null)
+
+  const commitProductToCart = useCallback((item: CartItem) => {
+    setCart(prev => {
+      const idx = prev.findIndex(c => c.product.Id === item.product.Id)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = {
+          ...next[idx],
+          qty: next[idx].qty + item.qty,
+          price: item.price,
+          discountPct: item.discountPct,
+          discountAmt: item.discountAmt,
+          note: item.note,
+          tax: item.tax,
+        }
+        return next
+      }
+      return [...prev, item]
+    })
+  }, [])
+
   const addToCart = useCallback((product: TPosActiveProduct) => {
+    if (settings?.IsInputQuantityWithBarcode) {
+      setEditingProduct(product)
+      return
+    }
+
     setCart(prev => {
       const idx = prev.findIndex(c => c.product.Id === product.Id)
       if (idx >= 0) {
@@ -717,12 +844,9 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
         next[idx] = { ...next[idx], qty: next[idx].qty + 1 }
         return next
       }
-      // Angular's createOrderItem: a tax-exempt product (Tax === null/undefined)
-      // stays null forever on this line; anything else seeds a real number.
-      const tax = product.Tax == null ? null : Number(product.Tax) || 0
-      return [...prev, { product, qty: 1, price: product.Price ?? 0, discountPct: 0, note: '', tax }]
+      return [...prev, createCartItemFromProduct(product)]
     })
-  }, [])
+  }, [settings?.IsInputQuantityWithBarcode])
 
   const updateQty = useCallback((idx: number, delta: number) => {
     setCart(prev => {
@@ -738,7 +862,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
     setCart(prev => prev.filter((_, i) => i !== idx))
   }, [])
 
-  const updateItem = useCallback((idx: number, field: 'discountPct' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => {
+  const updateItem = useCallback((idx: number, field: 'discountPct' | 'discountAmt' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => {
     setCart(prev => {
       const next = [...prev]
       next[idx] = { ...next[idx], [field]: value }
@@ -765,11 +889,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
       Guid: newGuid(),
       Product: { ...c.product, Tax: tax, Total: lineTotal, Amount: lineAmount },
       Quantity: c.qty,
-      // `Discount` (a flat amount) and `DiscountPercent` are independent
-      // reductions the server applies on top of each other (OrderService.
-      // getTotalBeforeTaxItem subtracts both) — the line editor here only
-      // exposes a percent, so Discount must stay 0, never itemDiscount(c).
-      Discount: 0,
+      Discount: c.discountAmt,
       DiscountPercent: c.discountPct,
       Tax: tax,
       IsPromotion: false,
@@ -1118,6 +1238,13 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
         <ProductPanel onAdd={addToCart} />
       </div>
 
+      <ProductItemDialog
+        product={editingProduct}
+        open={!!editingProduct}
+        onOpenChange={open => { if (!open) setEditingProduct(null) }}
+        onConfirm={commitProductToCart}
+      />
+
       <Sheet open={!!pdfPreviewUrl} onOpenChange={open => { if (!open) closePdfPreview() }}>
         <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col gap-0">
           <SheetHeader className="flex-none flex-row items-center justify-between gap-2 border-b px-4 py-3 space-y-0">
@@ -1242,7 +1369,7 @@ interface InternalOrderPanelProps {
   onQty: (idx: number, delta: number) => void
   onRemove: (idx: number) => void
   onClear: () => void
-  onUpdateItem: (idx: number, field: 'discountPct' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => void
+  onUpdateItem: (idx: number, field: 'discountPct' | 'discountAmt' | 'note' | 'price' | 'qty' | 'tax', value: number | string) => void
   onSave: (action: OrderAction) => void
   onOpenOrderSearch: (kind: 'booking' | 'quotation' | 'temporary') => void
   saving: boolean
@@ -1503,7 +1630,6 @@ function InternalOrderPanel({
             <tbody className="divide-y">
               {cart.map((item, idx) => {
                 const c = ci(item.product.Id, idx)
-                const disc = itemDiscount(item)
                 // "T.Tiền" = Angular's "Thành tiền", which is the AFTER-tax
                 // amount (getItemAmountAfterTax), not the pre-tax subtotal.
                 const rowTotal = itemAmount(item, perItemTax)
@@ -1556,12 +1682,8 @@ function InternalOrderPanel({
                       </div>
                     </td>
                     <td className="px-2 py-1.5">
-                      <NumInput value={disc} className="w-20"
-                        onChange={v => {
-                          const base = item.price * item.qty
-                          const pct = base > 0 ? Math.min(100, Math.max(0, v / base * 100)) : 0
-                          onUpdateItem(idx, 'discountPct', pct)
-                        }} />
+                      <NumInput value={item.discountAmt} className="w-20"
+                        onChange={v => onUpdateItem(idx, 'discountAmt', Math.max(0, v))} />
                     </td>
                     {perItemTax && (
                       <td className="px-2 py-1.5">
