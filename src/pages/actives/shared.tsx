@@ -16,9 +16,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-export { StatusBadge } from '@/components/ui/status-badge'
 
-// ─── Currency format ──────────────────────────────────────────────────────────
+export { StatusBadge } from '@/components/ui/status-badge'
 
 export function fmtCurrency(val?: number | null) {
   if (val == null) return '—'

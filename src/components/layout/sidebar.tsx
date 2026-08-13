@@ -1,11 +1,11 @@
-import { cn } from '@/utils';
-import { ChevronLeft } from 'lucide-react';
-import { DashboardNav } from '@/components/dashboard-nav';
-import { useAppState } from '@/context/app-provider';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useNavItems } from '@/hooks/useNavItems';
-import { withDomainPath } from '@/utils/domain-route';
+import { DashboardNav } from '@/components/dashboard-nav'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { useAppState } from '@/context/app-provider'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { useNavItems } from '@/hooks/useNavItems'
+import { cn } from '@/utils'
+import { withDomainPath } from '@/utils/domain-route'
+import { ChevronLeft } from 'lucide-react'
 
 const SIDEBAR_GRADIENT = 'linear-gradient(to right, hsl(var(--primary) / 0.85), hsl(var(--primary)), hsl(var(--primary) / 0.85))'
 

@@ -1,9 +1,9 @@
+import { useGetTableOrderItemsByGuidQuery } from '@/store/slice/tables/api'
 import { useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { getImageUrl } from '@/utils/common'
-import { useGetTableOrderItemsByGuidQuery } from '@/store/slice/users/api/api'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { fmtNum, QrOrderHeader, useDisablePageZoom } from '../order-table/shared'
+import { getImageUrl } from '@/utils/common'
 
 /** Read-only view of what's already been placed on this table's order —
  * mirrors pos_web's qr-order-cart (a separate route from the in-progress

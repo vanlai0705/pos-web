@@ -1,9 +1,9 @@
-import { useRef } from 'react'
-import { Camera, ImageIcon, X } from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils'
 import { PosImage } from '@/components/ui/pos-image'
+import { cn } from '@/utils'
+import { Camera, ImageIcon, X } from 'lucide-react'
+import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 const MAX_SIZE_MB = 3
 const MAX_SLOTS = 6
@@ -112,4 +112,4 @@ export function ProductImageUploads({ images, onChange }: { images: ImageSlot[];
   )
 }
 
-export { emptySlot, withTrailingEmpty }
+export { emptySlot,withTrailingEmpty }

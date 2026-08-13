@@ -1,9 +1,8 @@
-import { useLocation, useSearchParams } from 'react-router-dom'
 import { useAppSelector } from '@/store/hooks'
 import { selectAuth } from '@/store/slice/users/app'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { DevExpressReportViewer } from '../devexpress-surface'
 import { resolveReportCode } from '../report-code'
-
 export default function ReportViewerPage() {
   const [searchParams] = useSearchParams()
   const location = useLocation()

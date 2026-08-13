@@ -1,2 +1,2 @@
+export * from '@/store/slice/api/tag-types';
 export * from './api';
-export * from './tag-types';

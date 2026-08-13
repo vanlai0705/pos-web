@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
-import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/users/api/api'
+import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/generic/api'
 import { RewardPunishDialog, REWARD_PUNISH_TYPE } from '@/components/pos/reward-punish-dialog'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {
@@ -17,8 +17,7 @@ import {
 } from '@/pages/actives/shared'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
+import { STATUS } from '@/constants/status'
 
 interface TLookup { Id?: number; Name?: string }
 

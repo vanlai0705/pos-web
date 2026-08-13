@@ -1,10 +1,6 @@
-import { useTranslation } from 'react-i18next';
-import { STATUS } from '@/constants/data';
-import { StatusBadge } from './ui/status-badge';
-
-
-
-
+import { STATUS } from '@/constants/status'
+import { useTranslation } from 'react-i18next'
+import { StatusBadge } from './ui/status-badge'
 type StatusProps = {
   /** One of the STATUS codes (0 = active, 1 = locked, 2 = deleted) */
   status: number

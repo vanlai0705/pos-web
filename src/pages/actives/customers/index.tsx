@@ -1,41 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { FileDown, Image as ImageIcon, MoreHorizontal, Plus, Upload } from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
+import { useLazyGetCustomerDetailQuery, useSaveCustomerMutation, useFilterCustomersQuery, useGetCustomerGroupsSimpleQuery, useUpdateCustomerStatusMutation } from '@/store/slice/customers/api'
+import { useSaveCustomerGroupMutation, useUpdateCustomerGroupStatusMutation } from '@/store/slice/managers/api'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { TreeSidebar, type TreeSidebarNode } from '@/components/layout/tree-sidebar'
+import { CustomerDialog, Field, buildCustomerPayload, emptyCustomer } from '@/components/pos/customer-form-dialog'
+import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 import { Button } from '@/components/ui/button'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { CodeTag } from '@/components/ui/data-tag'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { NumberInput } from '@/components/ui/number-input'
-import { Textarea } from '@/components/ui/textarea'
-import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
-import { CustomerDialog, Field, emptyCustomer, buildCustomerPayload } from '@/components/pos/customer-form-dialog'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { CodeTag } from '@/components/ui/data-tag'
-import {
-  useFilterCustomersQuery,
-  useGenericDownloadMutation,
-  useGenericPostMutation,
-  useGetCustomerGroupsSimpleQuery,
-  useLazyGetCustomerDetailQuery,
-  useSaveCustomerGroupMutation,
-  useSaveCustomerMutation,
-  useUpdateCustomerGroupStatusMutation,
-  useUpdateCustomerStatusMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosCustomer, TPosCustomerGroup } from '@/store/slice/users/types/pos-types'
-import { cn, query, downloadBlob } from '@/utils'
+import { Textarea } from '@/components/ui/textarea'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { useGenericDownloadMutation, useGenericPostMutation } from '@/store/slice/generic/api'
+import { TPosCustomer, TPosCustomerGroup } from '@/store/slice/users'
+import { cn, downloadBlob, query } from '@/utils'
 import { getImageUrl } from '@/utils/common'
+import { FileDown, ImageIcon, MoreHorizontal, Plus, Upload } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 const PAGE_SIZE = 15
 const STATUS_ACTIVE = 0

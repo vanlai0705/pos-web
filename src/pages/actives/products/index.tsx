@@ -1,26 +1,20 @@
-import { useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { Package, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  useFilterActiveProductsQuery,
-  useUpdateActiveProductStatusMutation,
-  useGetProductGroupsSimpleQuery,
-} from '@/store/slice/users/api/api'
 import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
+import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE } from '../shared'
-import { getImageUrl } from '@/utils/common'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { useGetProductGroupsSimpleQuery } from '@/store/slice/customers/api'
+import { useFilterActiveProductsQuery, useUpdateActiveProductStatusMutation } from '@/store/slice/products/api'
+import { getImageUrl } from '@/utils/common'
+import { Check, Lock, MoreHorizontal, Package, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { ListPageHeader, PAGE_SIZE, SearchBar, StatusBadge } from '../shared'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { STATUS } from '@/constants/status'
 
 // STATUS in pos_web: 0 = Actived, 1 = Locked, 2 = Deleted.
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
-
 function imgUrl(url?: string | null) {
   return getImageUrl(url ?? undefined) ?? null
 }

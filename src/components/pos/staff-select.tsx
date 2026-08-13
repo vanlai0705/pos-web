@@ -1,17 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Pencil, Plus, X } from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
+import { useLazyFilterUsersSimpleQuery } from '@/store/slice/customers/api'
+import { useLazyGetMemberDetailQuery, useSaveMemberMutation } from '@/store/slice/human-resources/api'
+import { TPosMember, TPosUser } from '@/store/slice/users'
 import { cn } from '@/utils'
 import { withDomainPath } from '@/utils/domain-route'
-import {
-  useLazyFilterUsersSimpleQuery,
-  useLazyGetMemberDetailQuery,
-  useSaveMemberMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosMember, TPosUser } from '@/store/slice/users/types/pos-types'
+import { ChevronDown, Pencil, Plus, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { StaffDialog, emptyStaff } from './staff-form-dialog'
-
 interface StaffSelectProps {
   value?: TPosUser | null
   onChange: (user: TPosUser | null) => void

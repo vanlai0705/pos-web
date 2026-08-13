@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { TrendingUp, Plus, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/users/api/api'
+import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/generic/api'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -14,7 +14,6 @@ import { ListPageHeader, SearchBar, DateRangeFilter, fmtDateTime, PAGE_SIZE, def
 import type { TPosCurrencyVoucher } from '@/store/slice/users/types/pos-types'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 import { withDomainPath } from '@/utils/domain-route'
-
 
 export default function ReceiptPage() {
   const location = useLocation()

@@ -1,14 +1,12 @@
-import i18n from "i18next";
-import Backend from "i18next-http-backend";
-import LanguageDetector from "i18next-browser-languagedetector";
-import { initReactI18next } from "react-i18next";
-
-import viLang from "./locales/vi";
-import enLang from "./locales/en";
-import kmLang from "./locales/km";
-import zhLang from "./locales/zh";
-import { extraResources } from "./extra-resources";
-
+import i18n from "i18next"
+import LanguageDetector from "i18next-browser-languagedetector"
+import Backend from "i18next-http-backend"
+import enLang from "./locales/en"
+import kmLang from "./locales/km"
+import viLang from "./locales/vi"
+import zhLang from "./locales/zh"
+import { initReactI18next } from "react-i18next"
+import { extraResources } from "./extra-resources"
 function mergeDeep<T extends Record<string, any>>(base: T, extra: Record<string, any>): T {
   const output: Record<string, any> = { ...base };
 

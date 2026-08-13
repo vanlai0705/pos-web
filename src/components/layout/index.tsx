@@ -1,22 +1,22 @@
-import { Outlet } from "react-router-dom"
-import { useEffect, useState } from "react"
-import { useDispatch } from "react-redux"
-import { Check, Settings, Menu, Globe, SunMoon, Palette, Search, LayoutGrid } from "lucide-react"
-import Sidebar from './sidebar'
-import { ProfileDropdown } from '../profile-dropdown'
-import { ThemeSwitch } from '../theme-switch'
-import { ThemeCustomizer } from '../theme-customizer'
-import { HeaderNav } from './header-nav'
-import { ShopSwitcher } from './shop-switcher'
-import { NotificationBell } from './notification-bell'
-import { useAppState } from '@/context/app-provider'
 import type { TLayoutMode } from '@/context/app-provider'
-import { useLazyGetMenuQuery } from "@/store/slice/users/api/api"
-import { setMenu } from "@/store/slice/users/app"
-import { useSearch } from "@/context/search-context"
+import Sidebar from './sidebar'
 import { Button } from "@/components/ui/button"
-import { useTranslation } from "react-i18next"
+import { useAppState } from '@/context/app-provider'
+import { useSearch } from "@/context/search-context"
+import { useLazyGetMenuQuery } from '@/store/slice/registration-users/api'
+import { setMenu } from "@/store/slice/users/app"
 import { withDomainPath } from "@/utils/domain-route"
+import { Check, Globe, LayoutGrid, Menu, Palette, Search, Settings, SunMoon } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { useDispatch } from "react-redux"
+import { Outlet } from "react-router-dom"
+import { ProfileDropdown } from '../profile-dropdown'
+import { ThemeCustomizer } from '../theme-customizer'
+import { ThemeSwitch } from '../theme-switch'
+import { HeaderNav } from './header-nav'
+import { NotificationBell } from './notification-bell'
+import { ShopSwitcher } from './shop-switcher'
 
 const HEADER_GRADIENT = 'linear-gradient(to right, hsl(var(--primary) / 0.85), hsl(var(--primary)), hsl(var(--primary) / 0.85))'
 

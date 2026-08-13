@@ -1,18 +1,19 @@
+import dayjs from 'dayjs'
+import { type LookupItem, LookupSelect } from '@/components/pos/lookup-select'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { NumberInput } from '@/components/ui/number-input'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { STATUS } from '@/constants/status'
+import { useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { buildModelFormData } from '@/utils/multipart'
+import { Plus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { buildModelFormData } from '@/utils/multipart'
-import { Plus, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { NumberInput } from '@/components/ui/number-input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
-import { useLazyGenericGetQuery, useGenericPostMutation } from '@/store/slice/users/api/api'
-import dayjs from 'dayjs'
 
 /** PROMOTION_TYPE in pos_web. */
 export const PROMOTION_TYPE = {
@@ -24,8 +25,6 @@ export const PROMOTION_TYPE = {
   DiscountByBillTotal: 5,
   Buy1Get1: 6,
 } as const
-
-const STATUS = { ACTIVE: 0, LOCKED: 1 } as const
 
 const ENDPOINTS = {
   detail: 'promotions/detail', create: 'promotions/create', update: 'promotions/update',

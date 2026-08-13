@@ -5,6 +5,3 @@ export const CrudMode = {
 
 export type CrudMode = typeof CrudMode[keyof typeof CrudMode];
 
-
-
-

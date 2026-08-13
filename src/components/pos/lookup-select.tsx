@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, X } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { useLazyFilterReportQuery } from '@/store/slice/generic/api'
 import { cn } from '@/utils'
-import { useLazyFilterReportQuery } from '@/store/slice/users/api/api'
-
+import { ChevronDown, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 export interface LookupItem {
   Id?: number
   Name?: string

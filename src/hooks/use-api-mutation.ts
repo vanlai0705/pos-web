@@ -1,5 +1,4 @@
-import { useGenericPostMutation } from '@/store/slice/users/api/api'
-
+import { useGenericPostMutation } from '@/store/slice/generic/api'
 interface ApiRequest {
   url: string
   method?: 'POST' | 'PUT' | 'DELETE' | 'PATCH'

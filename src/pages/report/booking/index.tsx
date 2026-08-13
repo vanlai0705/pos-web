@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ClipboardList } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useFilterReportQuery } from '@/store/slice/users/api/api'
+import { useFilterReportQuery } from '@/store/slice/generic/api'
 import {
   fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
   StatCards, ReportDateFilter, ReportTabs,

@@ -1,27 +1,23 @@
-import { useEffect, useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { Banknote, Plus, MoreHorizontal, Trash2, Check, Lock } from 'lucide-react'
-import { toast } from 'sonner'
-import { buildModelFormData } from '@/utils/multipart'
+import dayjs from 'dayjs'
 import { Button } from '@/components/ui/button'
-import { NumberInput } from '@/components/ui/number-input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Label } from '@/components/ui/label'
+import { NumberInput } from '@/components/ui/number-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { Textarea } from '@/components/ui/textarea'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { STATUS } from '@/constants/status'
+import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
+import { useFilterReportQuery, useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { useGetSalaryTypesQuery } from '@/store/slice/human-resources/api'
+import { buildModelFormData } from '@/utils/multipart'
+import { Banknote, Check, Lock, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
-import {
-  useFilterReportQuery, useLazyGenericGetQuery, useGenericPostMutation, useGetSalaryTypesQuery,
-} from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, PAGE_SIZE } from '@/pages/actives/shared'
-import dayjs from 'dayjs'
-
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
 
 /** Per-employee salary settings the sheet copies from the member record. */
 interface TUserSalary {

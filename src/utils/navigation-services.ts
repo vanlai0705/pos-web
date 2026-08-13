@@ -1,6 +1,6 @@
+import { NavigateFunction } from "react-router-dom"
+import { withDomainPath } from "./domain-route"
 // navigationService.ts
-import { NavigateFunction } from "react-router-dom";
-import { withDomainPath } from "./domain-route";
 
 let navigate: NavigateFunction | null = null;
 

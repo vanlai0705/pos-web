@@ -1,6 +1,6 @@
+import { useEffect, useState } from 'react'
+import { createContext, useContext } from "react"
 /* eslint-disable react-refresh/only-export-components */
-
-import { createContext, useContext, useEffect, useState } from "react";
 
 export type TLanguage = "en" | "vi";
 export type TTheme = "dark" | "light" | "system";

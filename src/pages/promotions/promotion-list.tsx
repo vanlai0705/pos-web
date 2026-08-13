@@ -1,20 +1,16 @@
-import { useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { Tag, Plus, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE, defaultDateFrom, defaultDateTo, DateRangeFilter } from '@/pages/actives/shared'
-import { CodeTag } from '@/components/ui/data-tag'
 import { PromotionDialog } from '@/components/pos/promotion-dialog'
+import { Button } from '@/components/ui/button'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { CodeTag } from '@/components/ui/data-tag'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { STATUS } from '@/constants/status'
+import { DateRangeFilter, ListPageHeader, PAGE_SIZE, SearchBar, StatusBadge, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/generic/api'
+import { Check, Lock, MoreHorizontal, Plus, Tag, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
-
+import { toast } from 'sonner'
 interface TPromotion {
   Id?: number
   Name?: string

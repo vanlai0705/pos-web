@@ -1,5 +1,4 @@
 import { OpeningBalanceEntityPage } from '../shared'
-
 export default function OpeningBalancesSupplierPage() {
   return (
     <OpeningBalanceEntityPage

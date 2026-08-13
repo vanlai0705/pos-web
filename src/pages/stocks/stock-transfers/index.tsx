@@ -3,7 +3,7 @@ import { confirmAction } from '@/components/ui/use-confirm-action'
 import { ArrowLeftRight, Plus, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/users/api/api'
+import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/generic/api'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'

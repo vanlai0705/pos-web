@@ -2,8 +2,27 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Store, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { PosImage } from '@/components/ui/pos-image'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useGetUserShopSettingQuery, useSelectShopMutation } from '@/store/slice/notifications/api'
+import { cn } from '@/utils'
+import { toast } from 'sonner'
 
-function ShopAvatar({ imageUrl, name, size = 'sm' }: { imageUrl?: string | null; name?: string; size?: 'sm' | 'md' }) {
+function ShopAvatar({
+  imageUrl,
+  name,
+  size = 'sm',
+}: {
+  imageUrl?: string | null
+  name?: string
+  size?: 'sm' | 'md'
+}) {
   const dim = size === 'md' ? 'w-8 h-8' : 'w-5 h-5'
   if (imageUrl) {
     return (
@@ -17,20 +36,6 @@ function ShopAvatar({ imageUrl, name, size = 'sm' }: { imageUrl?: string | null;
   }
   return <Store className={`${size === 'md' ? 'size-5' : 'size-4'} flex-none opacity-80`} />
 }
-import { cn } from '@/utils'
-import {
-  useGetUserShopSettingQuery,
-  useSelectShopMutation,
-} from '@/store/slice/users/api/api'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { toast } from 'sonner'
 
 export function ShopSwitcher() {
   const { t } = useTranslation()

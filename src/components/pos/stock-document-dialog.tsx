@@ -1,23 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Search, Trash2, Package } from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
-import { buildModelFormData } from '@/utils/multipart'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { NumberInput } from '@/components/ui/number-input'
-import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
-import {
-  useFilterActiveProductsQuery,
-  useLazyGenericGetQuery,
-  useGenericPostMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
-import { getImageUrl } from '@/utils/common'
 import dayjs from 'dayjs'
-
+import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { useFilterActiveProductsQuery } from '@/store/slice/products/api'
+import { TPosActiveProduct } from '@/store/slice/users'
+import { getImageUrl } from '@/utils/common'
+import { buildModelFormData } from '@/utils/multipart'
+import { Package, Search, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { NumberInput } from '../ui/number-input'
 export interface StockDocLine {
   Product?: TPosActiveProduct
   Quantity?: number

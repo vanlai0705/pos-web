@@ -1,6 +1,6 @@
-import { NavLink, Outlet } from "react-router-dom"
-import { Layers, Users, Truck, Ruler, Store } from "lucide-react"
 import { cn } from "@/utils"
+import { Layers, Ruler, Store, Truck, Users } from "lucide-react"
+import { NavLink, Outlet } from "react-router-dom"
 
 const NAV_ITEMS = [
   { to: "/managers/product-groups", label: "Nhóm mặt hàng", icon: Layers },

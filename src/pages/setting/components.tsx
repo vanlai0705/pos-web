@@ -1,10 +1,10 @@
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Loader2, Save } from "lucide-react"
 import { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { Loader2, Save } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
 
 // ── Card section ─────────────────────────────────────────────────────────────
 

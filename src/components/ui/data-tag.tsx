@@ -1,5 +1,4 @@
 import { cn } from '@/utils'
-
 type DataTagTone = 'code' | 'voucher' | 'money' | 'neutral'
 
 const TONE_CLASS: Record<DataTagTone, string> = {

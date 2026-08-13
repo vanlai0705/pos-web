@@ -1,20 +1,14 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { FileText, Plus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import {
-  useFilterQuotationsQuery,
-  useUpdateQuotationStatusMutation,
-} from '@/store/slice/users/api/api'
 import type { TPosQuotation } from '@/store/slice/users/types/pos-types'
 import { StockDocumentDialog } from '@/components/pos/stock-document-dialog'
+import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, StatusBadge, fmtDate, useListFilter } from '../shared'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
-
-
-
+import { useFilterQuotationsQuery, useUpdateQuotationStatusMutation } from '@/store/slice/quotations/api'
+import { FileText, Pencil, Plus, ToggleLeft, ToggleRight } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { DateRangeFilter, ListPageHeader, SearchBar, StatusBadge, fmtDate, useListFilter } from '../shared'
 export default function QuotationPage() {
   const { t } = useTranslation()
   const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()

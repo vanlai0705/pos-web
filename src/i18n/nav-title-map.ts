@@ -1,5 +1,5 @@
+import type { NavItem,TNavChildren } from "@/constants/data"
 import type { TFunction } from "i18next"
-import type { NavItem, TNavChildren } from "@/constants/data"
 
 const TITLE_TO_KEY: Record<string, string> = {
   "Chính": "menu.main",

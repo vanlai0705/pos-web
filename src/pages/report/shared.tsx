@@ -1,21 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import { FileSpreadsheet, ChevronDown, X } from 'lucide-react'
-import { toast } from 'sonner'
-import { query, downloadBlob } from '@/utils'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import dayjs from 'dayjs'
+import { Button } from '@/components/ui/button'
 import { DataPagination } from '@/components/ui/data-pagination'
+import { Input } from '@/components/ui/input'
+import { useGetProductGroupsSimpleQuery, useLazyFilterCustomersQuery } from '@/store/slice/customers/api'
+import { useGenericDownloadMutation } from '@/store/slice/generic/api'
+import { useGetUserShopSettingQuery } from '@/store/slice/notifications/api'
+import { downloadBlob, query } from '@/utils'
+import { ChevronDown, FileSpreadsheet, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { DateRangeFilter, toUtcEndOfDay, toUtcStartOfDay } from '@/pages/actives/shared'
-import {
-  useLazyFilterCustomersQuery,
-  useGetUserShopSettingQuery,
-  useGetProductGroupsSimpleQuery,
-  useGenericDownloadMutation,
-} from '@/store/slice/users/api/api'
-
-// ─── Formatters ───────────────────────────────────────────────────────────────
 
 export function fmtNum(val?: number | null) {
   if (val == null) return '0'

@@ -1,6 +1,5 @@
-import type { TPosLoginData, TPosUser } from "./pos-types";
 import type { TPosMenuItem } from "@/utils/pos-menu-converter";
-
+import type { TPosLoginData,TPosUser } from "./pos-types";
 export type TUserWarehouseSelect = {
   id: number;
   name: string;

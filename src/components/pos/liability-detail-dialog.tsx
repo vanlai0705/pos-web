@@ -1,11 +1,11 @@
+import type { TPosLiabilityVoucher } from '@/store/slice/users/types/pos-types'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { fmtDate } from '@/pages/actives/shared'
+import { useFilterReportQuery } from '@/store/slice/generic/api'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { DataPagination } from '@/components/ui/data-pagination'
-import { useFilterReportQuery } from '@/store/slice/users/api/api'
-import type { TPosLiabilityVoucher } from '@/store/slice/users/types/pos-types'
-import { fmtDate } from '@/pages/actives/shared'
 
 const money = (v?: number) => (v ?? 0).toLocaleString('vi-VN')
 

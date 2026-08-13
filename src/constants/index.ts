@@ -1,5 +1,4 @@
 export * from "./company";
-
 export const API_ORIGIN = "https://api.posmobile.vn";
 
 /**

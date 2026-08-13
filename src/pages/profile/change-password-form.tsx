@@ -1,13 +1,12 @@
-import { useState } from "react";
-import { Eye, EyeOff, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useSelfChangePasswordMutation } from "@/store/slice/users/api/api";
-import { computePasswordSalt } from "@/utils/crypto";
-import { cn } from "@/utils";
-import { toast } from "sonner";
-
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from '@/components/ui/label'
+import { useSelfChangePasswordMutation } from '@/store/slice/registration-users/api'
+import { cn } from "@/utils"
+import { computePasswordSalt } from "@/utils/crypto"
+import { Eye, EyeOff, Lock } from "lucide-react"
+import { useState } from "react"
+import { toast } from "sonner"
 function PasswordField({
   id,
   label,

@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React,{ createContext,useCallback,useContext,useEffect,useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-
 interface ToastProps {
     id: number
     isWin?: boolean

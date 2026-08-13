@@ -1,20 +1,14 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { CalendarCheck, Plus, Pencil, ToggleLeft, ToggleRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import {
-  useFilterBookingsQuery,
-  useUpdateBookingStatusMutation,
-} from '@/store/slice/users/api/api'
 import type { TPosBooking } from '@/store/slice/users/types/pos-types'
 import { StockDocumentDialog } from '@/components/pos/stock-document-dialog'
+import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, StatusBadge, fmtDate, useListFilter } from '../shared'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
-
-
-
+import { useFilterBookingsQuery, useUpdateBookingStatusMutation } from '@/store/slice/bookings/api'
+import { CalendarCheck, Pencil, Plus, ToggleLeft, ToggleRight } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { DateRangeFilter, ListPageHeader, SearchBar, StatusBadge, fmtDate, useListFilter } from '../shared'
 export default function BookingPage() {
   const { t } = useTranslation()
   const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()

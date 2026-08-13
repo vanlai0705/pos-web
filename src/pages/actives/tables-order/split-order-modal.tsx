@@ -1,11 +1,10 @@
+import type { TPosOrderItem,TPosTable } from '@/store/slice/users/types/pos-types'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { useLazyGetTableOrderDetailQuery } from '@/store/slice/tables/api'
+import { X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { X } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { useLazyGetTableOrderDetailQuery } from '@/store/slice/users/api/api'
-import type { TPosOrderItem, TPosTable } from '@/store/slice/users/types/pos-types'
-
 interface SplitOrderModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void

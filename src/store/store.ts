@@ -1,11 +1,10 @@
-import type { Action, ThunkAction } from "@reduxjs/toolkit";
-import { combineSlices, configureStore } from "@reduxjs/toolkit";
-import { setupListeners } from "@reduxjs/toolkit/query";
-import { userSlice } from "./slice/users/app";
-import { userApiSlice } from "./slice/users/api";
-
-import { persistStore, persistReducer } from "redux-persist";
-import storage from "redux-persist/lib/storage";
+import type { Action,ThunkAction } from "@reduxjs/toolkit"
+import storage from "redux-persist/lib/storage"
+import { combineSlices, configureStore } from "@reduxjs/toolkit"
+import { setupListeners } from "@reduxjs/toolkit/query"
+import { persistReducer, persistStore } from "redux-persist"
+import { userApiSlice } from "./slice/users/api"
+import { userSlice } from "./slice/users/app"
 
 const userPersistConfig = {
   key: "user",

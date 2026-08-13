@@ -1,3 +1,8 @@
+import dayjs from "dayjs"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
+import * as XLSX from "xlsx"
+import "./voucher-print.css"
 import { ComponentType, InbouceType, INVENTORY_ITEM_TYPES, OutboundType, WAREHOUSE_TYPES } from "@/constants/data"
 import { DocumentExportActions } from "@/components/document-export-actions"
 import { TComponentItem } from "@/store/slice/component"
@@ -7,22 +12,16 @@ import { TOutboundItem } from "@/store/slice/outbound"
 import { TProductItem } from "@/store/slice/product"
 import { TSupplierItem } from "@/store/slice/supplier"
 import { TWarehouseItem } from "@/store/slice/warehouse"
-import { TImportedGoodsItem } from "@/store/slice/imported-goods"
-import { useGetImportedGoodsQuery } from "@/store/slice/imported-goods"
+import { TImportedGoodsItem, useGetImportedGoodsQuery } from "@/store/slice/imported-goods"
 import { formatAmount, getItemFromResponse, numberToVietnamese } from "@/utils/common"
-import dayjs from "dayjs"
 import { AlignmentType, BorderStyle, Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, VerticalAlign, WidthType } from "docx"
 import { saveAs } from "file-saver"
-import html2canvas from "html2canvas"
-import jsPDF from "jspdf"
 import { useRef } from "react"
 import { useReactToPrint } from "react-to-print"
 import { useTranslation } from "react-i18next"
-import * as XLSX from "xlsx"
-import "./voucher-print.css"
 import { COMPANY_PRINT_LINES } from "@/constants"
 import { CompanyInfoBlock } from "./company-info-block"
-
+import { Info } from 'lucide-react'
 type VoucherDetail = {
     item_id: number
     item_type: number

@@ -1,5 +1,4 @@
-import { useEffect } from 'react'
-import { ReactNode } from 'react'
+import { ReactNode, useEffect } from 'react'
 
 /** Matches pos_web's exact number formatting for prices/quantities on this flow. */
 export function fmtNum(val?: number | null) {

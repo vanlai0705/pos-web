@@ -1,6 +1,5 @@
-import { Button } from '@/components/ui/button';
-import { useTranslation } from 'react-i18next';
-
+import { Button } from '@/components/ui/button'
+import { useTranslation } from 'react-i18next'
 export default function PageNotPermission() {
   const { t } = useTranslation()
   return (

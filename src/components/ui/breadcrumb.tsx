@@ -1,8 +1,7 @@
 import * as React from 'react';
-import { ChevronRightIcon, DotsHorizontalIcon } from '@radix-ui/react-icons';
-import { Slot } from '@radix-ui/react-slot';
-
-import { cn } from '@/utils';
+import { cn } from '@/utils'
+import { ChevronRightIcon, DotsHorizontalIcon } from '@radix-ui/react-icons'
+import { Slot } from '@radix-ui/react-slot'
 
 const Breadcrumb = React.forwardRef<
   HTMLElement,
@@ -105,11 +104,7 @@ const BreadcrumbEllipsis = ({
 BreadcrumbEllipsis.displayName = 'BreadcrumbElipssis';
 
 export {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-  BreadcrumbEllipsis
+Breadcrumb,BreadcrumbEllipsis,BreadcrumbItem,
+BreadcrumbLink,BreadcrumbList,BreadcrumbPage,
+BreadcrumbSeparator
 };

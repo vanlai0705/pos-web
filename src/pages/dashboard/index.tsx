@@ -1,5 +1,13 @@
-import { useMemo } from "react"
-import { useTranslation } from "react-i18next"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useGetProductGroupsSimpleQuery } from '@/store/slice/customers/api'
+import { useGetProductStatisticQuery, useGetSimpleChartQuery } from '@/store/slice/dashboard/api'
+import { useFilterOrdersQuery } from '@/store/slice/orders/api'
+import { useFilterRevenueStatisticsQuery } from '@/store/slice/statistics/api'
+import { cn } from '@/utils'
+import { ArrowDownRight, ArrowUpRight, Package, ReceiptText, TrendingUp, UserPlus, Wallet } from 'lucide-react'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Area,
   AreaChart,
@@ -13,28 +21,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts"
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  Package,
-  ReceiptText,
-  TrendingUp,
-  UserPlus,
-  Wallet,
-} from "lucide-react"
-
-import {
-  useFilterOrdersQuery,
-  useFilterRevenueStatisticsQuery,
-  useGetProductGroupsSimpleQuery,
-  useGetProductStatisticQuery,
-  useGetSimpleChartQuery,
-} from "@/store/slice/users/api/api"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { cn } from "@/utils"
-
+} from 'recharts'
 function pad(n: number) {
   return String(n).padStart(2, "0")
 }

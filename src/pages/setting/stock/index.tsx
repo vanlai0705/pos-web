@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react"
-import { Warehouse } from "lucide-react"
-import { useTranslation } from "react-i18next"
-import { useGetSettingStockQuery, useUpdateSettingStockMutation } from "@/store/slice/users/api/api"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useGetSettingStockQuery, useUpdateSettingStockMutation } from '@/store/slice/settings/api'
+import { Warehouse } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useTranslation } from 'react-i18next'
 import { toast } from "sonner"
-import { PageHeader, SettingCard, ToggleRow, SaveBar } from "../components"
-
+import { PageHeader, SaveBar, SettingCard, ToggleRow } from "../components"
 export default function SettingStockPage() {
   const { t } = useTranslation()
   const { data, isLoading } = useGetSettingStockQuery()

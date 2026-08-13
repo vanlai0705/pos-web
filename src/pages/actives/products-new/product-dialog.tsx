@@ -1,37 +1,23 @@
-import { useEffect, useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { Package, Tag, Scale, Store, Printer, Plus, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { PosImage } from '@/components/ui/pos-image'
-import {
-  Dialog, FormDialogContent, FormDialogHeader, FormDialogBody, FormDialogFooter, DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { NumberInput } from '@/components/ui/number-input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import type { TPosActiveProduct,TPosProductPriceRow,TPosProductRecipeRow,TPosProductType,TPosShop } from '@/store/slice/users/types/pos-types'
 import { LookupSelect } from '@/components/pos/lookup-select'
 import { ProductImageUploads, emptySlot, withTrailingEmpty, type ImageSlot } from '@/components/pos/product-image-uploads'
-import { RecipePickerDialog } from './recipe-picker-dialog'
-import {
-  useGetActiveProductDetailQuery,
-  useSaveActiveProductMutation,
-  useGetProductPriceQuery,
-  useUpdateProductPriceMutation,
-  useGetProductRecipesQuery,
-  useCreateProductRecipeMutation,
-  useDeleteProductRecipeMutation,
-  useFilterShopsAllQuery,
-  useUpdateShopMutation,
-  useGetSettingProductQuery,
-} from '@/store/slice/users/api/api'
-import type {
-  TPosActiveProduct, TPosProductPriceRow, TPosProductRecipeRow, TPosProductType, TPosShop,
-} from '@/store/slice/users/types/pos-types'
-import { printData } from '@/utils/print-service'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogTitle, FormDialogBody, FormDialogContent, FormDialogFooter, FormDialogHeader } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { NumberInput } from '@/components/ui/number-input'
+import { PosImage } from '@/components/ui/pos-image'
+import { Textarea } from '@/components/ui/textarea'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { useCreateProductRecipeMutation, useDeleteProductRecipeMutation, useFilterShopsAllQuery, useGetActiveProductDetailQuery, useGetProductPriceQuery, useGetProductRecipesQuery, useSaveActiveProductMutation, useUpdateProductPriceMutation, useUpdateShopMutation } from '@/store/slice/products/api'
+import { useGetSettingProductQuery } from '@/store/slice/settings/api'
 import { cn } from '@/utils'
+import { printData } from '@/utils/print-service'
+import { Package, Plus, Printer, Scale, Store, Tag, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { RecipePickerDialog } from './recipe-picker-dialog'
 
 function emptyProduct(groupId?: number): TPosActiveProduct {
   return {

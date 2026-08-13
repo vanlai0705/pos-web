@@ -1,6 +1,6 @@
-import { toast } from 'sonner'
 import { API_ORIGIN } from '@/constants'
 import { store } from '@/store/store'
+import { toast } from 'sonner'
 
 /**
  * Talks to the shop's local print bridge (a small HTTP service on the same

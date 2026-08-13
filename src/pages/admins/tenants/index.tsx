@@ -40,9 +40,9 @@ import {
   useGenericDownloadMutation,
   useGenericPostMutation,
   useLazyGenericGetQuery,
-  useLazyGetMeQuery,
-  useLazyGetMenuQuery,
-} from '@/store/slice/users/api/api'
+} from '@/store/slice/generic/api'
+import { useLazyGetMeQuery } from '@/store/slice/auth/api'
+import { useLazyGetMenuQuery } from '@/store/slice/registration-users/api'
 import { useAppDispatch } from '@/store/hooks'
 import { setMenu } from '@/store/slice/users/app'
 import { useAuth } from '@/hooks/useAuth'

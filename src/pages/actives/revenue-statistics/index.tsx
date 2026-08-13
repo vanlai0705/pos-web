@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TrendingUp } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useFilterRevenueStatisticsQuery, useFilterRevenueStatisticsSummaryQuery } from '@/store/slice/users/api/api'
+import { useFilterRevenueStatisticsQuery, useFilterRevenueStatisticsSummaryQuery } from '@/store/slice/statistics/api'
 import type { TPosRevenueStatItem } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {

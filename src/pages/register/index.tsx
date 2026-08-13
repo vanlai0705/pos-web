@@ -1,25 +1,14 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useForm, Controller } from "react-hook-form";
-import { ArrowRight, Check, Store } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  useRegisterMutation,
-  useInitShopDataMutation,
-  useGetProvincesQuery,
-  useGetProductCategoriesQuery,
-} from "@/store/slice/users/api/api";
-import { computePasswordSalt } from "@/utils/crypto";
+import { useGetProductCategoriesQuery, useGetProvincesQuery, useInitShopDataMutation } from '@/store/slice/registration-users/api'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useRegisterMutation } from '@/store/slice/auth/api'
+import { computePasswordSalt } from '@/utils/crypto'
+import { ArrowRight, Check, Store } from 'lucide-react'
+import { useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

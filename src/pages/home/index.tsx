@@ -1,19 +1,13 @@
-import { FormEvent, useEffect, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { toast } from "sonner"
-import { BarChart3, Boxes, CheckCircle2, Headphones, ReceiptText, ShieldCheck, ShoppingCart, Store } from "lucide-react"
-import { useTranslation } from "react-i18next"
-
-import { useAuth } from "@/hooks/useAuth"
-import {
-  useCreateSupportWebMutation,
-  useGetAppCountInfoQuery,
-  useGetFunctionGroupsQuery,
-  useGetSystemInfoQuery,
-} from "@/store/slice/users/api/api"
-import { translateMenuTitle } from "@/i18n/nav-title-map"
-import type { TPosSupportWebRequest } from "@/store/slice/users/types"
-import { withDomainPath } from "@/utils/domain-route"
+import { useGetAppCountInfoQuery, useGetFunctionGroupsQuery, useGetSystemInfoQuery, useCreateSupportWebMutation } from '@/store/slice/dashboard/api'
+import { useAuth } from '@/hooks/useAuth'
+import { translateMenuTitle } from '@/i18n/nav-title-map'
+import { TPosSupportWebRequest } from '@/store/slice/users'
+import { withDomainPath } from '@/utils/domain-route'
+import { BarChart3, Boxes, CheckCircle2, Headphones, ReceiptText, ShieldCheck, ShoppingCart, Store } from 'lucide-react'
+import { FormEvent, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 
 const initialContact: TPosSupportWebRequest = {
   Name: "",

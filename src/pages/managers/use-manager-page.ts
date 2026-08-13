@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react"
+import type { TPosFilterParams } from "@/store/slice/users/types";
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import type { TPosFilterParams } from "@/store/slice/users/types"
 
 const PAGE_SIZE = 15
 

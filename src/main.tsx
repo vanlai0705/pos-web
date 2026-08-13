@@ -1,18 +1,18 @@
-import { createRoot } from "react-dom/client";
-import { I18nextProvider } from 'react-i18next';
-import { Provider } from "react-redux";
-import { PersistGate } from "redux-persist/integration/react";
-import { Toaster } from "sonner";
-import AppRoute from "./AppRoute.tsx";
-import { AppProvider } from "./context/app-provider.tsx";
-import { ConfirmActionHost } from "./components/ui/use-confirm-action.tsx";
-import "./globals.css";
-import { ToastProvider } from "./hooks/useToast.tsx";
-import i18next from "./i18n";
-import { persistor, store } from "./store/store.ts";
-import { SearchProvider } from "./context/search-context.tsx";
-import "dayjs/locale/vi";
-import namDuongFavicon from "@assets/images/namduong.png";
+import namDuongFavicon from "@assets/images/namduong.png"
+import "dayjs/locale/vi"
+import AppRoute from "./AppRoute.tsx"
+import "./globals.css"
+import i18next from "./i18n"
+import { createRoot } from "react-dom/client"
+import { I18nextProvider } from 'react-i18next'
+import { Provider } from "react-redux"
+import { PersistGate } from "redux-persist/integration/react"
+import { Toaster } from "sonner"
+import { ConfirmActionHost } from "./components/ui/use-confirm-action.tsx"
+import { AppProvider } from "./context/app-provider.tsx"
+import { SearchProvider } from "./context/search-context.tsx"
+import { ToastProvider } from "./hooks/useToast.tsx"
+import { persistor, store } from "./store/store.ts"
 
 i18next.init({
   interpolation: { escapeValue: false }, // React already does escaping

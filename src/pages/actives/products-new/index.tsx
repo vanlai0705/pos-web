@@ -1,47 +1,29 @@
-import { useEffect, useMemo, useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { useParams } from 'react-router-dom'
-import {
-  FileDown,
-  Image as ImageIcon,
-  MoreHorizontal,
-  Plus,
-  Trash2,
-  Upload,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
+import { useSaveProductGroupMutation, useUpdateProductGroupStatusMutation } from '@/store/slice/managers/api'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { TreeSidebar, type TreeSidebarNode } from '@/components/layout/tree-sidebar'
+import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
-import { StatusBadge } from '@/components/ui/status-badge'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { PosImage } from '@/components/ui/pos-image'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Textarea } from '@/components/ui/textarea'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { useGetProductGroupsSimpleQuery } from '@/store/slice/customers/api'
+import { useGenericDownloadMutation, useGenericPostMutation } from '@/store/slice/generic/api'
+import { useFilterActiveProductsQuery, useUpdateActiveProductStatusMutation } from '@/store/slice/products/api'
+import { TPosActiveProduct, TPosProductGroupFull } from '@/store/slice/users'
+import { downloadBlob, query } from '@/utils'
+import { FileDown, ImageIcon, MoreHorizontal, Plus, Trash2, Upload } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { ProductDialog } from './product-dialog'
-import {
-  useFilterActiveProductsQuery,
-  useGenericDownloadMutation,
-  useGenericPostMutation,
-  useGetProductGroupsSimpleQuery,
-  useSaveProductGroupMutation,
-  useUpdateActiveProductStatusMutation,
-  useUpdateProductGroupStatusMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosActiveProduct, TPosProductGroupFull } from '@/store/slice/users/types/pos-types'
-import { query, downloadBlob } from '@/utils'
-import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 
 const PAGE_SIZE = 15
 const STATUS_ACTIVE = 0

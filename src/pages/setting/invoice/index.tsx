@@ -1,17 +1,14 @@
-import { useEffect, useState } from "react"
-import { FileText, Eye, EyeOff } from "lucide-react"
-import { useTranslation } from "react-i18next"
-import {
-  useGetUserShopSettingQuery,
-  useGetSettingInvoiceQuery,
-  useUpdateSettingInvoiceMutation,
-} from "@/store/slice/users/api/api"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { toast } from "sonner"
-import { PageHeader, SettingCard, ToggleRow, SaveBar } from "../components"
-import type { TPosSettingInvoice } from "@/store/slice/users/types"
+import { useGetSettingInvoiceQuery, useUpdateSettingInvoiceMutation } from '@/store/slice/settings/api'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useGetUserShopSettingQuery } from '@/store/slice/notifications/api'
+import { TPosSettingInvoice } from '@/store/slice/users'
+import { Eye, EyeOff, FileText } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { PageHeader, SaveBar, SettingCard, ToggleRow } from '../components'
 
 const TAX_EXPORT_OPTIONS = [
   { value: 0, labelKey: "pages.setting.invoice.taxExportNone" },

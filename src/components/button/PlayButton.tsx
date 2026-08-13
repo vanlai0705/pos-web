@@ -1,5 +1,4 @@
-import React, { MouseEventHandler } from 'react';
-
+import React,{ MouseEventHandler } from 'react';
 interface PlayButtonProps {
     title: string;
     onPress: MouseEventHandler<HTMLButtonElement>;

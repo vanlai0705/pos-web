@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
+import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
 import { Button } from '@/components/ui/button'
-import { PosImage } from '@/components/ui/pos-image'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { useLazyFilterActiveProductsQuery } from '@/store/slice/users/api/api'
-import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
+import { PosImage } from '@/components/ui/pos-image'
+import { useLazyFilterActiveProductsQuery } from '@/store/slice/products/api'
+import { X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 /**
  * "Thêm định lượng" picker — mirrors Angular's recipe-picker-dialog exactly:

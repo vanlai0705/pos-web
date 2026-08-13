@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next"
-
 type DocumentExportActionsProps = {
     onExportPdf: () => void | Promise<void>
     onExportWord: () => void | Promise<void>

@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
-import { useMediaQuery } from 'react-responsive';
-
+import { useMemo } from 'react'
+import { useMediaQuery } from 'react-responsive'
 export function useTextSizeClass() {
     const isMobile = useMediaQuery({ maxWidth: 767 });
     const isTablet = useMediaQuery({ minWidth: 768, maxWidth: 1023 });

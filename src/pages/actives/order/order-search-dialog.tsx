@@ -1,20 +1,15 @@
+import { CustomerSelect } from '@/components/pos/customer-select'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DateRangeFilter, fmtCurrency, fmtDate, PAGE_SIZE, Pagination, SearchBar, useListFilter } from '@/pages/actives/shared'
+import { useFilterBookingsQuery } from '@/store/slice/bookings/api'
+import { useDeleteTemporaryReceiptMutation, useFilterTemporaryReceiptsQuery, useLazyGetOrderItemsQuery } from '@/store/slice/orders/api'
+import { useFilterQuotationsQuery } from '@/store/slice/quotations/api'
+import { TPosBooking, TPosCustomerSimple, TPosOrder, TPosQuotation } from '@/store/slice/users'
+import { History, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { History, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { CustomerSelect } from '@/components/pos/customer-select'
-import {
-  useDeleteTemporaryReceiptMutation,
-  useFilterBookingsQuery,
-  useFilterQuotationsQuery,
-  useFilterTemporaryReceiptsQuery,
-  useLazyGetOrderItemsQuery,
-} from '@/store/slice/users/api/api'
-import type { TPosBooking, TPosCustomerSimple, TPosOrder, TPosQuotation } from '@/store/slice/users/types/pos-types'
-import { DateRangeFilter, Pagination, SearchBar, fmtCurrency, fmtDate, useListFilter, PAGE_SIZE } from '../shared'
-
 type OrderSearchKind = 'booking' | 'quotation' | 'temporary'
 type PickableOrder = TPosBooking | TPosQuotation | TPosOrder
 

@@ -1,5 +1,4 @@
-import { LinkProps } from "react-router-dom";
-
+import { LinkProps } from "react-router-dom"
 interface BaseNavItem {
   title: string;
   badge?: string;
@@ -27,4 +26,4 @@ interface SidebarData {
   navGroups: NavGroup[];
 }
 
-export type { SidebarData, NavGroup, NavItem, NavCollapsible, NavLink };
+export type { NavCollapsible,NavGroup,NavItem,NavLink,SidebarData };

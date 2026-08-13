@@ -1,6 +1,6 @@
+import { cn } from '@/utils'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils'
 
 const LANGUAGES = [
   { code: 'vi', label: 'Tiếng Việt', flag: '🇻🇳' },

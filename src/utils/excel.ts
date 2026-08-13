@@ -1,16 +1,14 @@
-import * as XLSX from 'xlsx';
-import ExcelJS from 'exceljs';
-import { TProductItem } from '@/store/slice/product';
-import { TComponentItem } from '@/store/slice/component';
-import { baseImageUrl } from '@/constants';
-
+import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
+import { TProductItem } from '@/store/slice/product'
+import { TComponentItem } from '@/store/slice/component'
+import { baseImageUrl } from '@/constants'
 
 const getFullImageUrl = (imageUrl: string | undefined): string => {
   if (!imageUrl) return '';
   if (imageUrl.startsWith('http')) return imageUrl;
   return `${baseImageUrl}${imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl}`;
 };
-
 
 const base64ToFile = (base64String: string, filename: string): File | null => {
   try {
@@ -38,7 +36,6 @@ const base64ToFile = (base64String: string, filename: string): File | null => {
   }
 };
 
-
 export const urlToFile = async (url: string, filename: string): Promise<File | null> => {
   try {
     const response = await fetch(url, { mode: 'cors' });
@@ -54,7 +51,6 @@ export const urlToFile = async (url: string, filename: string): Promise<File | n
     return null;
   }
 };
-
 
 const extractImagesFromExcel = async (file: File, sheetName: string, imageColumnIndex: number): Promise<Map<number, File>> => {
   const imageMap = new Map<number, File>();
@@ -306,7 +302,6 @@ export const processImageFromExcel = async (
   return null;
 };
 
-
 export const exportProductsToExcel = (products: TProductItem[]) => {
   const productsData = products.map((product, index) => ({
     'STT': index + 1,
@@ -318,7 +313,6 @@ export const exportProductsToExcel = (products: TProductItem[]) => {
     'Ngày tạo': new Date(product.created_at).toLocaleDateString('vi-VN'),
     'Ngày cập nhật': new Date(product.updated_at).toLocaleDateString('vi-VN')
   }));
-
 
   const bomData: any[] = [];
   products.forEach((product) => {
@@ -347,7 +341,6 @@ export const exportProductsToExcel = (products: TProductItem[]) => {
     const wsBom = XLSX.utils.json_to_sheet(bomData);
     XLSX.utils.book_append_sheet(wb, wsBom, 'Thành phần BOM');
   }
-
 
   wsProducts['!cols'] = [
     { wch: 5 },

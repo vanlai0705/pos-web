@@ -1,10 +1,9 @@
-import { PayloadAction, ReducerCreators } from "@reduxjs/toolkit";
-import { buildSlice } from "../../../utils";
-import type { TPosLoginData, TPosUser } from "../types/pos-types";
-import type { TPosMenuItem } from "@/utils/pos-menu-converter";
-import type { TUserSliceState, TUserWarehouseSelect } from "../types";
-import { initialState, userSliceName } from "./constants";
-
+import type { TPosMenuItem } from "@/utils/pos-menu-converter"
+import type { TUserSliceState,TUserWarehouseSelect } from "../types"
+import type { TPosLoginData,TPosUser } from "../types/pos-types"
+import { PayloadAction, ReducerCreators } from "@reduxjs/toolkit"
+import { buildSlice } from "../../../utils"
+import { initialState, userSliceName } from "./constants"
 export const userSlice = buildSlice({
   name: userSliceName,
   initialState: initialState,

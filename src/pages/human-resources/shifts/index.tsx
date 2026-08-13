@@ -1,23 +1,23 @@
-import { useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { Clock, Plus, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
+import { useSaveShiftMutation, useUpdateShiftStatusMutation, useFilterShiftsQuery } from '@/store/slice/human-resources/api'
 import { Button } from '@/components/ui/button'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { NumberInput } from '@/components/ui/number-input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Textarea } from '@/components/ui/textarea'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { STATUS } from '@/constants/status'
+import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
+import { useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { TPosShift } from '@/store/slice/users'
+import { Check, Clock, Lock, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
-import { useFilterShiftsQuery, useSaveShiftMutation, useUpdateShiftStatusMutation, useLazyGenericGetQuery } from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE } from '@/pages/actives/shared'
-import type { TPosShift } from '@/store/slice/users/types/pos-types'
 
 // STATUS in pos_web: 0 = Actived, 1 = Locked, 2 = Deleted.
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
 
 // Angular defaults a new shift to full salary (100%).
 const EMPTY = (): TPosShift => ({ Name: '', SalaryPercent: 100, Note: '' })

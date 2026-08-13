@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react"
-import { Package, Printer, Barcode } from "lucide-react"
-import { useTranslation } from "react-i18next"
-import { useGetSettingProductQuery, useUpdateSettingProductMutation } from "@/store/slice/users/api/api"
-import { Skeleton } from "@/components/ui/skeleton"
-import { toast } from "sonner"
-import { PageHeader, SettingCard, ToggleRow, NumberRow, TextRow, SaveBar } from "../components"
 import type { TPosSettingProduct } from "@/store/slice/users/types"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useGetSettingProductQuery, useUpdateSettingProductMutation } from '@/store/slice/settings/api'
+import { Barcode, Package, Printer } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useTranslation } from 'react-i18next'
+import { toast } from "sonner"
+import { NumberRow, PageHeader, SaveBar, SettingCard, TextRow, ToggleRow } from "../components"
 
 const defaultForm: TPosSettingProduct = {
   IsUsingProductCode: true,

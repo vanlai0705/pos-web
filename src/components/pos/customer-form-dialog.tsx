@@ -1,16 +1,15 @@
+import type { TPosCustomer } from '@/store/slice/users/types/pos-types'
 import type { ReactNode } from 'react'
-import { Search } from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import type { TPosCustomer } from '@/store/slice/users/types/pos-types'
 import { cn } from '@/utils'
-
+import { Search } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 export function emptyCustomer(groupId?: number): TPosCustomer {
   return {
     Name: '',

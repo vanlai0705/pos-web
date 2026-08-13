@@ -1,17 +1,12 @@
-import { useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
-import { ArrowLeft, Minus, Plus, ShoppingCart } from 'lucide-react'
+import { useGetAnonymousProductsQuery, useGetTableOrderItemsByGuidQuery, useSubmitAnonymousOrderMutation } from '@/store/slice/tables/api'
+import { TPosActiveProduct } from '@/store/slice/users'
 import { getImageUrl } from '@/utils/common'
-import {
-  useGetAnonymousProductsQuery,
-  useGetTableOrderItemsByGuidQuery,
-  useSubmitAnonymousOrderMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
+import { ArrowLeft, Minus, Plus, ShoppingCart } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { fmtNum, QrOrderHeader, useDisablePageZoom } from './shared'
-
 type CartEntry = { qty: number; note: string }
 
 const ALL_CATEGORY = 'all'

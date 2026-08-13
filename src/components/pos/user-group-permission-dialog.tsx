@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useLazyGenericGetQuery, useGenericPostMutation } from '@/store/slice/users/api/api'
-
+import { useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 interface Permission {
   Id?: number
   Function?: { Id?: number; Name?: string; FunctionGroup?: { Id?: number; Name?: string } }

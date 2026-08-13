@@ -1,8 +1,7 @@
-import { Button } from '@/components/ui/button';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from "react-router-dom";
-// import { notFound } from './assets/images';
-
+import { Button } from '@/components/ui/button'
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from "react-router-dom"
+// import { notFound } from './assets/images'
 export default function PageNotFound() {
   const { t } = useTranslation()
   const navigate = useNavigate()

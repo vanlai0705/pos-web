@@ -1,24 +1,15 @@
-import { useState } from 'react'
-import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
-import { cn } from '@/utils'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  useGetNotificationsQuery,
-  useUpdateNotificationStatusMutation,
-  useMarkAllNotificationsReadMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosNotificationItem } from '@/store/slice/users/types/pos-types'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { useGetNotificationsQuery, useMarkAllNotificationsReadMutation, useUpdateNotificationStatusMutation } from '@/store/slice/notifications/api'
+import { TPosNotificationItem } from '@/store/slice/users'
+import { cn } from '@/utils'
 import { getImageUrl } from '@/utils/common'
 import { withDomainPath } from '@/utils/domain-route'
-
+import { type TFunction } from 'i18next'
+import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 function timeAgo(t: TFunction, dateStr?: string) {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()

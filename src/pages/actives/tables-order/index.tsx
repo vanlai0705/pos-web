@@ -1,24 +1,14 @@
-import { useEffect, useState } from 'react'
+import PosOrderPage from '../order'
+import { Skeleton } from '@/components/ui/skeleton'
 import { confirmAction } from '@/components/ui/use-confirm-action'
+import { useGetAreasQuery, useGetTablesQuery, useMergeTablesMutation, useSplitTableMutation, useTransferTableMutation } from '@/store/slice/tables/api'
+import { TPosArea, TPosTable } from '@/store/slice/users'
+import { cn } from '@/utils'
+import { Armchair, ArrowLeftRight, CheckCircle2, Layers, LayoutGrid, MapPin, Maximize2, Minimize2, QrCode, Scissors, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import {
-  Armchair, Layers, ArrowLeftRight, Scissors, Maximize2, Minimize2,
-  LayoutGrid, Users, CheckCircle2, QrCode, MapPin,
-} from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
-import {
-  useGetAreasQuery,
-  useGetTablesQuery,
-  useTransferTableMutation,
-  useMergeTablesMutation,
-  useSplitTableMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosArea, TPosTable } from '@/store/slice/users/types/pos-types'
-import { cn } from '@/utils'
-import PosOrderPage from '../order'
 import { SplitOrderModal } from './split-order-modal'
-
 type Mode = 'NORMAL' | 'MERGE' | 'MOVE' | 'SPLIT'
 
 // ─── Elapsed time ─────────────────────────────────────────────────────────────

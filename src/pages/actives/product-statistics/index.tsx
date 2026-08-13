@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BarChart2 } from 'lucide-react'
-import { useFilterProductStatisticsQuery, useGetProductGroupsSimpleQuery } from '@/store/slice/users/api/api'
+import { useGetProductGroupsSimpleQuery } from '@/store/slice/customers/api'
+import { useFilterProductStatisticsQuery } from '@/store/slice/statistics/api'
 import type { TPosProductStatisticItem } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {

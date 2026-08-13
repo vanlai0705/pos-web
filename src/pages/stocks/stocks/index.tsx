@@ -1,23 +1,21 @@
-import { useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { Warehouse, Plus, MoreHorizontal, Check, Lock, Trash2 } from 'lucide-react'
+import { useSaveWarehouseMutation, useUpdateWarehouseStatusMutation, useFilterWarehousesQuery } from '@/store/slice/stocks/api'
 import { Button } from '@/components/ui/button'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { Switch } from '@/components/ui/switch'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Textarea } from '@/components/ui/textarea'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { STATUS } from '@/constants/status'
+import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
+import { Check, Lock, MoreHorizontal, Plus, Trash2, Warehouse } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
-import { useFilterWarehousesQuery, useSaveWarehouseMutation, useUpdateWarehouseStatusMutation } from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, StatusBadge, PAGE_SIZE } from '@/pages/actives/shared'
 
 // STATUS in pos_web: 0 = Actived, 1 = Locked, 2 = Deleted.
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
-
 interface TWarehouse {
   Id?: number
   Name?: string

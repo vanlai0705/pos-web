@@ -1,22 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Edit2, FileQuestion, Headset, ImagePlus, Lock, Plus, RotateCcw, Trash2, Unlock } from 'lucide-react'
-import { toast } from 'sonner'
-import { StatusBadge } from '@/components/ui/status-badge'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { useLazyFilterReportQuery, useLazyGenericGetQuery, useGenericPostMutation } from '@/store/slice/generic/api'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
+import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag } from '@/components/ui/data-tag'
-import { useTranslation } from 'react-i18next'
-import {
-  useGenericPostMutation,
-  useLazyFilterReportQuery,
-  useLazyGenericGetQuery,
-} from '@/store/slice/users/api/api'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Textarea } from '@/components/ui/textarea'
 import { buildModelFormData } from '@/utils/multipart'
-
+import { Edit2, FileQuestion, Headset, ImagePlus, Lock, Plus, RotateCcw, Trash2, Unlock } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 const STATUS = {
   Actived: 0,

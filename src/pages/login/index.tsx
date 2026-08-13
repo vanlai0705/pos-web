@@ -1,19 +1,18 @@
-import { Eye, EyeOff, Store } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router-dom";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/hooks/useAuth";
-import { useAppDispatch } from "@/store/hooks";
-import { useLazyGetMeQuery, useLazyGetMenuQuery, useLoginMutation } from "@/store/slice/users/api/api";
-import { setMenu } from "@/store/slice/users/app";
-import { computePasswordSalt } from "@/utils/crypto";
-import { DOMAIN_KEY, normalizeDomainName, setStoredDomainName, withDomainPath } from "@/utils/domain-route";
-
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useAuth } from "@/hooks/useAuth"
+import { useAppDispatch } from '@/store/hooks'
+import { useLazyGetMeQuery, useLoginMutation } from '@/store/slice/auth/api'
+import { useLazyGetMenuQuery } from '@/store/slice/registration-users/api'
+import { setMenu } from "@/store/slice/users/app"
+import { computePasswordSalt } from "@/utils/crypto"
+import { DOMAIN_KEY, normalizeDomainName, setStoredDomainName, withDomainPath } from "@/utils/domain-route"
+import { Eye, EyeOff, Store } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
+import { useLocation, useNavigate } from "react-router-dom"
 interface LoginForm {
   DomainName: string;
   UserName: string;

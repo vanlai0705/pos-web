@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { translateKnownText } from '@/i18n/nav-title-map'
 
 export type { ColumnDef } from '@tanstack/react-table'
-
 type ColMeta = {
   className?: string
   headClassName?: string

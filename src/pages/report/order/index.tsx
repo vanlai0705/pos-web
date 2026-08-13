@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ShoppingCart } from 'lucide-react'
-import { useFilterReportQuery } from '@/store/slice/users/api/api'
+import { useFilterReportQuery } from '@/store/slice/generic/api'
 import {
   fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
   StatCards, ReportDateFilter, ReportTabs,
   TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
   CustomerFilter, ShopFilter, ProductGroupFilter,
 } from '../shared'
-
-// ─── Discount/Tax helpers (same logic as Angular) ────────────────────────────
 
 function discountAmt(item: any) {
   const d = Number(item?.Discount) || 0

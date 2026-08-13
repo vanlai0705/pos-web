@@ -1,6 +1,6 @@
 import { Icons } from "@/components/icons"
 import { ROLE } from "."
-
+export { STATUS } from "./status"
 export interface NavItem {
   title: string
   href?: string
@@ -45,10 +45,4 @@ export const routeConfig: Record<string, string[]> = {
   "/dashboard": [ROLE.ADMIN, ROLE.STAFF],
   "/profile": [ROLE.ADMIN, ROLE.STAFF],
   "/change-password": [ROLE.ADMIN, ROLE.STAFF],
-}
-
-export const STATUS = {
-  ACTIVE: 0,
-  LOCKED: 1,
-  DELETED: 2,
 }

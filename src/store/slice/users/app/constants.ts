@@ -1,5 +1,4 @@
-import { TUserSliceState } from "../types";
-
+import { TUserSliceState } from "../types"
 export const userSliceName = "user";
 
 export const initialState: TUserSliceState = {

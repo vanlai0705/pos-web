@@ -1,4 +1,4 @@
-import type { TPagingResponse, Paging } from "@/types/shared-types";
+import type { Paging,TPagingResponse } from "@/types/shared-types";
 
 // Re-export POS types
 export * from "./pos-types";

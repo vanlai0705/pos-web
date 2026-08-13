@@ -1,5 +1,4 @@
 import BigNumber from "bignumber.js";
-
 export const bnDividedBy = (
   thisNumber: string | number,
   thatNumber: string | number,

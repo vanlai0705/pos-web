@@ -1,19 +1,14 @@
-import { useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { useNavigate } from 'react-router-dom'
-import { Receipt, Plus, RefreshCw } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { DateRangeFilter, fmtCurrency, fmtDateTime, ListPageHeader, Pagination, SearchBar, useListFilter } from '@/pages/actives/shared'
+import { useCancelOrderMutation, useFilterOrdersQuery, useLazyGetOrderDetailQuery } from '@/store/slice/orders/api'
+import { TPosOrder } from '@/store/slice/users'
+import { Plus, Receipt, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import {
-  useFilterOrdersQuery,
-  useLazyGetOrderDetailQuery,
-  useCancelOrderMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosOrder } from '@/store/slice/users/types/pos-types'
-import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, fmtCurrency, fmtDateTime, useListFilter } from '@/pages/actives/shared'
 import { InvoiceDetailPanel, StatusChip } from '../shared'
-
 export default function SalesInvoicePage() {
   const navigate = useNavigate()
   const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()

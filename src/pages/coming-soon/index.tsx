@@ -1,6 +1,5 @@
-import { useLocation } from 'react-router-dom'
 import { Construction } from 'lucide-react'
-
+import { useLocation } from 'react-router-dom'
 export default function ComingSoonPage() {
   const { pathname } = useLocation()
   return (

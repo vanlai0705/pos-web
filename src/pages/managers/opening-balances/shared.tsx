@@ -1,21 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
+import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
+import { Input } from '@/components/ui/input'
+import { useGenericDownloadMutation, useGenericPostMutation, useLazyFilterReportQuery } from '@/store/slice/generic/api'
+import { useFilterWarehousesQuery } from '@/store/slice/stocks/api'
+import { cn, downloadBlob } from '@/utils'
 import { ArrowLeft, CalendarDays, Download, FileSpreadsheet, Save, Upload, Warehouse } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-
-import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { Input } from '@/components/ui/input'
-import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
-import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
-import {
-  useFilterWarehousesQuery,
-  useGenericDownloadMutation,
-  useGenericPostMutation,
-  useLazyFilterReportQuery,
-} from '@/store/slice/users/api/api'
-import { cn, downloadBlob } from '@/utils'
-
 type EntityKey = 'Customer' | 'Supplier'
 
 type Entity = Record<string, any>

@@ -1,6 +1,5 @@
-import { cn } from "@/utils";
 import Loading from "../loading";
-
+import { cn } from "@/utils"
 export interface ISVGProps extends React.SVGProps<SVGSVGElement> {
     size?: number;
     className?: string;

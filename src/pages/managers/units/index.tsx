@@ -1,16 +1,12 @@
-import { Ruler } from "lucide-react"
-import { PosImage } from "@/components/ui/pos-image"
-import {
-  useFilterUnitsQuery,
-  useSaveUnitMutation,
-  useUpdateUnitStatusMutation,
-} from "@/store/slice/users/api/api"
-import type { TPosUnit } from "@/store/slice/users/types"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { GenericManagerPage } from "../GenericManagerPage"
-import { FormField } from "../components"
-import { useManagerPage } from "../use-manager-page"
+import { useSaveUnitMutation, useUpdateUnitStatusMutation, useFilterUnitsQuery } from '@/store/slice/managers/api'
+import { Input } from '@/components/ui/input'
+import { PosImage } from '@/components/ui/pos-image'
+import { Textarea } from '@/components/ui/textarea'
+import { TPosUnit } from '@/store/slice/users'
+import { Ruler } from 'lucide-react'
+import { GenericManagerPage } from '../GenericManagerPage'
+import { FormField } from '../components'
+import { useManagerPage } from '../use-manager-page'
 
 const empty = (): TPosUnit => ({ Name: "" })
 const validate = (f: TPosUnit) => f.Name.trim() ? null : "Vui lòng nhập tên đơn vị"

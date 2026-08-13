@@ -1,40 +1,22 @@
-import { useCallback, useMemo, useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { UserCheck, Plus, Lock, Check, Trash2, MoreHorizontal } from 'lucide-react'
+import type { TPosAccountUserGroup,TPosMember,TPosUserAccount } from '@/store/slice/users/types/pos-types'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { NumberInput } from '@/components/ui/number-input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
+import { NumberInput } from '@/components/ui/number-input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { toast } from 'sonner'
-import {
-  useFilterMembersQuery,
-  useLazyGetMemberDetailQuery,
-  useSaveMemberMutation,
-  useUpdateMemberStatusMutation,
-  useLazyGetAccountByMemberQuery,
-  useSaveAccountMutation,
-  useGetShopsSimpleQuery,
-  useGetUserGroupsQuery,
-  useGetSalaryTypesQuery,
-} from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, PAGE_SIZE } from '@/pages/actives/shared'
-import type {
-  TPosMember, TPosUserAccount, TPosAccountUserGroup,
-} from '@/store/slice/users/types/pos-types'
+import { Textarea } from '@/components/ui/textarea'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { STATUS } from '@/constants/status'
+import { useFilterMembersQuery, useGetSalaryTypesQuery, useGetShopsSimpleQuery, useGetUserGroupsQuery, useLazyGetAccountByMemberQuery, useLazyGetMemberDetailQuery, useSaveAccountMutation, useSaveMemberMutation, useUpdateMemberStatusMutation } from '@/store/slice/human-resources/api'
 import { computePasswordSalt } from '@/utils/crypto'
-
-// Mirrors STATUS in the Angular app — note 0 (not 1) is the active state.
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
+import { Check, Lock, MoreHorizontal, Plus, Trash2, UserCheck } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
 
 const WEEK_DAYS = [
   { key: 'IsMonday', label: 'T2' },

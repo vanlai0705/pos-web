@@ -1,6 +1,5 @@
 import React from 'react'
 import { CommandMenu } from '@/components/command-menu'
-
 interface SearchContextType {
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>

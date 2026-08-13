@@ -1,12 +1,11 @@
-import { useState } from 'react'
-import { Wallet } from 'lucide-react'
-import { useFilterReportQuery } from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, DateRangeFilter, fmtDateTime, PAGE_SIZE, defaultDateFrom, defaultDateTo, SummaryCard } from '@/pages/actives/shared'
 import type { TPosCashBalanceItem } from '@/store/slice/users/types/pos-types'
-import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
-
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
+import { DateRangeFilter, defaultDateFrom, defaultDateTo, fmtDateTime, ListPageHeader, PAGE_SIZE, SummaryCard } from '@/pages/actives/shared'
+import { useFilterReportQuery } from '@/store/slice/generic/api'
+import { Wallet } from 'lucide-react'
+import { useState } from 'react'
 export default function CashBalancePage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)

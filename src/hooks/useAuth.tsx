@@ -1,7 +1,7 @@
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import type { TPosUser } from '@/store/slice/users/types/pos-types';
 import type { TUserWarehouseSelect } from '@/store/slice/users';
 import * as action from '@/store/slice/users/app';
+import type { TPosUser } from '@/store/slice/users/types/pos-types';
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
 
 const useAuth = () => {
   const dispatch = useAppDispatch();

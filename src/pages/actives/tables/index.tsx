@@ -1,30 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { Download, FileDown, MoreHorizontal, Plus, QrCode, RefreshCw, Table2, Zap } from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { TreeSidebar, type TreeSidebarNode } from '@/components/layout/tree-sidebar'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import {
-  useGenericDownloadMutation,
-  useGenericPostMutation,
-} from '@/store/slice/users/api/api'
-import { cn, query, downloadBlob } from '@/utils'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { useGenericDownloadMutation, useGenericPostMutation } from '@/store/slice/generic/api'
+import { cn, downloadBlob, query } from '@/utils'
 import { buildModelFormData } from '@/utils/multipart'
+import { Download, FileDown, MoreHorizontal, Plus, QrCode, RefreshCw, Table2, Zap } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { type ColumnDef, DataTable } from '@/components/ui/data-table'
 
 const PAGE_SIZE = 10
 

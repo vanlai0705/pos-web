@@ -1,7 +1,7 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { routeConfig } from './constants/data';
-import { useAuth } from './hooks/useAuth';
-import { stripDisplayedDomain } from './utils/domain-route';
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { routeConfig } from './constants/data'
+import { useAuth } from './hooks/useAuth'
+import { stripDisplayedDomain } from './utils/domain-route'
 
 const PrivateRoute = () => {
   const { user } = useAuth();

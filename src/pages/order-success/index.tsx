@@ -1,7 +1,6 @@
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
-
+import { useTranslation } from 'react-i18next'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 export default function QrOrderSuccessPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()

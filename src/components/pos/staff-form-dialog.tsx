@@ -1,10 +1,9 @@
+import type { TPosMember } from '@/store/slice/users/types/pos-types'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import type { TPosMember } from '@/store/slice/users/types/pos-types'
 import { useTranslation } from 'react-i18next'
 import { Field } from './customer-form-dialog'
-
 export function emptyStaff(): TPosMember {
   return { Name: '', Surname: '', Phone: '', Email: '', Shops: [], Image: null }
 }

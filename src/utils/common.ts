@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
-import { baseImageUrl } from "@/constants";
-
+import { baseImageUrl } from "@/constants"
 export const FORMAT_DATE = {
   TIME_DATE: "HH:mm - DD/MM/YYYY",
   DATE: "DD/MM/YYYY",
@@ -126,8 +125,6 @@ export const numberToVietnamese = (num: number) => {
     return KetQua.trim();
   }
 };
-
-
 
 export const getItemFromResponse = <T extends { id: number }>(
   data: { data?: { items?: Array<{ data?: T } | T> } } | T[] | undefined,

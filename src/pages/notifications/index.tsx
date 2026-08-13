@@ -1,18 +1,13 @@
-import { useState } from "react"
-import { Bell, Check, Trash2, CheckCheck, Circle } from "lucide-react"
-import { cn } from "@/utils"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { toast } from "sonner"
-import { useTranslation } from "react-i18next"
-import {
-  useFilterNotificationsQuery,
-  useUpdateNotificationStatusMutation,
-  useMarkAllNotificationsReadMutation,
-} from "@/store/slice/users/api/api"
-import type { TPosNotificationItem } from "@/store/slice/users/types/pos-types"
-import { baseImageUrl } from "@/constants"
-
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { baseImageUrl } from '@/constants'
+import { useFilterNotificationsQuery, useMarkAllNotificationsReadMutation, useUpdateNotificationStatusMutation } from '@/store/slice/notifications/api'
+import { TPosNotificationItem } from '@/store/slice/users'
+import { cn } from '@/utils'
+import { Bell, Check, CheckCheck, Circle, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 function imgUrl(url?: string | null) {
   if (!url) return null
   if (url.startsWith('http')) return url

@@ -15,8 +15,6 @@ import { DataPagination } from '@/components/ui/data-pagination'
 import { useTranslation } from "react-i18next"
 import { translateKnownText } from "@/i18n/nav-title-map"
 
-// ─── Status ────────────────────────────────────────────────────────────────────
-
 export function StatusBadge({ statusId }: { statusId?: number }) {
   return <UiStatusBadge statusId={statusId} />
 }

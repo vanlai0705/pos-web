@@ -1,9 +1,8 @@
-import { X, Printer, Ban } from 'lucide-react'
+import type { TPosBooking,TPosOrder } from '@/store/slice/users/types/pos-types'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/ui/status-badge'
-import type { TPosOrder, TPosBooking } from '@/store/slice/users/types/pos-types'
-
+import { Ban, Printer, X } from 'lucide-react'
 export function fmtCurrency(val?: number | null) {
   if (val == null) return '—'
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)

@@ -1,8 +1,7 @@
-import { IconSearch } from '@tabler/icons-react'
-import { cn } from '@/utils'
 import { useSearch } from '@/context/search-context'
+import { cn } from '@/utils'
+import { IconSearch } from '@tabler/icons-react'
 import { Button } from './ui/button'
-
 interface Props {
   className?: string
   type?: React.HTMLInputTypeAttribute

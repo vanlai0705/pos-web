@@ -1,11 +1,10 @@
 import React from 'react'
 import { cn } from '@/utils'
-// Separator removed per design: no vertical divider in header
-import { Menu } from 'lucide-react'
 import { useAppState } from '@/context/app-provider'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { Menu } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-
+// Separator removed per design: no vertical divider in header
 interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   fixed?: boolean
   ref?: React.Ref<HTMLElement>

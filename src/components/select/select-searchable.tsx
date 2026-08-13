@@ -65,7 +65,6 @@ const SelectSearchable: React.FC<SelectSearchableProps> = ({
     }
   }, [open]);
 
-
   const filteredOptions = options.filter((option) => {
     const label = String(option[labelKey] || '');
     const search = searchValue.toLowerCase();

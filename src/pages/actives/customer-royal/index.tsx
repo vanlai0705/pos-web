@@ -1,12 +1,11 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Crown } from 'lucide-react'
-import { useFilterRoyalCustomersQuery, useGetCustomerGroupsSimpleQuery } from '@/store/slice/users/api/api'
 import type { TPosCustomer } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, fmtDate, PAGE_SIZE } from '../shared'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
-
+import { useFilterRoyalCustomersQuery, useGetCustomerGroupsSimpleQuery } from '@/store/slice/customers/api'
+import { Crown } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { fmtDate, ListPageHeader, PAGE_SIZE, SearchBar } from '../shared'
 export default function CustomerRoyalPage() {
   const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')

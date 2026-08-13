@@ -1,20 +1,16 @@
-import { useEffect, useRef, useState } from "react"
-import { Check, List, Play, RefreshCw } from "lucide-react"
-import { useTranslation } from "react-i18next"
-import {
-  useGetAreasQuery,
-  useGetProductGroupsQuery,
-  useGetSettingOrderQuery,
-  useGetSettingPrinterQuery,
-  useUpdateSettingPrinterMutation,
-} from "@/store/slice/users/api/api"
-import type { TPosArea, TPosInvoicePrinter, TPosKitchenPrinter, TPosProductGroup, TPosSettingPrinter } from "@/store/slice/users/types"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
-import { toast } from "sonner"
-import { cn } from "@/utils"
-import { printData } from "@/utils/print-service"
-import { PrinterPickerDialog } from "./printer-picker-dialog"
+import { useGetSettingOrderQuery, useGetSettingPrinterQuery, useUpdateSettingPrinterMutation } from '@/store/slice/settings/api'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useGetProductGroupsQuery } from '@/store/slice/managers/api'
+import { useGetAreasQuery } from '@/store/slice/tables/api'
+import { TPosArea, TPosInvoicePrinter, TPosKitchenPrinter, TPosProductGroup, TPosSettingPrinter } from '@/store/slice/users'
+import { cn } from '@/utils'
+import { printData } from '@/utils/print-service'
+import { Check, List, Play, RefreshCw } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { PrinterPickerDialog } from './printer-picker-dialog'
 
 // ─── GUID utils ───────────────────────────────────────────────────────────────
 

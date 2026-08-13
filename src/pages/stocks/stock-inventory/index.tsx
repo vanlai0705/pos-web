@@ -1,10 +1,9 @@
-import { useState } from 'react'
-import { BarChart3 } from 'lucide-react'
-import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, defaultDateFrom, defaultDateTo, SummaryCard } from '@/pages/actives/shared'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
-
+import { DateRangeFilter, defaultDateFrom, defaultDateTo, ListPageHeader, PAGE_SIZE, SearchBar, SummaryCard } from '@/pages/actives/shared'
+import { useFilterReportQuery } from '@/store/slice/generic/api'
+import { BarChart3 } from 'lucide-react'
+import { useState } from 'react'
 interface TInventoryItem {
   Product?: { ProductCode?: string; Name?: string; Unit?: { Name?: string }; Price?: number }
   Unit?: { Name?: string }

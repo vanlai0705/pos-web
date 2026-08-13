@@ -1,26 +1,19 @@
+import { useGenericPostMutation, useLazyGenericGetQuery, useFilterReportQuery } from '@/store/slice/generic/api'
 import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Textarea } from '@/components/ui/textarea'
 import { confirmAction } from '@/components/ui/use-confirm-action'
+import { STATUS } from '@/constants/status'
 import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
-import {
-  useFilterReportQuery,
-  useGenericPostMutation,
-  useLazyGenericGetQuery,
-} from '@/store/slice/users/api/api'
 import { buildModelFormData } from '@/utils/multipart'
 import { Check, FileText, Lock, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
 
 /** Radio in pos_web — 0 is an outgoing reason, 1 an incoming one. */
 const REASON_TYPE = [

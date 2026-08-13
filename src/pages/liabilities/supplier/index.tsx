@@ -1,20 +1,15 @@
-import { useState } from 'react'
-import { Truck, MoreHorizontal, Info, Banknote } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useFilterReportQuery } from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
 import type { TPosDebtItem } from '@/store/slice/users/types/pos-types'
-import { MoneyTag } from '@/components/ui/data-tag'
-import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
 import { LiabilityDetailDialog } from '@/components/pos/liability-detail-dialog'
-import {
-  ReceiptPaymentDialog, RECEIPT_PAYMENT_TYPE, RECEIPT_PAYMENT_FOR, OBJECT_TYPE,
-  type ReceiptPayment,
-} from '@/components/pos/receipt-payment-dialog'
+import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
+import { OBJECT_TYPE, RECEIPT_PAYMENT_FOR, RECEIPT_PAYMENT_TYPE, ReceiptPayment, ReceiptPaymentDialog } from '@/components/pos/receipt-payment-dialog'
+import { Button } from '@/components/ui/button'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { MoneyTag } from '@/components/ui/data-tag'
+import { DateRangeFilter, ListPageHeader, PAGE_SIZE, SearchBar, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { useFilterReportQuery } from '@/store/slice/generic/api'
+import { Banknote, Info, MoreHorizontal, Truck } from 'lucide-react'
+import { useState } from 'react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 const PAYMENT_ENDPOINTS = { detail: 'payment/detail', create: 'payment/create', update: 'payment/update' }
 

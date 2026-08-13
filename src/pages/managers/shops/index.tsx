@@ -1,52 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { useNavigate, useParams } from 'react-router-dom'
-import {
-  Building2,
-  CalendarDays,
-  Check,
-  Image as ImageIcon,
-  KeyRound,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Save,
-  ShieldCheck,
-  ShieldOff,
-  Store,
-  Trash2,
-  Warehouse,
-} from 'lucide-react'
 import dayjs from 'dayjs'
-import { toast } from 'sonner'
 import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
 import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag } from '@/components/ui/data-tag'
 import { Dialog, DialogTitle, FormDialogBody, FormDialogContent, FormDialogFooter, FormDialogHeader } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PosImage } from '@/components/ui/pos-image'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  useFilterReportQuery,
-  useFilterWarehousesQuery,
-  useGenericPostMutation,
-  useGetProductCategoriesQuery,
-  useLazyGenericGetQuery,
-} from '@/store/slice/users/api/api'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { useFilterReportQuery, useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { useGetProductCategoriesQuery } from '@/store/slice/registration-users/api'
+import { useFilterWarehousesQuery } from '@/store/slice/stocks/api'
 import { cn } from '@/utils'
 import { withDomainPath } from '@/utils/domain-route'
 import { buildModelFormData } from '@/utils/multipart'
+import { Building2, CalendarDays, Check, Image as ImageIcon, KeyRound, MoreHorizontal, Pencil, Plus, Save, ShieldCheck, ShieldOff, Store, Trash2, Warehouse } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
+import { Textarea } from '@/components/ui/textarea'
 
 const PAGE_SIZE = 15
 const STATUS_ACTIVE = 0

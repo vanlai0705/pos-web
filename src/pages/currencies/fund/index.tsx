@@ -1,28 +1,23 @@
-import { useEffect, useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { Wallet, Plus, MoreHorizontal, Trash2, Check, Lock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { NumberInput } from '@/components/ui/number-input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { toast } from 'sonner'
-import { buildModelFormData } from '@/utils/multipart'
-import {
-  useFilterReportQuery, useLazyGenericGetQuery, useGenericPostMutation,
-} from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, PAGE_SIZE } from '@/pages/actives/shared'
-import { StatusBadge } from '@/components/ui/status-badge'
-import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
-import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
 import dayjs from 'dayjs'
-
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
+import { useGenericPostMutation, useLazyGenericGetQuery, useFilterReportQuery } from '@/store/slice/generic/api'
+import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
+import { Button } from '@/components/ui/button'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { Textarea } from '@/components/ui/textarea'
+import { STATUS } from '@/constants/status'
+import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
+import { buildModelFormData } from '@/utils/multipart'
+import { Check, Lock, MoreHorizontal, Plus, Trash2, Wallet } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { NumberInput } from '@/components/ui/number-input'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 
 /**
  * "Quỹ" is a transfer voucher, not a named account: it moves an amount from one

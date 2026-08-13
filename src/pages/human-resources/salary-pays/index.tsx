@@ -1,19 +1,14 @@
-import { useState } from 'react'
-import { Banknote, MoreHorizontal, Award, Wallet } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useFilterReportQuery } from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, PAGE_SIZE } from '@/pages/actives/shared'
-import { RewardPunishDialog } from '@/components/pos/reward-punish-dialog'
-import {
-  ReceiptPaymentDialog, RECEIPT_PAYMENT_TYPE, RECEIPT_PAYMENT_FOR, OBJECT_TYPE,
-  type ReceiptPayment,
-} from '@/components/pos/receipt-payment-dialog'
 import type { LookupItem } from '@/components/pos/lookup-select'
+import { OBJECT_TYPE, RECEIPT_PAYMENT_FOR, RECEIPT_PAYMENT_TYPE, ReceiptPayment, ReceiptPaymentDialog } from '@/components/pos/receipt-payment-dialog'
+import { RewardPunishDialog } from '@/components/pos/reward-punish-dialog'
+import { Button } from '@/components/ui/button'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
+import { useFilterReportQuery } from '@/store/slice/generic/api'
+import { Award, Banknote, MoreHorizontal, Wallet } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 /** Endpoints of the phiếu chi the "Chi lương" action raises. */
 const PAYMENT_ENDPOINTS = {

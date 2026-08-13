@@ -1,19 +1,16 @@
-import { useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { useNavigate } from 'react-router-dom'
-import { UtensilsCrossed, Plus, RefreshCw, Clock } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
+import type { TPosArea,TPosBooking } from '@/store/slice/users/types/pos-types'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import {
-  useGetAreasQuery,
-  useFilterBookingsQuery,
-  useLazyGetBookingDetailQuery,
-  useCancelOrderMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosBooking, TPosArea } from '@/store/slice/users/types/pos-types'
+import { Skeleton } from '@/components/ui/skeleton'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { ListPageHeader, fmtCurrency, useListFilter } from '@/pages/actives/shared'
+import { useFilterBookingsQuery, useLazyGetBookingDetailQuery } from '@/store/slice/bookings/api'
+import { useCancelOrderMutation } from '@/store/slice/orders/api'
+import { useGetAreasQuery } from '@/store/slice/tables/api'
+import { Clock, Plus, RefreshCw, UtensilsCrossed } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { InvoiceDetailPanel, StatusChip, fmtDateTime } from '../shared'
+import { toast } from 'sonner'
 
 // ─── Table card ───────────────────────────────────────────────────────────────
 

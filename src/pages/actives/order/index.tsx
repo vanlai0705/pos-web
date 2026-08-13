@@ -1,54 +1,33 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { useSearchParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import {
-  Search, Plus, Minus, Trash2, X,
-  Printer, Banknote, Smartphone, CreditCard,
-  ShoppingCart, Package, Save,
-  FileText, Info, Wallet, RefreshCw, BookOpen, Eye, EyeOff,
-  LayoutGrid, Table2, Pencil, CheckCircle2, Ban,
-} from 'lucide-react'
+import type { TPosActiveProduct,TPosCustomerInvoice,TPosCustomerSimple,TPosFundAccount,TPosFundType,TPosOrder,TPosOrderItem,TPosSettingOrder,TPosUser } from '@/store/slice/users/types/pos-types'
 import { CustomerSelect } from '@/components/pos/customer-select'
 import { StaffSelect } from '@/components/pos/staff-select'
-import type { TPosCustomerSimple, TPosUser } from '@/store/slice/users/types/pos-types'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useNumberDraft } from '@/components/ui/number-input'
+import { PosImage } from '@/components/ui/pos-image'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { PosImage } from '@/components/ui/pos-image'
-import { toast } from 'sonner'
-import {
-  useFilterActiveProductsQuery,
-  useGetProductGroupsSimpleQuery,
-  useSaveOrderMutation,
-  useCompleteOrderMutation,
-  useGetSettingOrderQuery,
-  useGetUserShopSettingQuery,
-  useGetPaymentTypesQuery,
-  useLazyGetTableOrderDetailQuery,
-  useSaveTableOrderMutation,
-  useDeleteTableOrderMutation,
-  useGenericDownloadMutation,
-  useLazyGetOrderKitchenQuery,
-  useLazyGetOrderDetailQuery,
-  useGetActiveProductsSimpleQuery,
-} from '@/store/slice/users/api/api'
-import { OrderSearchDialog } from './order-search-dialog'
-import { printData, printDatas, type PrinterSetting } from '@/utils/print-service'
-import type {
-  TPosActiveProduct, TPosOrder, TPosOrderItem, TPosCustomerInvoice, TPosSettingOrder,
-  TPosFundType, TPosFundAccount,
-} from '@/store/slice/users/types/pos-types'
-import { cn } from '@/utils'
-import { useNumberDraft } from '@/components/ui/number-input'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useAuth } from '@/hooks/useAuth'
+import { useGenericDownloadMutation } from '@/store/slice/generic/api'
+import { useGetUserShopSettingQuery } from '@/store/slice/notifications/api'
+import { useCompleteOrderMutation, useLazyGetOrderDetailQuery, useSaveOrderMutation } from '@/store/slice/orders/api'
+import { useFilterActiveProductsQuery, useGetActiveProductsSimpleQuery } from '@/store/slice/products/api'
+import { useGetPaymentTypesQuery, useGetSettingOrderQuery } from '@/store/slice/settings/api'
+import { useDeleteTableOrderMutation, useLazyGetOrderKitchenQuery, useLazyGetTableOrderDetailQuery, useSaveTableOrderMutation } from '@/store/slice/tables/api'
+import { useGetProductGroupsSimpleQuery } from '@/store/slice/users'
+import { cn } from '@/utils'
+import { printData, printDatas, type PrinterSetting } from '@/utils/print-service'
+import { Ban, Banknote, BookOpen, CheckCircle2, CreditCard, Eye, EyeOff, FileText, Info, LayoutGrid, Minus, Package, Pencil, Plus, Printer, RefreshCw, Save, Search, ShoppingCart, Smartphone, Table2, Trash2, Wallet, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
+import { OrderSearchDialog } from './order-search-dialog'
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -71,17 +50,6 @@ const CARD_COLORS = [
   'from-cyan-500/10 to-cyan-600/5 border-cyan-200 dark:border-cyan-800',
   'from-amber-500/10 to-amber-600/5 border-amber-200 dark:border-amber-800',
   'from-rose-500/10 to-rose-600/5 border-rose-200 dark:border-rose-800',
-]
-
-const ICON_COLORS = [
-  'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
-  'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400',
-  'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
-  'bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400',
-  'bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400',
-  'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400',
-  'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
-  'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400',
 ]
 
 const DOT_COLORS = [
@@ -774,6 +742,14 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
         setSelectedCustomer(order.Customer ?? null)
         if (order.User) setSelectedStaff(order.User as TPosUser)
         else setSelectedStaff(null)
+        setDiscountPct(order.DiscountPercent ?? 0)
+        setDiscountAmt(order.Discount ?? 0)
+        setVoucher(order.Voucher ?? 0)
+        setTransferCost(order.TransferCost ?? 0)
+        setTaxOverride(order.Tax ?? null)
+        setPayment(order.Payment ?? '')
+        setIsCustomersDebt(!!order.IsCustomersDebt)
+        setShortage(order.Shortage ?? 0)
       })
       .catch(() => toast.error(t('pages.actives.order.loadTableOrderFailed')))
     return () => { cancelled = true }

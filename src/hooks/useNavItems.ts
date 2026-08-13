@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { NavItem, navItems } from '@/constants/data'
+import { translateNavItems } from '@/i18n/nav-title-map'
 import { useAppSelector } from '@/store/hooks'
 import { selectAuth } from '@/store/slice/users/app'
-import { navItems, NavItem } from '@/constants/data'
-import { translateNavItems } from '@/i18n/nav-title-map'
 import { posMenuToNavItems } from '@/utils/pos-menu-converter'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Trả về NavItem[] để render sidebar/header-nav.

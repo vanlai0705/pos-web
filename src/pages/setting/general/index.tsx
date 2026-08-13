@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from "react"
-import { Building2, Upload, Trash2, AlertTriangle } from "lucide-react"
-import { useTranslation } from "react-i18next"
-import { useGetSettingGeneralQuery, useUpdateSettingGeneralMutation, useRemoveShopDataMutation } from "@/store/slice/users/api/api"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { toast } from "sonner"
-import { PageHeader, SettingCard, SaveBar } from "../components"
-
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useGetSettingGeneralQuery, useRemoveShopDataMutation, useUpdateSettingGeneralMutation } from '@/store/slice/settings/api'
+import { AlertTriangle, Building2, Trash2, Upload } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { PageHeader, SaveBar, SettingCard } from '../components'
 export default function SettingGeneralPage() {
   const { t } = useTranslation()
   const CONFIRM_TEXT = t('pages.setting.general.confirmText')

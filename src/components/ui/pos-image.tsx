@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
-import { ImageIcon, User } from 'lucide-react'
-import { getImageUrl } from '@/utils/common'
-import { cn } from '@/utils'
 import { useAppSelector } from '@/store/hooks'
-
+import { cn } from '@/utils'
+import { getImageUrl } from '@/utils/common'
+import { ImageIcon, User } from 'lucide-react'
+import { useEffect, useState } from 'react'
 interface PosImageProps {
   url?: string | null
   alt?: string

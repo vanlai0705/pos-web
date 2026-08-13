@@ -1,8 +1,6 @@
 import { useAppDispatch } from "@/store/hooks"
+import { apiSlice, persistor } from "@/store/store"
 import { useAuth } from "./useAuth"
-import { apiSlice } from "@/store/store"
-import { persistor } from "@/store/store"
-
 export const useLogout = () => {
   const dispatch = useAppDispatch()
   const { logout } = useAuth()

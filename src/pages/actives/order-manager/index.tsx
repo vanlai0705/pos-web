@@ -1,21 +1,17 @@
+import ConfirmDialog from '@/components/ui/confirm-dialog'
+import { Button } from '@/components/ui/button'
+import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
+import { Skeleton } from '@/components/ui/skeleton'
+import { StatusBadge } from '@/components/ui/status-badge'
+import { DateRangeFilter, fmtDateTime, ListPageHeader, Pagination, SearchBar, useListFilter } from '@/pages/actives/shared'
+import { useCancelOrderMutation, useFilterOrdersQuery, useLazyGetOrderDetailQuery } from '@/store/slice/orders/api'
+import { TPosOrder } from '@/store/slice/users'
+import { withDomainPath } from '@/utils/domain-route'
+import { ClipboardList, ExternalLink, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardList, ExternalLink, Trash2, X } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Button } from '@/components/ui/button'
-import ConfirmDialog from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
-import {
-  useFilterOrdersQuery,
-  useLazyGetOrderDetailQuery,
-  useCancelOrderMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosOrder } from '@/store/slice/users/types/pos-types'
-import { ListPageHeader, SearchBar, DateRangeFilter, Pagination, StatusBadge, fmtDateTime, useListFilter } from '../shared'
-import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
-import { withDomainPath } from '@/utils/domain-route'
-
 function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () => void }) {
   const { t } = useTranslation()
   const items = order.Items ?? []

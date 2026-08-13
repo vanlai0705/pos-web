@@ -1,10 +1,8 @@
 import * as React from 'react'
+import { type ButtonProps, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/utils'
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-
-import { cn } from '@/utils'
-import { type ButtonProps, buttonVariants } from '@/components/ui/button'
-
 function Pagination({ className, ...props }: React.ComponentProps<'nav'>) {
   return (
     <nav
@@ -98,11 +96,11 @@ function PaginationEllipsis({ className, ...props }: React.ComponentProps<'span'
 PaginationEllipsis.displayName = 'PaginationEllipsis'
 
 export {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
+Pagination,
+PaginationContent,
+PaginationEllipsis,
+PaginationItem,
+PaginationLink,
+PaginationNext,
+PaginationPrevious
 }

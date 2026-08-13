@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react"
-import { useTranslation } from "react-i18next"
-import { ShoppingCart, Settings2, ClipboardList, Printer, Download, Check, Loader2 } from "lucide-react"
-import { useGetSettingOrderQuery, useUpdateSettingOrderMutation } from "@/store/slice/users/api/api"
-import { Skeleton } from "@/components/ui/skeleton"
+import type { TPosSettingOrder } from "@/store/slice/users/types"
 import { Button } from "@/components/ui/button"
-import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { baseUrl } from "@/constants"
 import { useAppSelector } from "@/store/hooks"
+import { useGetSettingOrderQuery, useUpdateSettingOrderMutation } from '@/store/slice/settings/api'
 import { selectAuth } from "@/store/slice/users/app"
-import { PageHeader, SettingCard, ToggleRow, NumberRow, TextRow, SaveBar } from "../components"
+import { Check, ClipboardList, Download, Loader2, Printer, Settings2, ShoppingCart } from 'lucide-react'
+import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import { NumberRow, PageHeader, SaveBar, SettingCard, TextRow, ToggleRow } from "../components"
 import { PrinterPickerDialog } from "../printer/printer-picker-dialog"
-import type { TPosSettingOrder } from "@/store/slice/users/types"
 
 const defaultForm: TPosSettingOrder = {
   IsDupplicateCustomerName: false,

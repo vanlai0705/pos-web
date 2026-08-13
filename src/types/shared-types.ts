@@ -4,13 +4,11 @@ export interface TMessage {
   return_message?: string;
 }
 
-
 export interface Paging {
   page?: number;
   page_size?: number;
   all?: boolean;
 }
-
 
 export type TPagingResponse<T> = {
   return_code: number;

@@ -1,17 +1,16 @@
-import { useEffect, useRef, useState } from "react";
-import { Camera, KeyRound, UserRound } from "lucide-react";
-import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
-
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
-import { useGetMemberDetailQuery, useSelfUpdateProfileMutation } from "@/store/slice/users/api/api";
-import type { TPosMember } from "@/store/slice/users/types/pos-types";
-import { getImageUrl } from "@/utils/common";
-import { ChangePasswordForm } from "./change-password-form";
-
+import type { TPosMember } from "@/store/slice/users/types/pos-types"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { useAuth } from '@/hooks/useAuth'
+import { useGetMemberDetailQuery } from '@/store/slice/human-resources/api'
+import { useSelfUpdateProfileMutation } from '@/store/slice/registration-users/api'
+import { getImageUrl } from "@/utils/common"
+import { Camera, KeyRound, UserRound } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
+import { ChangePasswordForm } from "./change-password-form"
 function getInitials(name?: string): string {
   if (!name) return "U";
   const parts = name.trim().split(" ");

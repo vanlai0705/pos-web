@@ -1,18 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Pencil, Plus, X } from 'lucide-react'
-import { toast } from 'sonner'
-import { useTranslation } from 'react-i18next'
+import { buildCustomerPayload, CustomerDialog, emptyCustomer } from '@/components/pos/customer-form-dialog'
+import { useGetCustomerGroupsSimpleQuery, useLazyFilterCustomersSimpleQuery, useLazyGetCustomerDetailQuery, useSaveCustomerMutation } from '@/store/slice/customers/api'
+import { TPosCustomer, TPosCustomerSimple } from '@/store/slice/users'
 import { cn } from '@/utils'
 import { withDomainPath } from '@/utils/domain-route'
-import {
-  useLazyFilterCustomersSimpleQuery,
-  useLazyGetCustomerDetailQuery,
-  useGetCustomerGroupsSimpleQuery,
-  useSaveCustomerMutation,
-} from '@/store/slice/users/api/api'
-import type { TPosCustomer, TPosCustomerSimple } from '@/store/slice/users/types/pos-types'
-import { CustomerDialog, emptyCustomer, buildCustomerPayload } from './customer-form-dialog'
-
+import { ChevronDown, Pencil, Plus, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 interface CustomerSelectProps {
   value?: TPosCustomerSimple | null
   onChange: (customer: TPosCustomerSimple | null) => void
