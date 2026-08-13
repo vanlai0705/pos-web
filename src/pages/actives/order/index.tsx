@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PosImage } from '@/components/ui/pos-image'
 import { toast } from 'sonner'
 import {
   useFilterActiveProductsQuery,
@@ -45,16 +46,11 @@ import type {
   TPosActiveProduct, TPosOrder, TPosOrderItem, TPosCustomerInvoice, TPosSettingOrder,
   TPosFundType, TPosFundAccount,
 } from '@/store/slice/users/types/pos-types'
-import { getImageUrl } from '@/utils/common'
 import { cn } from '@/utils'
 import { useNumberDraft } from '@/components/ui/number-input'
 import { useAuth } from '@/hooks/useAuth'
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-
-function imgUrl(url?: string | null) {
-  return getImageUrl(url ?? undefined) ?? null
-}
 
 function fmtCurrency(val?: number | null) {
   if (val == null) return '—'
@@ -325,18 +321,30 @@ function ProductItemDialog({
         {draft && (
           <div className="space-y-5 px-5 py-5">
             <div className="grid grid-cols-2 gap-4">
-              <NumInput value={draft.qty} onChange={v => setField('qty', Math.max(1, Math.round(v)))} className="h-12" />
-              <NumInput value={draft.price} onChange={v => setField('price', Math.max(0, v))} className="h-12" />
-              <NumInput value={draft.discountPct} onChange={v => setField('discountPct', Math.min(100, Math.max(0, v)))} suffix="%" className="h-12" />
-              <NumInput value={draft.discountAmt} onChange={v => setField('discountAmt', Math.max(0, v))} className="h-12" />
-              <NumInput value={total} onChange={() => undefined} className="h-12 pointer-events-none opacity-70" />
+              <Field label={t('common.quantity')}>
+                <NumInput value={draft.qty} onChange={v => setField('qty', Math.max(1, Math.round(v)))} className="h-11" />
+              </Field>
+              <Field label={t('common.price')}>
+                <NumInput value={draft.price} onChange={v => setField('price', Math.max(0, v))} className="h-11" />
+              </Field>
+              <Field label={t('common.discount')}>
+                <NumInput value={draft.discountPct} onChange={v => setField('discountPct', Math.min(100, Math.max(0, v)))} suffix="%" className="h-11" />
+              </Field>
+              <Field label={t('metrics.discount')}>
+                <NumInput value={draft.discountAmt} onChange={v => setField('discountAmt', Math.max(0, v))} className="h-11" />
+              </Field>
+              <Field label={t('metrics.amount')}>
+                <NumInput value={total} onChange={() => undefined} className="h-11 pointer-events-none opacity-70" />
+              </Field>
             </div>
-            <Textarea
-              value={draft.note}
-              onChange={e => setNote(e.target.value)}
-              placeholder={t('common.note')}
-              className="min-h-12 resize-none"
-            />
+            <Field label={t('common.note')}>
+              <Textarea
+                value={draft.note}
+                onChange={e => setNote(e.target.value)}
+                placeholder={t('common.note')}
+                className="min-h-12 resize-none"
+              />
+            </Field>
           </div>
         )}
 
@@ -364,6 +372,9 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
   const [pageIndex, setPageIndex] = useState(0)
   const [products, setProducts] = useState<TPosActiveProduct[]>([])
   const gridRef = useRef<HTMLDivElement>(null)
+  const scannerBuffer = useRef('')
+  const scannerLastTs = useRef(0)
+  const lastHandledScan = useRef<{ value: string; ts: number } | null>(null)
   // Only append a page once — StrictMode/refetches must not duplicate rows.
   const appendedPage = useRef(-1)
 
@@ -400,9 +411,12 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
     }
   }
 
-  const scanBarcode = (value: string) => {
+  const scanBarcode = useCallback((value: string) => {
     const scanned = value.trim().toLowerCase()
     if (!scanned) return
+    const last = lastHandledScan.current
+    if (last?.value === scanned && Date.now() - last.ts < 150) return
+    lastHandledScan.current = { value: scanned, ts: Date.now() }
     const exactMatch = (p: TPosActiveProduct) => {
       const barcode = String(p.Barcode ?? '').trim().toLowerCase()
       const productCode = String(p.ProductCode ?? '').trim().toLowerCase()
@@ -413,7 +427,29 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
     if (!matched) return
     onAdd(matched)
     setKeyword('')
-  }
+  }, [onAdd, products, simpleProducts])
+
+  useEffect(() => {
+    const handleScannerKeydown = (e: KeyboardEvent) => {
+      const now = Date.now()
+      if (now - scannerLastTs.current > 50) scannerBuffer.current = ''
+      scannerLastTs.current = now
+
+      if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return
+
+      if (e.key === 'Enter') {
+        const scanned = scannerBuffer.current
+        scannerBuffer.current = ''
+        if (scanned.length >= 3) scanBarcode(scanned)
+        return
+      }
+
+      if (e.key.length === 1) scannerBuffer.current += e.key
+    }
+
+    window.addEventListener('keydown', handleScannerKeydown)
+    return () => window.removeEventListener('keydown', handleScannerKeydown)
+  }, [scanBarcode])
 
   return (
     <div className="h-full flex flex-col min-h-0 rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -552,7 +588,7 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
           <div className={PRODUCT_GRID}>
             {products.map((p, i) => {
               const c = ci(p.Id, i)
-              const url = imgUrl(p.Image?.Url ?? p.Images?.[0]?.Url)
+              const url = p.Image?.Url ?? p.Images?.[0]?.Url
               const cost = p.PriceInput ?? p.ImportPrice
               const barcode = p.Barcode || p.Code || p.ProductCode
               return (
@@ -561,10 +597,12 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
                 >
                   {/* Ảnh — không còn lớp phủ tối, chỉ 2 badge góc trên tự có nền riêng */}
                   <div className="relative aspect-[4/3] shrink-0">
-                    {url
-                      ? <img src={url} alt={p.Name} className="absolute inset-0 w-full h-full object-cover" />
-                      : <div className={`absolute inset-0 flex items-center justify-center ${ICON_COLORS[c]}`}><Package className="h-7 w-7 opacity-50" /></div>
-                    }
+                    <PosImage
+                      url={url}
+                      alt={p.Name}
+                      className="absolute inset-0 h-full w-full"
+                      fallbackIcon={<Package className="h-7 w-7 opacity-50" />}
+                    />
                     <div className="absolute top-0.5 left-0.5 right-0.5 flex items-start justify-between gap-0.5">
                       {p.Unit?.Name && (
                         <span className="px-1 rounded bg-black/60 backdrop-blur-sm text-[9px] font-semibold text-white/90 truncate max-w-[55%]">

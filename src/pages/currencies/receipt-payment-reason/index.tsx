@@ -1,23 +1,24 @@
-import { useEffect, useState } from 'react'
-import { confirmAction } from '@/components/ui/use-confirm-action'
-import { FileText, Plus, MoreHorizontal, Trash2, Check, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { DataTable, type ColumnDef } from '@/components/ui/data-table'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { toast } from 'sonner'
-import {
-  useFilterReportQuery, useLazyGenericGetQuery, useGenericPostMutation,
-} from '@/store/slice/users/api/api'
-import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, PAGE_SIZE } from '@/pages/actives/shared'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { getImageUrl } from '@/utils/common'
+import { Textarea } from '@/components/ui/textarea'
+import { confirmAction } from '@/components/ui/use-confirm-action'
+import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
+import {
+  useFilterReportQuery,
+  useGenericPostMutation,
+  useLazyGenericGetQuery,
+} from '@/store/slice/users/api/api'
 import { buildModelFormData } from '@/utils/multipart'
+import { Check, FileText, Lock, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
 
@@ -103,15 +104,6 @@ export default function ReceiptPaymentReasonPage() {
 
   const columns: ColumnDef<TReason>[] = [
     { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
-    {
-      id: 'icon', header: '',
-      cell: ({ row }) => {
-        const url = getImageUrl(row.original.Image?.Url ?? undefined)
-        return url
-          ? <img src={url} alt="" className="h-8 w-8 rounded-md border object-cover" />
-          : <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted"><FileText className="h-4 w-4 text-muted-foreground/60" /></div>
-      },
-    },
     { id: 'name', header: 'Tên lý do', cell: ({ row }) => <span className="font-medium">{row.original.Name}</span> },
     {
       id: 'type', header: 'Loại',
@@ -193,8 +185,7 @@ export default function ReceiptPaymentReasonPage() {
               <div className="flex gap-2">
                 {REASON_TYPE.map(t => (
                   <button key={t.value} type="button" onClick={() => setForm(f => ({ ...f, Type: t.value }))}
-                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                      form.Type === t.value ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground'}`}>
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${form.Type === t.value ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground'}`}>
                     {t.label}
                   </button>
                 ))}
