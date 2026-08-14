@@ -2,7 +2,6 @@ import { useSaveWarehouseMutation, useUpdateWarehouseStatusMutation, useFilterWa
 import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -11,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { confirmAction } from '@/components/ui/use-confirm-action'
 import { STATUS } from '@/constants/status'
 import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
-import { Check, Lock, MoreHorizontal, Plus, Trash2, Warehouse } from 'lucide-react'
+import { RowActions } from '@/pages/managers/components'
+import { Plus, Warehouse } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -87,29 +87,13 @@ export default function WarehousesPage() {
         const item = row.original
         if (!item.Id) return null
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => { setForm(item); setModal(true) }}>Chỉnh sửa</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {item.Status?.Id !== STATUS.ACTIVE && (
-                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.ACTIVE)}>
-                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> Kích hoạt
-                </DropdownMenuItem>
-              )}
-              {item.Status?.Id !== STATUS.LOCKED && (
-                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.LOCKED)}>
-                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> Khoá
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(item.Id!, STATUS.DELETED)}>
-                <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <RowActions
+            statusId={item.Status?.Id}
+            onEdit={() => { setForm(item); setModal(true) }}
+            onActivate={() => changeStatus(item.Id!, STATUS.ACTIVE)}
+            onLock={() => changeStatus(item.Id!, STATUS.LOCKED)}
+            onDelete={() => changeStatus(item.Id!, STATUS.DELETED)}
+          />
         )
       },
     },

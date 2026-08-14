@@ -2,7 +2,6 @@ import { useGenericPostMutation, useLazyGenericGetQuery, useFilterReportQuery } 
 import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { StatusBadge } from '@/components/ui/status-badge'
@@ -10,8 +9,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { confirmAction } from '@/components/ui/use-confirm-action'
 import { STATUS } from '@/constants/status'
 import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
+import { RowActions } from '@/pages/managers/components'
 import { buildModelFormData } from '@/utils/multipart'
-import { Check, FileText, Lock, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
+import { FileText, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -113,29 +113,13 @@ export default function ReceiptPaymentReasonPage() {
       cell: ({ row }) => {
         const r = row.original
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEdit(r)}>Chỉnh sửa</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {r.Status?.Id !== STATUS.ACTIVE && (
-                <DropdownMenuItem onClick={() => changeStatus(r, STATUS.ACTIVE)}>
-                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> Kích hoạt
-                </DropdownMenuItem>
-              )}
-              {r.Status?.Id !== STATUS.LOCKED && (
-                <DropdownMenuItem onClick={() => changeStatus(r, STATUS.LOCKED)}>
-                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> Khoá
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(r, STATUS.DELETED)}>
-                <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <RowActions
+            statusId={r.Status?.Id}
+            onEdit={() => openEdit(r)}
+            onActivate={() => changeStatus(r, STATUS.ACTIVE)}
+            onLock={() => changeStatus(r, STATUS.LOCKED)}
+            onDelete={() => changeStatus(r, STATUS.DELETED)}
+          />
         )
       },
     },

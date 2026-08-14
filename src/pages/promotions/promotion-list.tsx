@@ -2,12 +2,12 @@ import { PromotionDialog } from '@/components/pos/promotion-dialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag } from '@/components/ui/data-tag'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { confirmAction } from '@/components/ui/use-confirm-action'
 import { STATUS } from '@/constants/status'
 import { DateRangeFilter, ListPageHeader, PAGE_SIZE, SearchBar, StatusBadge, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { RowActions } from '@/pages/managers/components'
 import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/generic/api'
-import { Check, Lock, MoreHorizontal, Plus, Tag, Trash2 } from 'lucide-react'
+import { Plus, Tag } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -80,29 +80,13 @@ export default function PromotionListPage({ type, titleKey }: Props) {
       cell: ({ row }) => {
         const r = row.original
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEdit(r)}>{t('common.edit')}</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {r.Status?.Id !== STATUS.ACTIVE && (
-                <DropdownMenuItem onClick={() => changeStatus(r, STATUS.ACTIVE)}>
-                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> {t('promotions.list.apply')}
-                </DropdownMenuItem>
-              )}
-              {r.Status?.Id !== STATUS.LOCKED && (
-                <DropdownMenuItem onClick={() => changeStatus(r, STATUS.LOCKED)}>
-                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> {t('promotions.list.stopApply')}
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(r, STATUS.DELETED)}>
-                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('common.delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <RowActions
+            statusId={r.Status?.Id}
+            onEdit={() => openEdit(r)}
+            onActivate={() => changeStatus(r, STATUS.ACTIVE)}
+            onLock={() => changeStatus(r, STATUS.LOCKED)}
+            onDelete={() => changeStatus(r, STATUS.DELETED)}
+          />
         )
       },
     },

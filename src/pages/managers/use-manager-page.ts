@@ -1,4 +1,5 @@
 import type { TPosFilterParams } from "@/store/slice/users/types";
+import { confirmAction } from "@/components/ui/use-confirm-action"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
@@ -39,6 +40,8 @@ export function useManagerPage<T extends { Id?: number; Status?: { Id: number } 
     refetch: () => void
   ) {
     return async (id: number, sid: number) => {
+      const label = sid === 0 ? 'Cho phép' : sid === 1 ? 'Khoá' : 'Xoá'
+      if (!await confirmAction({ description: `Bạn có chắc là muốn "${label}" ?` })) return
       try {
         await updateStatus({ id, statusId: sid })
         refetch()

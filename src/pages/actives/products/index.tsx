@@ -1,18 +1,17 @@
 import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
-import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useGetProductGroupsSimpleQuery } from '@/store/slice/customers/api'
 import { useFilterActiveProductsQuery, useUpdateActiveProductStatusMutation } from '@/store/slice/products/api'
 import { getImageUrl } from '@/utils/common'
-import { Check, Lock, MoreHorizontal, Package, Trash2 } from 'lucide-react'
+import { Package } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { ListPageHeader, PAGE_SIZE, SearchBar, StatusBadge } from '../shared'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { STATUS } from '@/constants/status'
+import { RowActions } from '@/pages/managers/components'
 
 // STATUS in pos_web: 0 = Actived, 1 = Locked, 2 = Deleted.
 function imgUrl(url?: string | null) {
@@ -118,27 +117,12 @@ export default function ActiveProductsPage() {
         const item = row.original
         if (!item.Id) return null
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {item.Status?.Id !== STATUS.ACTIVE && (
-                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.ACTIVE)}>
-                  <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> {t('common.activate')}
-                </DropdownMenuItem>
-              )}
-              {item.Status?.Id !== STATUS.LOCKED && (
-                <DropdownMenuItem onClick={() => changeStatus(item.Id!, STATUS.LOCKED)}>
-                  <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> {t('common.lock')}
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => changeStatus(item.Id!, STATUS.DELETED)}>
-                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('pages.actives.products.delete')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <RowActions
+            statusId={item.Status?.Id}
+            onActivate={() => changeStatus(item.Id!, STATUS.ACTIVE)}
+            onLock={() => changeStatus(item.Id!, STATUS.LOCKED)}
+            onDelete={() => changeStatus(item.Id!, STATUS.DELETED)}
+          />
         )
       },
     },

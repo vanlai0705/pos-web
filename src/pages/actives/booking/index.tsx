@@ -1,10 +1,12 @@
 import type { TPosBooking } from '@/store/slice/users/types/pos-types'
 import { StockDocumentDialog } from '@/components/pos/stock-document-dialog'
 import { Button } from '@/components/ui/button'
+import { confirmAction } from '@/components/ui/use-confirm-action'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
+import { RowActions } from '@/pages/managers/components'
 import { useFilterBookingsQuery, useUpdateBookingStatusMutation } from '@/store/slice/bookings/api'
-import { CalendarCheck, Pencil, Plus, ToggleLeft, ToggleRight } from 'lucide-react'
+import { CalendarCheck, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -33,11 +35,13 @@ export default function BookingPage() {
   const openAdd = () => { setEditId(undefined); setModal(true) }
   const openEdit = (id: number) => { setEditId(id); setModal(true) }
 
-  const handleToggleStatus = async (id: number, currentStatusId?: number) => {
-    const newStatusId = currentStatusId === 1 ? 2 : 1
+  const changeStatus = async (id: number, nextStatusId: number) => {
+    const label = nextStatusId === 0 ? t('manager.activate') : nextStatusId === 1 ? t('manager.lock') : t('manager.delete')
+    if (!await confirmAction({ description: t('components.confirmDialog.description', { action: label }) })) return
     try {
-      await updateStatus({ id, statusId: newStatusId }).unwrap()
+      await updateStatus({ id, statusId: nextStatusId }).unwrap()
       refetch()
+      toast.success(t('common.statusUpdateSuccess'))
     } catch { toast.error(t('pages.actives.booking.toggleStatusError')) }
   }
 
@@ -98,20 +102,13 @@ export default function BookingPage() {
       cell: ({ row }) => {
         const item = row.original
         return (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => item.Id && openEdit(item.Id)}>
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost" size="icon" className="h-7 w-7"
-              onClick={() => item.Id && handleToggleStatus(item.Id, item.Status?.Id)}
-            >
-              {item.Status?.Id === 1
-                ? <ToggleRight className="h-4 w-4 text-primary" />
-                : <ToggleLeft className="h-4 w-4 text-muted-foreground" />
-              }
-            </Button>
-          </div>
+          <RowActions
+            statusId={item.Status?.Id}
+            onEdit={() => item.Id && openEdit(item.Id)}
+            onActivate={() => item.Id && changeStatus(item.Id, 0)}
+            onLock={() => item.Id && changeStatus(item.Id, 1)}
+            onDelete={() => item.Id && changeStatus(item.Id, 2)}
+          />
         )
       },
     },
@@ -128,8 +125,9 @@ export default function BookingPage() {
           className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">{t('pages.actives.booking.statusAll')}</option>
-          <option value={1}>{t('common.active')}</option>
-          <option value={2}>{t('pages.actives.booking.statusCancelled')}</option>
+          <option value={0}>{t('common.active')}</option>
+          <option value={1}>{t('common.locked')}</option>
+          <option value={2}>{t('common.deleted')}</option>
           <option value={4}>{t('pages.actives.booking.statusCompleted')}</option>
         </select>
         <Button size="sm" onClick={openAdd} className="h-8">

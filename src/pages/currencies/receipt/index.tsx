@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react'
 import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { TrendingUp, Plus, MoreHorizontal, Trash2 } from 'lucide-react'
+import { TrendingUp, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/generic/api'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { ReceiptPaymentDialog, RECEIPT_PAYMENT_TYPE } from '@/components/pos/receipt-payment-dialog'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { RowActions } from '@/pages/managers/components'
 import { fmtDateTime } from '@/utils'
 import type { TPosCurrencyVoucher } from '@/store/slice/users/types/pos-types'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
@@ -76,18 +74,10 @@ export default function ReceiptPage() {
     {
       id: 'actions', header: '',
       cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => openEdit(row.original)}>Chỉnh sửa</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => removeRow(row.original)}>
-              <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <RowActions
+          onEdit={() => openEdit(row.original)}
+          onDelete={() => removeRow(row.original)}
+        />
       ),
     },
   ]

@@ -1,19 +1,13 @@
-import { Search, Plus, MoreHorizontal, Check, Lock, Trash2, Pencil } from "lucide-react"
+import { Search, Plus, Check, Lock, Trash2, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { StatusBadge as UiStatusBadge } from "@/components/ui/status-badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Loader2 } from "lucide-react"
 import { DataPagination } from '@/components/ui/data-pagination'
 import { useTranslation } from "react-i18next"
 import { translateKnownText } from "@/i18n/nav-title-map"
+import { cn } from "@/utils"
 
 export function StatusBadge({ statusId }: { statusId?: number }) {
   return <UiStatusBadge statusId={statusId} />
@@ -93,7 +87,7 @@ export function PaginationBar({ page, total, pageSize, onChange, onPageSizeChang
 
 interface RowActionsProps {
   statusId?: number
-  onEdit: () => void
+  onEdit?: () => void
   onActivate?: () => void
   onLock?: () => void
   onDelete: () => void
@@ -101,34 +95,64 @@ interface RowActionsProps {
 
 export function RowActions({ statusId, onEdit, onActivate, onLock, onDelete }: RowActionsProps) {
   const { t } = useTranslation()
+  const actions = [
+    onEdit ? {
+      key: 'edit',
+      label: t('manager.edit'),
+      icon: Pencil,
+      onClick: onEdit,
+      className: 'border-cyan-200 bg-cyan-50 text-cyan-600 hover:border-cyan-300 hover:bg-cyan-100 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-300',
+    } : null,
+    statusId !== 0 && onActivate ? {
+      key: 'activate',
+      label: t('manager.activate'),
+      icon: Check,
+      onClick: onActivate,
+      className: 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300',
+    } : null,
+    statusId !== 1 && onLock ? {
+      key: 'lock',
+      label: t('manager.lock'),
+      icon: Lock,
+      onClick: onLock,
+      className: 'border-amber-200 bg-amber-50 text-amber-600 hover:border-amber-300 hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300',
+    } : null,
+    {
+      key: 'delete',
+      label: t('manager.delete'),
+      icon: Trash2,
+      onClick: onDelete,
+      className: 'border-rose-200 bg-rose-50 text-rose-600 hover:border-rose-300 hover:bg-rose-100 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-300',
+    },
+  ].filter(Boolean) as Array<{
+    key: string
+    label: string
+    icon: typeof Pencil
+    onClick: () => void
+    className: string
+  }>
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-7 w-7">
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onEdit}>
-          <Pencil className="h-3.5 w-3.5 mr-2" /> {t('manager.edit')}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {statusId !== 0 && onActivate && (
-          <DropdownMenuItem onClick={onActivate}>
-            <Check className="h-3.5 w-3.5 mr-2 text-green-600" /> {t('manager.activate')}
-          </DropdownMenuItem>
-        )}
-        {statusId !== 1 && onLock && (
-          <DropdownMenuItem onClick={onLock}>
-            <Lock className="h-3.5 w-3.5 mr-2 text-yellow-600" /> {t('manager.lock')}
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-          <Trash2 className="h-3.5 w-3.5 mr-2" /> {t('manager.delete')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
+      {actions.map(action => {
+        const Icon = action.icon
+        return (
+          <button
+            key={action.key}
+            type="button"
+            title={action.label}
+            aria-label={action.label}
+            onClick={action.onClick}
+            className={cn(
+              'inline-flex h-8 w-8 items-center justify-center rounded-full border text-sm transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm',
+              action.className,
+            )}
+          >
+            <Icon className="h-4 w-4" />
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
