@@ -25,7 +25,8 @@ import { printData, printDatas, type PrinterSetting } from '@/utils/print-servic
 import { Ban, Banknote, BookOpen, CheckCircle2, CreditCard, Eye, EyeOff, FileText, Info, LayoutGrid, Minus, Package, Pencil, Plus, Printer, RefreshCw, Save, Search, ShoppingCart, Smartphone, Table2, Trash2, Wallet, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { withDomainPath } from '@/utils/domain-route'
 import { toast } from 'sonner'
 import { OrderSearchDialog } from './order-search-dialog'
 
@@ -635,7 +636,7 @@ function ProductPanel({ onAdd }: ProductPanelProps) {
  * `save-exit` / `print-*` persist through `tables/*-order`; the rest reuse `orders/*`.
  */
 export type OrderAction =
-  | 'pay' | 'print' | 'temp'
+  | 'pay' | 'print' | 'temp' | 'update' | 'update-print'
   | 'save-exit' | 'print-temp' | 'print-kitchen' | 'print-label' | 'cancel-order'
 
 interface SalesTabProps {
@@ -647,10 +648,11 @@ interface SalesTabProps {
   tableId?: number
   /** The table's own Guid (not the order's) — what the kitchen-print routes key on. */
   tableGuid?: string
+  fromOrderManager?: boolean
   onBack?: () => void
 }
 
-function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, onBack }: SalesTabProps) {
+function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, fromOrderManager, onBack }: SalesTabProps) {
   const { t } = useTranslation()
   const [cart, setCart] = useState<CartItem[]>([])
   // Bumped after a successful retail payment to force InternalOrderPanel to
@@ -748,8 +750,9 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
         setTransferCost(order.TransferCost ?? 0)
         setTaxOverride(order.Tax ?? null)
         setPayment(order.Payment ?? '')
-        setIsCustomersDebt(!!order.IsCustomersDebt)
-        setShortage(order.Shortage ?? 0)
+        const orderShortage = order.Shortage ?? 0
+        setIsCustomersDebt(!!order.IsCustomersDebt || orderShortage > 0)
+        setShortage(orderShortage)
       })
       .catch(() => toast.error(t('pages.actives.order.loadTableOrderFailed')))
     return () => { cancelled = true }
@@ -786,8 +789,9 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
     setTransferCost(order.TransferCost ?? 0)
     setTaxOverride(order.Tax ?? null)
     setPayment(order.Payment ?? '')
-    setIsCustomersDebt(!!order.IsCustomersDebt)
-    setShortage(order.Shortage ?? 0)
+    const orderShortage = order.Shortage ?? 0
+    setIsCustomersDebt(!!order.IsCustomersDebt || orderShortage > 0)
+    setShortage(orderShortage)
   }, [])
 
   const applyPickedOrder = useCallback(async (id?: number) => {
@@ -1152,6 +1156,18 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
       return
     }
 
+    if (action === 'update' || action === 'update-print') {
+      try {
+        const res = await saveOrder(order).unwrap()
+        const savedId = res?.Id ?? order.Id
+        toast.success(t('pages.actives.order.orderSavedSuccess'))
+        if (action === 'update-print' && savedId) {
+          printBill(savedId, res?.Printers)
+        }
+      } catch { toast.error(t('pages.actives.order.orderSaveFailed')) }
+      return
+    }
+
     // ── Restaurant: park the order on the table, no payment yet ──
     if (action === 'save-exit' || action === 'print-temp' || action === 'print-kitchen' || action === 'print-label') {
       try {
@@ -1223,6 +1239,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, o
           totals={totals}
           perItemTax={perItemTax}
           tableLabel={tableLabel}
+          fromOrderManager={!!fromOrderManager}
           hasTableOrder={!!bookingId && !!tableId}
           onBack={onBack}
           onFundTypeChange={onFundTypeChange}
@@ -1391,6 +1408,7 @@ interface InternalOrderPanelProps {
   totals: ReturnType<typeof calcTotals>
   perItemTax: boolean
   tableLabel?: string
+  fromOrderManager?: boolean
   /** True when an existing table order can be cancelled */
   hasTableOrder?: boolean
   onBack?: () => void
@@ -1422,7 +1440,7 @@ interface MoneyControls {
 
 function InternalOrderPanel({
   cart, onQty, onRemove, onClear, onUpdateItem, onSave, onOpenOrderSearch, saving, settings, totals, perItemTax,
-  tableLabel, hasTableOrder, onBack,
+  tableLabel, fromOrderManager, hasTableOrder, onBack,
   onFundTypeChange, customerValue, staffValue, noteValue, onCustomerChange, onStaffChange, onNoteChange,
   detail, setDetail, invoiceForm, setInvoiceForm, money,
 }: InternalOrderPanelProps) {
@@ -1456,11 +1474,18 @@ function InternalOrderPanel({
   }, [noteValue])
 
   useEffect(() => {
-    if (!selectedCustomer && money.isCustomersDebt) {
+    const hasCustomer = !!(selectedCustomer || customerValue)
+    if (!hasCustomer && money.isCustomersDebt) {
       money.setIsCustomersDebt(false)
       money.setShortage(0)
     }
-  }, [money, selectedCustomer])
+  }, [customerValue, money.isCustomersDebt, money.setIsCustomersDebt, money.setShortage, selectedCustomer])
+
+  useEffect(() => {
+    if ((selectedCustomer || customerValue) && money.shortage > 0 && !money.isCustomersDebt) {
+      money.setIsCustomersDebt(true)
+    }
+  }, [customerValue, money.isCustomersDebt, money.setIsCustomersDebt, money.shortage, selectedCustomer])
 
   useEffect(() => {
     if (!debtEnabled || money.shortage <= total) return
@@ -1835,7 +1860,15 @@ function InternalOrderPanel({
         </div>
 
         {/* Restaurant actions — mirrors the Angular table view */}
-        {tableLabel ? (
+        {fromOrderManager ? (
+          <div className="grid grid-cols-3 gap-1.5">
+            <ActionBtn tone="neutral" icon={X} label={t('pages.actives.order.exitButton')} onClick={() => onBack?.()} />
+            <ActionBtn tone="sky" icon={Save} label={t('common.save')}
+              disabled={saving || cart.length === 0} onClick={() => onSave('update')} />
+            <ActionBtn tone="emerald-strong" icon={Printer} label={t('pages.actives.order.saveAndPrintBillButton')}
+              disabled={saving || cart.length === 0} onClick={() => onSave('update-print')} />
+          </div>
+        ) : tableLabel ? (
           <>
             {/* Row 1: thoát / lưu / thanh toán */}
             <div className="grid grid-cols-4 gap-1.5">
@@ -2070,7 +2103,10 @@ interface PosOrderPageProps { tableLabel?: string; bookingId?: number; tableId?:
 
 export default function PosOrderPage({ tableLabel, bookingId, tableId, tableGuid, onBack }: PosOrderPageProps = {}) {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const orderId = searchParams.get('orderId')
+  const fromOrderManager = searchParams.get('fromOrderManager') === '1'
+  const handleBack = onBack ?? (fromOrderManager ? () => navigate(withDomainPath('/actives/order-manager')) : undefined)
 
   return (
     <div className="-m-4 overflow-hidden bg-muted/40" style={{ height: 'calc(100vh - 3.5rem)' }}>
@@ -2080,7 +2116,8 @@ export default function PosOrderPage({ tableLabel, bookingId, tableId, tableGuid
         initialOrderId={orderId ? Number(orderId) : undefined}
         tableId={tableId}
         tableGuid={tableGuid}
-        onBack={onBack}
+        fromOrderManager={fromOrderManager}
+        onBack={handleBack}
       />
     </div>
   )
