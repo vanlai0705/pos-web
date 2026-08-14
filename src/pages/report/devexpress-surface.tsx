@@ -13,7 +13,7 @@ import { DxReportViewer } from 'devexpress-reporting/viewer/binding/jsReportView
 import { Calendar, FileText, Search, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { DateRangeFilter, toUtcEndOfDay, toUtcStartOfDay } from '@/pages/actives/shared'
 import { cn } from '@/utils'
 
 // DevExpress wants an absolute host ending in "/". Hosted builds point at their
@@ -212,8 +212,8 @@ export function DevExpressReportViewer({
   custom?: boolean
 }) {
   const mobileMode = useMemo(isMobileReportMode, [])
-  const [dateFrom, setDateFrom] = useState(dayjs().startOf('month').format('YYYY-MM-DD'))
-  const [dateTo, setDateTo] = useState(dayjs().endOf('month').format('YYYY-MM-DD'))
+  const [dateFrom, setDateFrom] = useState(toUtcStartOfDay(dayjs().startOf('month')))
+  const [dateTo, setDateTo] = useState(toUtcEndOfDay(dayjs().endOf('month')))
   const [filterOpen, setFilterOpen] = useState(custom && !mobileMode)
   const [viewerKey, setViewerKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -222,8 +222,8 @@ export function DevExpressReportViewer({
   const bindingRef = useRef<DevExpressBinding | null>(null)
   const ajaxBeforeSendRef = useRef<JQueryAjaxSettings['beforeSend']>()
   const requestBodyRef = useRef<ReportRequestBody>({
-    FromDate: formatReportDate(dayjs().startOf('month').format('YYYY-MM-DD'), 'start'),
-    ToDate: formatReportDate(dayjs().endOf('month').format('YYYY-MM-DD'), 'end'),
+    FromDate: formatReportDate(toUtcStartOfDay(dayjs().startOf('month')), 'start'),
+    ToDate: formatReportDate(toUtcEndOfDay(dayjs().endOf('month')), 'end'),
   })
 
   const displayCode = reportCode !== 'TestReport' ? reportCode : 'Báo cáo'
@@ -327,7 +327,7 @@ export function DevExpressReportViewer({
         {custom && !mobileMode && (
           <div
             className={cn(
-              'absolute left-3 top-3 z-[120] w-[320px] max-w-[calc(100vw-88px)] rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 transition-all duration-200',
+              'absolute left-3 top-3 z-[120] w-[520px] max-w-[calc(100vw-88px)] rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 transition-all duration-200',
               filterOpen ? 'translate-x-0 opacity-100' : 'pointer-events-none -translate-x-3 opacity-0',
             )}
           >
@@ -349,26 +349,14 @@ export function DevExpressReportViewer({
             </div>
 
             <div className="space-y-3 p-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-slate-500">Từ ngày</label>
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={event => setDateFrom(event.target.value)}
-                    className="h-9 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-medium text-slate-500">Đến ngày</label>
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={event => setDateTo(event.target.value)}
-                    className="h-9 text-xs"
-                  />
-                </div>
-              </div>
+              <DateRangeFilter
+                from={dateFrom}
+                to={dateTo}
+                onFrom={setDateFrom}
+                onTo={setDateTo}
+                compact
+                disablePortal
+              />
               <Button className="h-9 w-full gap-2 text-xs font-semibold" onClick={applyDateFilter}>
                 <Search className="h-4 w-4" />
                 Xem báo cáo
