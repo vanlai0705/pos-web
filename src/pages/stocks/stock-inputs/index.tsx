@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useGenericPostMutation } from '@/store/slice/generic/api'
+import { useState } from 'react';
 import { confirmAction } from '@/components/ui/use-confirm-action'
-import { ArrowDownToLine, Plus, MoreHorizontal, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/generic/api'
+import { ArrowDownToLine, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -13,8 +14,7 @@ import { ListPageHeader, SearchBar, DateRangeFilter, fmtDateTime, PAGE_SIZE, def
 import type { TPosStockInput } from '@/store/slice/users/types/pos-types'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 
-// Status codes match pos_web: 0 active, 1 locked, 2 deleted.
-const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
+import { STATUS } from '@/constants/status'
 
 
 export default function StockInputsPage() {

@@ -75,7 +75,7 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
               : items.map((item, idx) => (
                 <tr key={idx} className="hover:bg-muted/20">
                   <td className="px-3 py-2">
-                    <div className="font-medium">{item.ProductName}</div>
+                    <div className="font-medium">{item?.Product?.Name}</div>
                     {item.ProductCode && <div className="text-xs text-muted-foreground">{item.ProductCode}</div>}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{item.Quantity}</td>

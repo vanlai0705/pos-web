@@ -396,7 +396,10 @@ export default function TablesManagePage() {
     downloadBlob(new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' }), `Danh_sach_ban_${selectedArea?.Name || 'Tat_ca'}.csv`)
   }
 
-  const areaTree = useMemo(() => areas, [areas])
+  const areaTree = useMemo<Area[]>(() => [
+    { Id: 0, Name: t('pages.actives.tables.allAreas') },
+    ...areas,
+  ], [areas, t])
 
   const tableColumns: ColumnDef<RestaurantTable>[] = [
     {
@@ -464,6 +467,7 @@ export default function TablesManagePage() {
           title={t('pages.actives.tables.areaSidebarTitle')}
           items={areaTree}
           selectedId={selectedAreaId}
+          itemCount={areas.length}
           searchText={areaSearch}
           loading={areasLoading}
           searchPlaceholder={t('pages.actives.tables.searchArea')}

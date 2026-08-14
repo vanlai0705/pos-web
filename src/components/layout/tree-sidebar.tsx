@@ -21,6 +21,7 @@ interface TreeSidebarProps<T extends TreeSidebarNode> {
   selectedId: number
   searchText: string
   loading?: boolean
+  itemCount?: number
   emptyText?: string
   onSearchTextChange: (value: string) => void
   onSelect: (item: T) => void
@@ -159,6 +160,7 @@ export function TreeSidebar<T extends TreeSidebarNode>({
   selectedId,
   searchText,
   loading = false,
+  itemCount,
   emptyText,
   onSearchTextChange,
   onSelect,
@@ -172,6 +174,7 @@ export function TreeSidebar<T extends TreeSidebarNode>({
 }: TreeSidebarProps<T>) {
   const { t } = useTranslation()
   const filteredItems = filterTree(items, searchText)
+  const displayCount = itemCount ?? filteredItems.length
 
   return (
     <aside className="flex min-h-0 w-full shrink-0 flex-col overflow-hidden rounded-lg border bg-card shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:shadow-none lg:h-full lg:w-[236px]">
@@ -185,7 +188,7 @@ export function TreeSidebar<T extends TreeSidebarNode>({
               <h2 className="min-w-0 truncate text-xs font-bold uppercase tracking-wide text-primary-foreground">{translateMenuTitle(title, t)}</h2>
             </div>
             <p className="mt-1 truncate pl-9 text-[10px] font-medium text-primary-foreground/80">
-              {loading ? t('common.loading') : `${filteredItems.length} ${t('common.all').toLowerCase()}`}
+              {loading ? t('common.loading') : `${displayCount} ${t('common.all').toLowerCase()}`}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
