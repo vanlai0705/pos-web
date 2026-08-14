@@ -10,7 +10,7 @@ import 'devextreme/dist/css/dx.light.css'
 import { ajaxSetup, fetchSetup } from '@devexpress/analytics-core/analytics-utils'
 import { DxReportDesigner } from 'devexpress-reporting/designer/jsReportDesignerBinding'
 import { DxReportViewer } from 'devexpress-reporting/viewer/binding/jsReportViewerBinding.binding'
-import { Calendar, FileText, Search, X } from 'lucide-react'
+import { FileText, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DateRangeFilter, toUtcEndOfDay, toUtcStartOfDay } from '@/pages/actives/shared'
@@ -186,7 +186,7 @@ function ReportShell({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-sky-50 via-white to-emerald-50 px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-sky-50 via-white to-emerald-50 px-4 py-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-600 text-white shadow-sm">
             <FileText className="h-4 w-4" />
           </div>
@@ -214,7 +214,6 @@ export function DevExpressReportViewer({
   const mobileMode = useMemo(isMobileReportMode, [])
   const [dateFrom, setDateFrom] = useState(toUtcStartOfDay(dayjs().startOf('month')))
   const [dateTo, setDateTo] = useState(toUtcEndOfDay(dayjs().endOf('month')))
-  const [filterOpen, setFilterOpen] = useState(custom && !mobileMode)
   const [viewerKey, setViewerKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -301,20 +300,23 @@ export function DevExpressReportViewer({
       FromDate: formatReportDate(dateFrom, 'start'),
       ToDate: formatReportDate(dateTo, 'end'),
     }
-    setFilterOpen(false)
     setViewerKey(key => key + 1)
   }
 
   const action = custom && !mobileMode ? (
-    <Button
-      size="sm"
-      variant="outline"
-      className="h-8 gap-1.5 text-xs"
-      onClick={() => setFilterOpen(value => !value)}
-    >
-      <Calendar className="h-3.5 w-3.5" />
-      Thời gian
-    </Button>
+    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+      <DateRangeFilter
+        from={dateFrom}
+        to={dateTo}
+        onFrom={setDateFrom}
+        onTo={setDateTo}
+        compact
+      />
+      <Button size="sm" className="h-8 gap-1.5 px-3 text-xs font-semibold" onClick={applyDateFilter}>
+        <Search className="h-3.5 w-3.5" />
+        Xem báo cáo
+      </Button>
+    </div>
   ) : null
 
   const content = (
@@ -324,47 +326,6 @@ export function DevExpressReportViewer({
         mobileMode ? 'mt-0 rounded-none border-0 shadow-none' : 'mt-2 rounded-lg border border-slate-200 shadow-sm',
       )}
     >
-        {custom && !mobileMode && (
-          <div
-            className={cn(
-              'absolute left-3 top-3 z-[120] w-[520px] max-w-[calc(100vw-88px)] rounded-lg border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 transition-all duration-200',
-              filterOpen ? 'translate-x-0 opacity-100' : 'pointer-events-none -translate-x-3 opacity-0',
-            )}
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-sky-50 text-sky-600">
-                  <Calendar className="h-4 w-4" />
-                </span>
-                <span>Thời gian báo cáo</span>
-              </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                onClick={() => setFilterOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="space-y-3 p-3">
-              <DateRangeFilter
-                from={dateFrom}
-                to={dateTo}
-                onFrom={setDateFrom}
-                onTo={setDateTo}
-                compact
-                disablePortal
-              />
-              <Button className="h-9 w-full gap-2 text-xs font-semibold" onClick={applyDateFilter}>
-                <Search className="h-4 w-4" />
-                Xem báo cáo
-              </Button>
-            </div>
-          </div>
-        )}
-
         {!token && (
           <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-slate-400">
             Đang xác thực...

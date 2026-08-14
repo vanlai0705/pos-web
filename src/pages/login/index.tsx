@@ -37,7 +37,6 @@ export default function LoginPage() {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<LoginForm>({
     defaultValues: { DomainName: "", UserName: "", Password: "" },
@@ -47,8 +46,6 @@ export default function LoginPage() {
     const saved = localStorage.getItem(DOMAIN_KEY);
     if (saved) setValue("DomainName", saved);
   }, [setValue]);
-
-  const domainValue = watch("DomainName");
 
   const onSubmit = async (values: LoginForm) => {
     setServerError("");
@@ -116,20 +113,13 @@ export default function LoginPage() {
           {/* Domain */}
           <div className="space-y-1.5">
             <Label htmlFor="domain">{t("auth.shopDomain")}</Label>
-            <div className="relative">
-              <Input
-                id="domain"
-                placeholder={t("auth.domainPlaceholder")}
-                autoComplete="organization"
-                {...register("DomainName", { required: t("auth.requiredDomain") })}
-                className={errors.DomainName ? "border-destructive" : ""}
-              />
-              {domainValue && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                  .posmobile.vn
-                </span>
-              )}
-            </div>
+            <Input
+              id="domain"
+              placeholder={t("auth.domainPlaceholder")}
+              autoComplete="organization"
+              {...register("DomainName", { required: t("auth.requiredDomain") })}
+              className={errors.DomainName ? "border-destructive" : ""}
+            />
             {errors.DomainName && (
               <p className="text-xs text-destructive">{errors.DomainName.message}</p>
             )}
@@ -152,16 +142,7 @@ export default function LoginPage() {
 
           {/* Password */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">{t("auth.password")}</Label>
-              <button
-                type="button"
-                className="text-xs text-primary hover:underline"
-                onClick={() => navigate("/forgot-password")}
-              >
-                {t("auth.forgotPassword")}
-              </button>
-            </div>
+            <Label htmlFor="password">{t("auth.password")}</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -183,6 +164,15 @@ export default function LoginPage() {
             {errors.Password && (
               <p className="text-xs text-destructive">{errors.Password.message}</p>
             )}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                className="text-xs text-primary hover:underline"
+                onClick={() => navigate("/forgot-password")}
+              >
+                {t("auth.forgotPassword")}
+              </button>
+            </div>
           </div>
 
           {serverError && (

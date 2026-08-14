@@ -36,7 +36,9 @@ function navClickHandler(navigate: ReturnType<typeof useNavigate>, href: string 
 // ─── Recursive dropdown child (supports sub-menus) ───────────────────────────
 
 function DropdownChildItem({ child, onClose }: { child: TNavChildren; onClose: () => void }) {
+  const itemRef = useRef<HTMLDivElement>(null)
   const [subOpen, setSubOpen] = useState(false)
+  const [openLeft, setOpenLeft] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const ChildIcon = child.icon
@@ -46,10 +48,18 @@ function DropdownChildItem({ child, onClose }: { child: TNavChildren; onClose: (
   const isActive = isRouteActive(location.pathname, child.href)
 
   if (hasChildren) {
+    const openSubmenu = () => {
+      const rect = itemRef.current?.getBoundingClientRect()
+      const submenuWidth = 208
+      setOpenLeft(!!rect && rect.right + submenuWidth > window.innerWidth)
+      setSubOpen(true)
+    }
+
     return (
       <div
+        ref={itemRef}
         className="relative px-1"
-        onMouseEnter={() => setSubOpen(true)}
+        onMouseEnter={openSubmenu}
         onMouseLeave={() => setSubOpen(false)}
       >
         <div className={cn(
@@ -61,7 +71,10 @@ function DropdownChildItem({ child, onClose }: { child: TNavChildren; onClose: (
           <ChevronRight className="size-3.5 text-muted-foreground" />
         </div>
         {subOpen && (
-          <div className="absolute top-0 left-full ml-1 z-50">
+          <div className={cn(
+            "absolute top-0 z-[200]",
+            openLeft ? "right-full mr-1" : "left-full ml-1",
+          )}>
             <div className="min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-lg py-1">
               {child.children!.map(sub => (
                 <DropdownChildItem key={sub.title} child={sub} onClose={onClose} />
@@ -117,7 +130,7 @@ function NavDropdownItem({ item, isActive }: { item: NavItem; isActive: boolean 
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 z-50 pt-1">
+        <div className="absolute top-full left-0 z-[200] pt-1">
           <div className="min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-lg py-1">
             {(item.children ?? []).map(child => (
               <DropdownChildItem
@@ -169,14 +182,16 @@ function MoreMenu({ items }: { items: NavItem[] }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const close = () => setOpen(false)
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white whitespace-nowrap transition-colors outline-none">
         <MoreHorizontal className="size-4" />
         <span className="text-xs">{t('common.more')}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[200px] max-h-[70vh] overflow-y-auto">
+      <DropdownMenuContent align="end" className="z-[200] min-w-[200px] max-h-[70vh] overflow-y-auto">
         {items.map(item => {
           const Icon = Icons[item.icon as keyof typeof Icons] ?? Icons.arrowRight
           const children = item.children ?? []
@@ -207,7 +222,7 @@ function MoreMenu({ items }: { items: NavItem[] }) {
                           const subActive = isRouteActive(location.pathname, sub.href)
                           return (
                             <DropdownMenuItem key={sub.title} asChild className={cn('pl-8 gap-2', subActive && 'bg-accent font-medium')}>
-                              <a href={sub.href ? withDomainPath(sub.href) : undefined} onClick={navClickHandler(navigate, sub.href)}>
+                              <a href={sub.href ? withDomainPath(sub.href) : undefined} onClick={navClickHandler(navigate, sub.href, close)}>
                                 <SubIcon className="size-3.5 text-muted-foreground" />
                                 {sub.title}
                               </a>
@@ -220,7 +235,7 @@ function MoreMenu({ items }: { items: NavItem[] }) {
 
                   return (
                     <DropdownMenuItem key={child.title} asChild className={cn('pl-5 gap-2', childActive && 'bg-accent font-medium')}>
-                      <a href={child.href ? withDomainPath(child.href) : undefined} onClick={navClickHandler(navigate, child.href)}>
+                      <a href={child.href ? withDomainPath(child.href) : undefined} onClick={navClickHandler(navigate, child.href, close)}>
                         <ChildIcon className="size-4 text-muted-foreground" />
                         {child.title}
                       </a>
@@ -236,7 +251,7 @@ function MoreMenu({ items }: { items: NavItem[] }) {
             isRouteActive(location.pathname, item.href)
           return (
             <DropdownMenuItem key={item.title} asChild className={cn('gap-2', isActive && 'bg-accent font-medium')}>
-              <a href={item.href ? withDomainPath(item.href) : undefined} onClick={navClickHandler(navigate, item.href)}>
+              <a href={item.href ? withDomainPath(item.href) : undefined} onClick={navClickHandler(navigate, item.href, close)}>
                 <Icon className="size-4 text-muted-foreground" />
                 {item.title}
               </a>

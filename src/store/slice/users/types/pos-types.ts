@@ -503,7 +503,7 @@ export interface TPosOrderItemProduct extends Omit<TPosActiveProduct, 'Name' | '
 export interface TPosOrderItem {
   Id?: number
   Guid?: string
-  Product?: TPosOrderItemProduct
+  Product: TPosOrderItemProduct
   /** Flattened fields returned by the order list/detail endpoints. */
   ProductId?: number
   ProductName?: string
