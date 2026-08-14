@@ -36,13 +36,20 @@ export function fmtDateTime(dateStr?: string | null) {
 
 // ─── Default date range: last 30 days ────────────────────────────────────────
 
+function parseLocalDate(value: string | Date | dayjs.Dayjs) {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return dayjs(`${value}T00:00:00`)
+  }
+  return dayjs(value)
+}
+
 export function toUtcStartOfDay(value: string | Date | dayjs.Dayjs) {
-  const date = dayjs(value)
+  const date = parseLocalDate(value)
   return date.isValid() ? date.startOf('day').toISOString() : ''
 }
 
 export function toUtcEndOfDay(value: string | Date | dayjs.Dayjs) {
-  const date = dayjs(value)
+  const date = parseLocalDate(value)
   return date.isValid() ? date.endOf('day').toISOString() : ''
 }
 

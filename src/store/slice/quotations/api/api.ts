@@ -16,7 +16,7 @@ export const quotationsApi = userApiSlice.injectEndpoints({
       TPosOrderFilterParams
     >({
       query: (p) => ({
-        url: `quotations/filter${query({ PageIndex: 0, PageSize: 15, ...p })}`,
+        url: `quotations/filter${query({ PageIndex: 0, PageSize: 15, StatusId: 0, ...p })}`,
       }),
       transformResponse: (res: TPosResponse<TPosFilterData<TPosQuotation>>) =>
         res.Data ?? { Items: [], TotalItemCount: 0 },

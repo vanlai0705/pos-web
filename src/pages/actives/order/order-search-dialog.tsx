@@ -44,7 +44,9 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
   const items = data?.Items ?? []
   const title = kind === 'temporary'
     ? 'Chọn lại hóa đơn lưu tạm'
-    : t('pages.actives.order.searchDialogTitle')
+    : kind === 'quotation'
+      ? t('pages.actives.order.quotationSearchDialogTitle')
+      : t('pages.actives.order.searchDialogTitle')
 
   // Reset local state every time the dialog re-opens, mirroring Angular's
   // fresh component instance per dialogService.show() call.
