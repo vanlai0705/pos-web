@@ -1,7 +1,7 @@
 import type { TPosLiabilityVoucher } from '@/store/slice/users/types/pos-types'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { fmtDate } from '@/pages/actives/shared'
+import { fmtDate } from '@/utils'
 import { useFilterReportQuery } from '@/store/slice/generic/api'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'

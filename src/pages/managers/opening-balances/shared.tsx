@@ -5,7 +5,7 @@ import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 import { Input } from '@/components/ui/input'
 import { useGenericDownloadMutation, useGenericPostMutation, useLazyFilterReportQuery } from '@/store/slice/generic/api'
 import { useFilterWarehousesQuery } from '@/store/slice/stocks/api'
-import { cn, downloadBlob } from '@/utils'
+import { cn, downloadBlob, formatMoney, formatNumber, parseNumber, toDateInputValue } from '@/utils'
 import { ArrowLeft, CalendarDays, Download, FileSpreadsheet, Save, Upload, Warehouse } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -42,10 +42,6 @@ function today() {
   return new Date().toISOString().slice(0, 10)
 }
 
-function toDateInputValue(value: string) {
-  return `${value}`.split('T')[0]
-}
-
 /**
  * Once a "ngày chốt" (closing date) has been recorded for this entity, the
  * server always echoes it back on `Sumary.Date` — the date field then locks
@@ -54,19 +50,6 @@ function toDateInputValue(value: string) {
  */
 function summaryDateOf(data: any): string | undefined {
   return data?.Sumary?.Date || data?.Summary?.Date
-}
-
-function parseNumber(value: string) {
-  if (!value) return 0
-  return Number(`${value}`.replace(/,/g, '').replace(/\s/g, '')) || 0
-}
-
-function formatNumber(value?: number | null) {
-  return Number(value || 0).toLocaleString('en-US')
-}
-
-function formatMoney(value?: number | null) {
-  return Number(value || 0).toLocaleString('vi-VN')
 }
 
 function toPascalImage(image: any) {

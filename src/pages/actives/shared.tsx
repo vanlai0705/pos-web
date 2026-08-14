@@ -6,6 +6,7 @@ import { CalendarRange, Search } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { translateKnownText, translateMenuTitle } from '@/i18n/nav-title-map'
+import { fmtCurrency, toDateInputValue, toUtcEndOfDay, toUtcStartOfDay } from '@/utils/format'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,38 +20,7 @@ import {
 
 export { StatusBadge } from '@/components/ui/status-badge'
 
-export function fmtCurrency(val?: number | null) {
-  if (val == null) return '—'
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
-}
-
-export function fmtDate(dateStr?: string | null) {
-  if (!dateStr) return '—'
-  return dayjs(dateStr).format('DD/MM/YYYY')
-}
-
-export function fmtDateTime(dateStr?: string | null) {
-  if (!dateStr) return '—'
-  return dayjs(dateStr).format('DD/MM/YYYY HH:mm')
-}
-
 // ─── Default date range: last 30 days ────────────────────────────────────────
-
-export function toUtcStartOfDay(value: string | Date | dayjs.Dayjs) {
-  const date = dayjs(value)
-  return date.isValid() ? date.startOf('day').toISOString() : ''
-}
-
-export function toUtcEndOfDay(value: string | Date | dayjs.Dayjs) {
-  const date = dayjs(value)
-  return date.isValid() ? date.endOf('day').toISOString() : ''
-}
-
-export function toDateInputValue(value?: string | null) {
-  if (!value) return ''
-  const date = dayjs(value)
-  return date.isValid() ? date.format('YYYY-MM-DD') : ''
-}
 
 export function defaultDateFrom() {
   return toUtcStartOfDay(dayjs().subtract(30, 'day'))

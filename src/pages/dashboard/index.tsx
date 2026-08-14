@@ -4,7 +4,7 @@ import { useGetProductGroupsSimpleQuery } from '@/store/slice/customers/api'
 import { useGetProductStatisticQuery, useGetSimpleChartQuery } from '@/store/slice/dashboard/api'
 import { useFilterOrdersQuery } from '@/store/slice/orders/api'
 import { useFilterRevenueStatisticsQuery } from '@/store/slice/statistics/api'
-import { cn } from '@/utils'
+import { cn, formatNumber } from '@/utils'
 import { ArrowDownRight, ArrowUpRight, Package, ReceiptText, TrendingUp, UserPlus, Wallet } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -41,15 +41,11 @@ function addDays(date: Date, delta: number) {
   return next
 }
 
-function formatNumber(value = 0) {
-  return Math.round(value).toLocaleString("vi-VN")
-}
-
 function formatShort(value = 0) {
   if (Math.abs(value) >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
   if (Math.abs(value) >= 1_000) return `${Math.round(value / 1_000)}K`
-  return formatNumber(value)
+  return formatNumber(Math.round(value))
 }
 
 /** `null` means "no basis for comparison" (both days are zero) — hide the badge rather than claim 0%. */

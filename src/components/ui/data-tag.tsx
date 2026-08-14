@@ -1,4 +1,5 @@
-import { cn } from '@/utils'
+import { cn, fmtCurrency } from '@/utils'
+export { fmtCurrency as formatMoney } from '@/utils'
 type DataTagTone = 'code' | 'voucher' | 'money' | 'neutral'
 
 const TONE_CLASS: Record<DataTagTone, string> = {
@@ -6,11 +7,6 @@ const TONE_CLASS: Record<DataTagTone, string> = {
   voucher: 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/70 dark:bg-indigo-950/40 dark:text-indigo-300',
   money: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-300',
   neutral: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300',
-}
-
-export function formatMoney(value?: number | null) {
-  if (value == null) return '-'
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
 }
 
 export function DataTag({
@@ -56,5 +52,5 @@ export function MoneyTag({
   value?: number | null
   className?: string
 }) {
-  return <DataTag tone="money" className={cn('font-bold', className)}>{formatMoney(value)}</DataTag>
+  return <DataTag tone="money" className={cn('font-bold', className)}>{fmtCurrency(value)}</DataTag>
 }

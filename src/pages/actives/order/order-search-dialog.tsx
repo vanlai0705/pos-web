@@ -1,7 +1,8 @@
 import { CustomerSelect } from '@/components/pos/customer-select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DateRangeFilter, fmtCurrency, fmtDate, PAGE_SIZE, Pagination, SearchBar, useListFilter } from '@/pages/actives/shared'
+import { DateRangeFilter, PAGE_SIZE, Pagination, SearchBar, useListFilter } from '@/pages/actives/shared'
+import { fmtCurrency, fmtDate } from '@/utils'
 import { useFilterBookingsQuery } from '@/store/slice/bookings/api'
 import { useDeleteTemporaryReceiptMutation, useFilterTemporaryReceiptsQuery, useLazyGetOrderItemsQuery } from '@/store/slice/orders/api'
 import { useFilterQuotationsQuery } from '@/store/slice/quotations/api'
@@ -35,9 +36,18 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
     PageIndex: page - 1, PageSize: PAGE_SIZE, Keyword: keyword,
     DateFrom: dateFrom, DateTo: dateTo, CustomerId: customer?.Id,
   }
-  const bookingQuery = useFilterBookingsQuery(params, { skip: !open || kind !== 'booking' })
-  const quotationQuery = useFilterQuotationsQuery(params, { skip: !open || kind !== 'quotation' })
-  const temporaryQuery = useFilterTemporaryReceiptsQuery(params, { skip: !open || kind !== 'temporary' })
+  const bookingQuery = useFilterBookingsQuery(params, {
+    skip: !open || kind !== 'booking',
+    refetchOnMountOrArgChange: true,
+  })
+  const quotationQuery = useFilterQuotationsQuery(params, {
+    skip: !open || kind !== 'quotation',
+    refetchOnMountOrArgChange: true,
+  })
+  const temporaryQuery = useFilterTemporaryReceiptsQuery(params, {
+    skip: !open || kind !== 'temporary',
+    refetchOnMountOrArgChange: true,
+  })
   const [deleteTemporaryReceipt, { isLoading: deleting }] = useDeleteTemporaryReceiptMutation()
   const activeQuery = kind === 'booking' ? bookingQuery : kind === 'quotation' ? quotationQuery : temporaryQuery
   const { data, isFetching, refetch } = activeQuery

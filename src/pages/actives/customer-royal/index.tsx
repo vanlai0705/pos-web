@@ -5,7 +5,8 @@ import { useFilterRoyalCustomersQuery, useGetCustomerGroupsSimpleQuery } from '@
 import { Crown } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fmtDate, ListPageHeader, PAGE_SIZE, SearchBar } from '../shared'
+import { ListPageHeader, PAGE_SIZE, SearchBar } from '../shared'
+import { fmtDate } from '@/utils'
 export default function CustomerRoyalPage() {
   const { t } = useTranslation()
   const [keyword, setKeyword] = useState('')

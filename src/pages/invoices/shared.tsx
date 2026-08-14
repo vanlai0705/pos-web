@@ -3,16 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Ban, Printer, X } from 'lucide-react'
-export function fmtCurrency(val?: number | null) {
-  if (val == null) return '—'
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
-}
-
-export function fmtDateTime(dateStr?: string | null) {
-  if (!dateStr) return '—'
-  const d = new Date(dateStr)
-  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
-}
+import { fmtCurrency, fmtDateTime } from '@/utils/format'
+export { fmtCurrency, fmtDateTime } from '@/utils/format'
 
 export function StatusChip({ status }: { status?: { Id?: number; Name?: string } }) {
   return <StatusBadge status={status} />

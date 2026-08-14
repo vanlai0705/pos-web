@@ -9,7 +9,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { StockDocumentDialog } from '@/components/pos/stock-document-dialog'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, fmtDateTime, PAGE_SIZE, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { fmtDateTime } from '@/utils'
 import type { TPosStockCheck } from '@/store/slice/users/types/pos-types'
 import { VoucherTag } from '@/components/ui/data-tag'
 

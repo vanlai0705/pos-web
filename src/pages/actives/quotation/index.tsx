@@ -8,7 +8,8 @@ import { FileText, Pencil, Plus, ToggleLeft, ToggleRight } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { DateRangeFilter, ListPageHeader, SearchBar, StatusBadge, fmtDate, useListFilter } from '../shared'
+import { DateRangeFilter, ListPageHeader, SearchBar, StatusBadge, useListFilter } from '../shared'
+import { fmtDate } from '@/utils'
 export default function QuotationPage() {
   const { t } = useTranslation()
   const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()

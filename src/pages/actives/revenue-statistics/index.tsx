@@ -6,9 +6,10 @@ import { useFilterRevenueStatisticsQuery, useFilterRevenueStatisticsSummaryQuery
 import type { TPosRevenueStatItem } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {
-  ListPageHeader, DateRangeFilter, SummaryCard, fmtDateTime, useListFilter, PAGE_SIZE,
+  ListPageHeader, DateRangeFilter, SummaryCard, useListFilter, PAGE_SIZE,
 } from '../shared'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
+import { fmtDateTime } from '@/utils'
 
 function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const { t } = useTranslation()

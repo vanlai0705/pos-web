@@ -799,7 +799,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
     try {
       const order = await loadOrderDetail(id).unwrap()
       if (!order) return
-      applyOrderToCart(order)
+      applyOrderToCart(order, true)
     } catch {
       toast.error(t('pages.actives.order.loadOrderFailed'))
     }
@@ -1097,8 +1097,10 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
     const fundTypeRef = fund.accountId ?? fund.type?.Id ?? cashFallback?.Id
 
     const order: TPosOrder = {
+      ...(isTableMode ? {} : (baseOrder ?? {})),
       Id: isTableMode ? bookingId : baseOrder?.Id,
-      Name: '',
+      Guid: isTableMode ? undefined : baseOrder?.Guid,
+      Name: baseOrder?.Name ?? '',
       Date: now,
       Detail: detail || t('pages.actives.order.defaultSaleDetail'),
       Note: note || '',
@@ -1131,8 +1133,8 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       Change: Math.max(0, paid - total),
       Reserved: 0,
       Voucher: voucher,
-      Type: 0,
-      PaymentType: 0,
+      Type: isTableMode ? 0 : (baseOrder?.Type ?? 0),
+      PaymentType: baseOrder?.PaymentType ?? 0,
       IsCustomersDebt: debtEnabled,
       // Angular never sends IsPrint at all — every order-save endpoint
       // (temp/complete/table) omits it entirely; printing is a fully
