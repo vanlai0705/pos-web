@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { useGenericDownloadMutation, useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
 import { useFilterActiveProductsQuery } from '@/store/slice/products/api'
+import { useGetSettingOrderQuery } from '@/store/slice/settings/api'
 import { TPosActiveProduct } from '@/store/slice/users'
 import { getImageUrl } from '@/utils/common'
 import { buildModelFormData } from '@/utils/multipart'
-import { Package, Search, Trash2 } from 'lucide-react'
+import { Eye, Package, Printer, Search, Trash2 } from 'lucide-react'
+import { printData } from '@/utils/print-service'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -110,10 +112,14 @@ export function StockDocumentDialog({
   const extraDateField = options.extraDateField
   const [form, setForm] = useState<StockDoc>(emptyStockDoc())
   const [keyword, setKeyword] = useState('')
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
 
   const [fetchDetail] = useLazyGenericGetQuery()
   const [fetchInventory] = useLazyGenericGetQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
+  const [downloadFile, { isLoading: printing }] = useGenericDownloadMutation()
+  const { data: settings } = useGetSettingOrderQuery()
+  const canPrintStockInput = endpoints.create.includes('stockinputs')
 
   const { data: productData, isFetching: loadingProducts } = useFilterActiveProductsQuery(
     { PageIndex: 0, PageSize: 40, Keyword: keyword || undefined },
@@ -143,6 +149,13 @@ export function StockDocumentDialog({
       })
       .catch(e => toast.error(errMsg(e, t('components.stockDocumentDialog.genericError'))))
   }, [open, editId, endpoints.detail, extraDateField, fetchDetail, t])
+
+  useEffect(() => () => {
+    setPdfPreviewUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+  }, [])
 
   const setLine = useCallback((idx: number, patch: Partial<StockDocLine>) => {
     setForm(f => {
@@ -217,25 +230,88 @@ export function StockDocumentDialog({
     }
   }
 
-  const handleSave = async () => {
+  const saveDocument = async (closeAfterSave = true) => {
     if (!(form.Items ?? []).length) { toast.error(t('components.stockDocumentDialog.selectItemRequired')); return }
     if (options.stockIn && !form.StockIn?.Id) { toast.error(t('components.stockDocumentDialog.selectStockInRequired')); return }
     if (options.stockOut && !form.StockOut?.Id) { toast.error(t('components.stockDocumentDialog.selectStockOutRequired')); return }
     try {
-      await request({
+      const res = await request({
         url: form.Id ? endpoints.update : endpoints.create,
         method: 'POST',
         body: buildModelFormData(isSalesDoc ? buildSalesPayload() : form),
       }).unwrap()
+      const saved = res?.Data ?? res
+      const savedId = Number(saved?.Id ?? form.Id ?? 0)
+      if (savedId) {
+        setForm(f => ({ ...f, Id: savedId }))
+      }
       toast.success(form.Id
         ? t('components.stockDocumentDialog.updateSuccess')
         : t('components.stockDocumentDialog.createSuccess'))
-      onOpenChange(false)
+      if (closeAfterSave) onOpenChange(false)
       onSaved()
+      return savedId
     } catch (e) { toast.error(errMsg(e, t('components.stockDocumentDialog.genericError'))) }
   }
 
+  const handleSave = () => {
+    saveDocument()
+  }
+
+  const printStockInput = (orderId: number) => {
+    printData(
+      settings?.PrinterUrl,
+      'stockinputs/print-stock-input',
+      settings?.BillPrinterName,
+      { orderId, isTemplateTemp: true, IsTemplateTemp: true },
+    )
+  }
+
+  const requestStockInputPdf = async (orderId: number) => {
+    const blob = await downloadFile({
+      url: 'orders/print-order-pdf',
+      method: 'POST',
+      body: { OrderId: orderId, IsTemplateTemp: true },
+    }).unwrap()
+    return new Blob([blob], { type: 'application/pdf' })
+  }
+
+  const handleSaveAndPrint = async () => {
+    const savedId = await saveDocument(false)
+    if (!savedId) return
+    try {
+      await requestStockInputPdf(savedId)
+      printStockInput(savedId)
+      onOpenChange(false)
+    } catch (e) {
+      toast.error(errMsg(e, t('components.stockDocumentDialog.genericError')))
+    }
+  }
+
+  const handleSavePreviewAndPrint = async () => {
+    const savedId = await saveDocument(false)
+    if (!savedId) return
+    try {
+      const blob = await requestStockInputPdf(savedId)
+      setPdfPreviewUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev)
+        return URL.createObjectURL(blob)
+      })
+      printStockInput(savedId)
+    } catch (e) {
+      toast.error(errMsg(e, t('components.stockDocumentDialog.genericError')))
+    }
+  }
+
+  const closePdfPreview = () => {
+    setPdfPreviewUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+  }
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl">
         <DialogHeader><DialogTitle>{form.Id ? `${t('components.stockDocumentDialog.editPrefix')} ${title.toLowerCase()}` : title}</DialogTitle></DialogHeader>
@@ -410,9 +486,23 @@ export function StockDocumentDialog({
         </div>
 
         <DialogFooter className="items-center justify-between sm:justify-between">
-          <span className="text-xs italic text-muted-foreground">
-            {form.CreatorUser?.FullName ? `${t('components.stockDocumentDialog.createdBy')} ${form.CreatorUser.FullName}` : ''}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {canPrintStockInput && (
+              <>
+                <Button type="button" variant="secondary" onClick={handleSaveAndPrint} disabled={saving || printing}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  Lưu in
+                </Button>
+                <Button type="button" variant="outline" onClick={handleSavePreviewAndPrint} disabled={saving || printing}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Lưu xem in
+                </Button>
+              </>
+            )}
+            <span className="text-xs italic text-muted-foreground">
+              {form.CreatorUser?.FullName ? `${t('components.stockDocumentDialog.createdBy')} ${form.CreatorUser.FullName}` : ''}
+            </span>
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving}>{saving ? t('components.stockDocumentDialog.saving') : t('common.save')}</Button>
@@ -420,5 +510,16 @@ export function StockDocumentDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <Dialog open={!!pdfPreviewUrl} onOpenChange={open => { if (!open) closePdfPreview() }}>
+      <DialogContent className="h-[86vh] max-w-4xl p-0">
+        <DialogHeader className="border-b px-4 py-3">
+          <DialogTitle>Lưu xem in</DialogTitle>
+        </DialogHeader>
+        {pdfPreviewUrl && (
+          <iframe src={pdfPreviewUrl} title="stock-input-pdf" className="h-full w-full border-0" />
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

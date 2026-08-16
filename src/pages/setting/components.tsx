@@ -98,8 +98,9 @@ interface TextRowProps {
   onChange: (v: string) => void
   placeholder?: string
   type?: string
+  step?: number
 }
-export function TextRow({ id, label, description, value, onChange, placeholder, type = "text" }: TextRowProps) {
+export function TextRow({ id, label, description, value, onChange, placeholder, type = "text", step }: TextRowProps) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id} className="text-sm font-medium">{label}</Label>
@@ -110,6 +111,7 @@ export function TextRow({ id, label, description, value, onChange, placeholder, 
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
+        step={step}
         className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
       />
     </div>

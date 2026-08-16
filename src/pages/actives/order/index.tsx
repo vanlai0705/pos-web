@@ -195,23 +195,26 @@ interface TotalsOpts {
   /** Voucher value in đồng — not a code */
   voucher?: number
   transferCost?: number
+  serviceFeePercent?: number
 }
 
 /** Order totals — mirrors Angular `OrderService.getTotal` / `OrderModel.getTotalTax`. */
 function calcTotals(
   cart: CartItem[],
-  { orderTaxPct, perItemTax, discountPct, discountAmt = 0, voucher = 0, transferCost = 0 }: TotalsOpts,
+  { orderTaxPct, perItemTax, discountPct, discountAmt = 0, voucher = 0, transferCost = 0, serviceFeePercent = 0 }: TotalsOpts,
 ) {
   const subTotal = cart.reduce((s, c) => s + itemSubtotal(c), 0)
   const orderDiscount = Math.min(subTotal * discountPct / 100 + discountAmt, subTotal)
   const totalBeforeTax = Math.max(0, subTotal - orderDiscount - voucher)
+  const serviceFeeBase = Math.max(0, subTotal - orderDiscount)
+  const serviceFee = serviceFeeBase * Math.max(0, serviceFeePercent) / 100
   const totalTax = perItemTax
     ? cart.reduce((s, c) => s + itemTaxAmount(c, true), 0)
     : totalBeforeTax * orderTaxPct / 100
   const subTotalItems = cart.reduce((s, c) => s + itemAmount(c, perItemTax), 0)
   return {
-    subTotal, subTotalItems, orderDiscount, totalBeforeTax, totalTax,
-    total: totalBeforeTax + totalTax + transferCost,
+    subTotal, subTotalItems, orderDiscount, totalBeforeTax, serviceFee, totalTax,
+    total: totalBeforeTax + serviceFee + totalTax + transferCost,
   }
 }
 
@@ -714,11 +717,18 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
   const [discountAmt, setDiscountAmt] = useState(0)
   const [voucher, setVoucher] = useState(0)
   const [transferCost, setTransferCost] = useState(0)
+  const [serviceFeePercent, setServiceFeePercent] = useState(0)
   const [taxOverride, setTaxOverride] = useState<number | null>(null)
   const [payment, setPayment] = useState<number | ''>('')
   const [isCustomersDebt, setIsCustomersDebt] = useState(false)
   const [shortage, setShortage] = useState(0)
   const taxPct = taxOverride ?? (settings?.IsTax ? (settings.TaxPercent ?? 0) : 0)
+  const defaultServiceFeePercent = settings?.IsServiceFee ? Number(settings.ServiceFeePercent ?? 0) : 0
+
+  useEffect(() => {
+    if (!settings) return
+    setServiceFeePercent(defaultServiceFeePercent)
+  }, [defaultServiceFeePercent, settings])
 
   // Opening an occupied table pulls its order in so the cart shows what the
   // guests already ordered instead of starting empty (which used to wipe it).
@@ -748,6 +758,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
         setDiscountAmt(order.Discount ?? 0)
         setVoucher(order.Voucher ?? 0)
         setTransferCost(order.TransferCost ?? 0)
+        setServiceFeePercent(order.ServiceFeePercent ?? defaultServiceFeePercent)
         setTaxOverride(order.Tax ?? null)
         setPayment(order.Payment ?? '')
         const orderShortage = order.Shortage ?? 0
@@ -756,7 +767,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       })
       .catch(() => toast.error(t('pages.actives.order.loadTableOrderFailed')))
     return () => { cancelled = true }
-  }, [tableId, bookingId, loadTableOrder, t])
+  }, [tableId, bookingId, loadTableOrder, t, defaultServiceFeePercent])
 
   // "Đặt hàng" / "Báo giá" — search-and-resume an existing booking/quotation.
   // Bookings and quotations live in the same Orders table under a different
@@ -787,12 +798,13 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
     setDiscountAmt(order.Discount ?? 0)
     setVoucher(order.Voucher ?? 0)
     setTransferCost(order.TransferCost ?? 0)
+    setServiceFeePercent(order.ServiceFeePercent ?? defaultServiceFeePercent)
     setTaxOverride(order.Tax ?? null)
     setPayment(order.Payment ?? '')
     const orderShortage = order.Shortage ?? 0
     setIsCustomersDebt(!!order.IsCustomersDebt || orderShortage > 0)
     setShortage(orderShortage)
-  }, [])
+  }, [defaultServiceFeePercent])
 
   const applyPickedOrder = useCallback(async (id?: number) => {
     if (!id) return
@@ -889,8 +901,16 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
   }, [])
 
   const totals = useMemo(
-    () => calcTotals(cart, { orderTaxPct: taxPct, perItemTax, discountPct, discountAmt, voucher, transferCost }),
-    [cart, taxPct, perItemTax, discountPct, discountAmt, voucher, transferCost],
+    () => calcTotals(cart, {
+      orderTaxPct: taxPct,
+      perItemTax,
+      discountPct,
+      discountAmt,
+      voucher,
+      transferCost,
+      serviceFeePercent: settings?.IsServiceFee ? serviceFeePercent : 0,
+    }),
+    [cart, taxPct, perItemTax, discountPct, discountAmt, voucher, transferCost, settings?.IsServiceFee, serviceFeePercent],
   )
   const { subTotal, subTotalItems, total } = totals
 
@@ -1006,7 +1026,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       printOrderPdf(orderId, onDone, true)
       return
     }
-    printData(settings?.PrinterUrl, 'tables/print-order', settings?.BillPrinterName, {
+    printData(settings?.PrinterUrl, 'orders/print-order', settings?.BillPrinterName, {
       orderId,
       IsTemplateTemp: true,
     })
@@ -1081,8 +1101,10 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       : undefined
     const items = buildItems()
 
-    // "Cà thẻ" settles on the card; every other fund type settles as cash.
+    // "Cà thẻ" settles on the card, "Chuyển khoản" settles on Transfer;
+    // every other fund type settles as cash.
     const isCard = /ca the|card/.test(normalizeName(fund.type?.Name))
+    const isTransfer = /chuyen khoan|transfer|bank transfer/.test(normalizeName(fund.type?.Name))
     // Retail opens a payment dialog that pre-fills "Khách đưa" with the total;
     // the table view has no such dialog, so it stays at whatever was typed.
     const debtEnabled = !!selectedCustomer && isCustomersDebt
@@ -1124,9 +1146,11 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       DiscountPercent: discountPct,
       Tax: taxPct,
       TransferCost: transferCost,
+      ServiceFeePercent: settings?.IsServiceFee ? serviceFeePercent : 0,
       OldDebit: 0,
-      Cash: isCard ? 0 : paid,
+      Cash: isCard || isTransfer ? 0 : paid,
       Card: isCard ? paid : 0,
+      Transfer: isTransfer ? paid : 0,
       Shortage: shortageValue,
       Round: 0,
       Payment: paid,
@@ -1211,6 +1235,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
         setDiscountAmt(0)
         setVoucher(0)
         setTransferCost(0)
+        setServiceFeePercent(defaultServiceFeePercent)
         setTaxOverride(null)
         setPayment('')
         setIsCustomersDebt(false)
@@ -1260,6 +1285,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
             discountAmt, setDiscountAmt,
             voucher, setVoucher,
             transferCost, setTransferCost,
+            serviceFeePercent, setServiceFeePercent,
             taxPct, setTaxOverride,
             payment, setPayment,
             isCustomersDebt, setIsCustomersDebt,
@@ -1434,6 +1460,7 @@ interface MoneyControls {
   discountAmt: number; setDiscountAmt: (v: number) => void
   voucher: number; setVoucher: (v: number) => void
   transferCost: number; setTransferCost: (v: number) => void
+  serviceFeePercent: number; setServiceFeePercent: (v: number) => void
   taxPct: number; setTaxOverride: (v: number) => void
   payment: number | ''; setPayment: (v: number | '') => void
   isCustomersDebt: boolean; setIsCustomersDebt: (v: boolean) => void
@@ -1457,7 +1484,7 @@ function InternalOrderPanel({
   // instead of relying on the small inline thumbnail.
   const [qrAccount, setQrAccount] = useState<TPosFundAccount | null>(null)
 
-  const { subTotal, orderDiscount, totalTax, total } = totals
+  const { subTotal, orderDiscount, serviceFee, totalTax, total } = totals
   const debtEnabled = !!selectedCustomer && money.isCustomersDebt
   const normalizedShortage = debtEnabled ? Math.min(total, Math.max(0, money.shortage)) : 0
   const paymentValue = debtEnabled ? Math.max(0, total - normalizedShortage) : money.payment
@@ -1797,6 +1824,15 @@ function InternalOrderPanel({
             {settings?.IsVoucher && (
               <MoneyRow label={t('pages.actives.order.voucherLabel')}>
                 <NumInput value={money.voucher} onChange={money.setVoucher} className="flex-1" />
+              </MoneyRow>
+            )}
+
+            {settings?.IsServiceFee && (
+              <MoneyRow label={t('pages.actives.order.serviceFeeLabel')}>
+                <div className="flex flex-1 items-center gap-1">
+                  <NumInput value={money.serviceFeePercent} onChange={v => money.setServiceFeePercent(Math.min(100, Math.max(0, v)))} suffix="%" className="w-20" />
+                  <span className="flex-1 text-right text-xs font-semibold tabular-nums text-foreground">{fmt(serviceFee)}</span>
+                </div>
               </MoneyRow>
             )}
 

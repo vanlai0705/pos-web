@@ -1,6 +1,7 @@
 import type { TPosSettingOrder } from "@/store/slice/users/types"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { baseUrl } from "@/constants"
 import { useAppSelector } from "@/store/hooks"
 import { useGetSettingOrderQuery, useUpdateSettingOrderMutation } from '@/store/slice/settings/api'
@@ -17,8 +18,11 @@ const defaultForm: TPosSettingOrder = {
   IsDiscount: true,
   IsUsingBarcode: false,
   IsInputQuantityWithBarcode: false,
+  OrderShiftEndTime: "23:59:59",
   IsChangeDate: false,
   IsTranferCost: false,
+  IsServiceFee: false,
+  ServiceFeePercent: 0,
   IsTax: false,
   IsTaxPerItemAllowed: false,
   IsStock: false,
@@ -76,9 +80,18 @@ export default function SettingOrderPage() {
   const setStr = (key: keyof TPosSettingOrder) => (v: string) =>
     setForm(f => ({ ...f, [key]: v }))
 
+  const normalizeForm = (value: TPosSettingOrder): TPosSettingOrder => ({
+    ...value,
+    OrderShiftEndTime: value.OrderShiftEndTime || "23:59:59",
+    IsServiceFee: !!value.IsServiceFee,
+    ServiceFeePercent: Number(value.ServiceFeePercent ?? 0),
+  })
+
   const handleSave = async () => {
     try {
-      await update(form).unwrap()
+      const next = normalizeForm(form)
+      setForm(next)
+      await update(next).unwrap()
       toast.success(t("pages.setting.order.saveSuccessTitle"), { description: t("pages.setting.order.saveSuccessDescription") })
     } catch {
       toast.error(t("pages.setting.order.errorTitle"), { description: t("pages.setting.order.cannotSaveSettings") })
@@ -164,8 +177,41 @@ export default function SettingOrderPage() {
           onCheckedChange={toggle("IsInputQuantityWithBarcode")}
           disabled={!form.IsUsingBarcode}
         />
+        <TextRow
+          id="OrderShiftEndTime"
+          label={t("pages.setting.order.orderShiftEndTime")}
+          description={t("pages.setting.order.orderShiftEndTimeDescription")}
+          value={form.OrderShiftEndTime ?? "23:59:59"}
+          onChange={setStr("OrderShiftEndTime")}
+          type="time"
+          step={1}
+        />
         <ToggleRow id="IsChangeDate" label={t("pages.setting.order.allowChangeInvoiceDate")} checked={form.IsChangeDate} onCheckedChange={toggle("IsChangeDate")} />
         <ToggleRow id="IsTranferCost" label={t("pages.setting.order.hasShippingFee")} checked={form.IsTranferCost} onCheckedChange={toggle("IsTranferCost")} />
+        <div className="flex items-center justify-between gap-4 py-1">
+          <div className="min-w-0">
+            <label htmlFor="IsServiceFee" className="text-sm font-medium leading-none cursor-pointer">
+              {t("pages.setting.order.serviceFee")}
+            </label>
+          </div>
+          <div className="flex flex-none items-center gap-2">
+            <div className="flex items-center rounded-md border bg-background px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring">
+              <input
+                id="ServiceFeePercent"
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={form.ServiceFeePercent ?? 0}
+                onChange={e => setNum("ServiceFeePercent")(Number(e.target.value))}
+                disabled={!form.IsServiceFee}
+                className="w-16 bg-transparent text-right text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <span className="ml-1 text-sm text-muted-foreground">%</span>
+            </div>
+            <Switch id="IsServiceFee" checked={!!form.IsServiceFee} onCheckedChange={toggle("IsServiceFee")} />
+          </div>
+        </div>
         <ToggleRow id="IsTax" label={t("pages.setting.order.hasTax")} description={t("pages.setting.order.taxAppliesToWholeOrder")} checked={form.IsTax} onCheckedChange={toggle("IsTax")} />
         <ToggleRow
           id="IsTaxPerItemAllowed"

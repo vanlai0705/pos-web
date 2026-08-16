@@ -264,8 +264,11 @@ export interface TPosSettingOrder {
   IsDiscount: boolean
   IsUsingBarcode: boolean
   IsInputQuantityWithBarcode: boolean
+  OrderShiftEndTime?: string
   IsChangeDate: boolean
   IsTranferCost: boolean
+  IsServiceFee?: boolean
+  ServiceFeePercent?: number
   IsTax: boolean
   IsTaxPerItemAllowed: boolean
   IsStock: boolean
@@ -596,6 +599,7 @@ export interface TPosOrder {
   Discount?: number
   DiscountPercent?: number
   TransferCost?: number
+  ServiceFeePercent?: number
   OldDebit?: number
   Cash?: number
   Card?: number
