@@ -68,7 +68,7 @@ export function ShopSwitcher() {
     return (
       <div className="flex items-center gap-1.5 px-2 py-1 text-white/90 text-sm font-medium">
         <ShopAvatar imageUrl={shopImageUrl} name={currentShop.Name} />
-        <span className="truncate max-w-[140px]">{currentShop.LongName || currentShop.Name}</span>
+        <span className="truncate max-w-[140px]">{currentShop.Name || currentShop.LongName}</span>
       </div>
     )
   }
@@ -83,7 +83,7 @@ export function ShopSwitcher() {
         )}
       >
         <ShopAvatar imageUrl={shopImageUrl} name={currentShop.Name} />
-        <span className="truncate max-w-[140px]">{currentShop.LongName || currentShop.Name}</span>
+        <span className="truncate max-w-[140px]">{currentShop.Name || currentShop.LongName}</span>
         {isLoading
           ? <Loader2 className="size-3 animate-spin opacity-70" />
           : <ChevronDown className="size-3 opacity-60" />
@@ -96,20 +96,17 @@ export function ShopSwitcher() {
         {shops.map(shop => {
           const itemImg = shop.Image?.Url ?? null
           return (
-          <DropdownMenuItem
-            key={shop.Id}
-            onClick={() => handleSelect(shop.Id)}
-            className={cn('gap-2 cursor-pointer', shop.Id === currentShopId && 'font-medium')}
-          >
-            <ShopAvatar imageUrl={itemImg} name={shop.Name} />
-            <div className="flex-1 min-w-0">
-              <div className="truncate">{shop.LongName || shop.Name}</div>
-              {shop.LongName && shop.Name !== shop.LongName && (
-                <div className="text-xs text-muted-foreground truncate">{shop.Name}</div>
-              )}
-            </div>
-            {shop.Id === currentShopId && <Check className="size-4 text-primary flex-none" />}
-          </DropdownMenuItem>
+            <DropdownMenuItem
+              key={shop.Id}
+              onClick={() => handleSelect(shop.Id)}
+              className={cn('gap-2 cursor-pointer', shop.Id === currentShopId && 'font-medium')}
+            >
+              <ShopAvatar imageUrl={itemImg} name={shop.Name} />
+              <div className="flex-1 min-w-0">
+                <div className="truncate">{shop.Name || shop.LongName}</div>
+              </div>
+              {shop.Id === currentShopId && <Check className="size-4 text-primary flex-none" />}
+            </DropdownMenuItem>
           )
         })}
       </DropdownMenuContent>

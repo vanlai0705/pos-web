@@ -381,6 +381,7 @@ export interface TPosInvoicePrinter {
   PrinterName?: string
   PrinterIp?: string
   PrinterPort?: number
+  PrinterUrl?: string
   IsPrintLabel?: boolean
   Area?: { Id: number; Name: string }
 }

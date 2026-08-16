@@ -100,6 +100,78 @@ interface PrinterTableRowProps {
   onPick: () => void
 }
 
+interface InvoicePrinterConfig {
+  BillPrinter?: TPosInvoicePrinter
+  TempBillPrinter?: TPosInvoicePrinter
+  InvoicePrintByAreaMode?: number
+  Printers?: TPosInvoicePrinter[]
+}
+
+function emptyInvoicePrinter(): TPosInvoicePrinter {
+  return {
+    PrinterIp: "",
+    PrinterPort: 0,
+    PrinterName: "",
+    PrinterUrl: "",
+    IsPrintLabel: false,
+  }
+}
+
+function cloneInvoicePrinter(item?: TPosInvoicePrinter): TPosInvoicePrinter {
+  return {
+    ...emptyInvoicePrinter(),
+    ...(item ?? {}),
+    Area: item?.Area ? { ...item.Area } : undefined,
+  }
+}
+
+function normalizeInvoiceConfigs(items: unknown): InvoicePrinterConfig[] {
+  return Array.isArray(items) ? items.map(item => {
+    const config = item as InvoicePrinterConfig
+    return {
+      BillPrinter: cloneInvoicePrinter(config.BillPrinter),
+      TempBillPrinter: cloneInvoicePrinter(config.TempBillPrinter),
+      InvoicePrintByAreaMode: Number(config.InvoicePrintByAreaMode ?? 0),
+      Printers: Array.isArray(config.Printers) ? config.Printers.map(cloneInvoicePrinter) : [],
+    }
+  }) : []
+}
+
+function upsertInvoiceConfig(configs: InvoicePrinterConfig[], mode: number, patch: Partial<InvoicePrinterConfig>) {
+  const next: InvoicePrinterConfig[] = configs.map(config => ({
+    ...config,
+    BillPrinter: cloneInvoicePrinter(config.BillPrinter),
+    TempBillPrinter: cloneInvoicePrinter(config.TempBillPrinter),
+    Printers: (config.Printers ?? []).map(cloneInvoicePrinter),
+  }))
+  const index = next.findIndex(config => Number(config.InvoicePrintByAreaMode ?? 0) === mode)
+  const current: InvoicePrinterConfig = index >= 0 ? next[index] : { InvoicePrintByAreaMode: mode }
+  const merged: InvoicePrinterConfig = {
+    ...current,
+    ...patch,
+    InvoicePrintByAreaMode: mode,
+    BillPrinter: cloneInvoicePrinter(patch.BillPrinter ?? current.BillPrinter),
+    TempBillPrinter: cloneInvoicePrinter(patch.TempBillPrinter ?? current.TempBillPrinter),
+    Printers: (patch.Printers ?? current.Printers ?? []).map(cloneInvoicePrinter),
+  }
+  if (index >= 0) next[index] = merged
+  else next.push(merged)
+  return next
+}
+
+function getInvoiceConfig(configs: InvoicePrinterConfig[], mode: number) {
+  return configs.find(config => Number(config.InvoicePrintByAreaMode ?? 0) === mode)
+}
+
+function readInvoiceView(configs: InvoicePrinterConfig[], mode: number, fallback?: TPosSettingPrinter) {
+  const config = getInvoiceConfig(configs, mode)
+  return {
+    BillPrinter: cloneInvoicePrinter(config?.BillPrinter ?? fallback?.BillPrinter),
+    TempBillPrinter: cloneInvoicePrinter(config?.TempBillPrinter ?? fallback?.TempBillPrinter),
+    InvoicePrinters: (config?.Printers ?? []).map(cloneInvoicePrinter),
+  }
+}
+
 function PrinterTableRow({ index, areaLabel, groupLabel, value, onChange, onPick }: PrinterTableRowProps) {
   const { t } = useTranslation()
   const set = (key: "PrinterName" | "PrinterIp" | "PrinterPort") => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -163,17 +235,24 @@ export default function SettingPrinterPage() {
   const [activeTab, setActiveTab] = useState<"kitchen" | "invoice">("kitchen")
   const [picker, setPicker] = useState<{ onSelect: (name: string) => void } | null>(null)
 
-  const { data, isLoading } = useGetSettingPrinterQuery({ guid })
+  const { data, isLoading, refetch } = useGetSettingPrinterQuery({ guid })
   const { data: settingOrder } = useGetSettingOrderQuery()
   const { data: areas = [] } = useGetAreasQuery()
   const { data: productGroups = [] } = useGetProductGroupsQuery()
   const [update, { isLoading: saving }] = useUpdateSettingPrinterMutation()
   const [form, setForm] = useState<TPosSettingPrinter>(defaultForm)
+  const [invoiceConfigs, setInvoiceConfigs] = useState<InvoicePrinterConfig[]>([])
 
   const kitchenBeforeAreaMode = useRef<TPosKitchenPrinter[]>([])
 
   useEffect(() => {
-    if (data) setForm({ ...defaultForm, ...data })
+    if (!data) return
+    const configs = normalizeInvoiceConfigs((data as any).InvoicePrinters)
+    const mode = Number(data.InvoicePrintByAreaMode ?? configs[0]?.InvoicePrintByAreaMode ?? 0)
+    const withCurrent = upsertInvoiceConfig(configs, mode, readInvoiceView(configs, mode, data))
+    const view = readInvoiceView(withCurrent, mode, data)
+    setInvoiceConfigs(withCurrent)
+    setForm({ ...defaultForm, ...data, InvoicePrintByAreaMode: mode, ...view })
   }, [data])
 
   // Reconciles the area×group grid against the current master data every
@@ -197,12 +276,43 @@ export default function SettingPrinterPage() {
   }
 
   const handleSave = async () => {
+    const mode = Number(form.InvoicePrintByAreaMode ?? 0)
+    const configs = upsertInvoiceConfig(invoiceConfigs, mode, {
+      BillPrinter: form.BillPrinter,
+      TempBillPrinter: form.TempBillPrinter,
+      Printers: form.InvoicePrinters,
+    })
+    const payload = {
+      Id: (form as any).Id ?? 0,
+      Guid: guid,
+      BillPrinterName: form.BillPrinter?.PrinterName ?? (form as any).BillPrinterName ?? "",
+      EnableKitchenPrintByArea: form.EnableKitchenPrintByArea,
+      InvoicePrintByAreaMode: mode,
+      KitchenPrinters: form.KitchenPrinters,
+      InvoicePrinters: configs,
+    }
     try {
-      await update({ guid, data: form }).unwrap()
+      await update({ guid, data: payload as TPosSettingPrinter }).unwrap()
+      setInvoiceConfigs(configs)
       toast.success(t("pages.setting.printer.saveSuccess"))
+      refetch()
     } catch {
       toast.error(t("pages.setting.printer.saveError"))
     }
+  }
+
+  const changeInvoiceMode = (mode: number) => {
+    setForm(current => {
+      const currentMode = Number(current.InvoicePrintByAreaMode ?? 0)
+      const committed = upsertInvoiceConfig(invoiceConfigs, currentMode, {
+        BillPrinter: current.BillPrinter,
+        TempBillPrinter: current.TempBillPrinter,
+        Printers: current.InvoicePrinters,
+      })
+      const withTarget = upsertInvoiceConfig(committed, mode, readInvoiceView(committed, mode, current))
+      setInvoiceConfigs(withTarget)
+      return { ...current, InvoicePrintByAreaMode: mode, ...readInvoiceView(withTarget, mode, current) }
+    })
   }
 
   const toggleKitchenByArea = (enabled: boolean) => {
@@ -265,7 +375,7 @@ export default function SettingPrinterPage() {
             <select
               id="InvoicePrintByAreaMode"
               value={form.InvoicePrintByAreaMode}
-              onChange={e => setForm(f => ({ ...f, InvoicePrintByAreaMode: Number(e.target.value) }))}
+              onChange={e => changeInvoiceMode(Number(e.target.value))}
               className="rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {invoiceModeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}

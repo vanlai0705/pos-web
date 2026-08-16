@@ -17,14 +17,10 @@ type PickableOrder = TPosBooking | TPosQuotation | TPosOrder
 interface OrderSearchDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Which backend list to search — booking, quotation, or Angular's
-   * OrderTemporaryReceiptSearchComponent flow for saved temporary receipts. */
   kind: OrderSearchKind
   onConfirm: (order: PickableOrder) => void
 }
 
-/** Mirrors pos_web's booking / quotation / temporary-receipt search dialogs:
- * search, preview items, then hand the pick back to the order screen. */
 export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: OrderSearchDialogProps) {
   const { t } = useTranslation()
   const { keyword, setKeyword, page, goPage, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
@@ -58,8 +54,6 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
       ? t('pages.actives.order.quotationSearchDialogTitle')
       : t('pages.actives.order.searchDialogTitle')
 
-  // Reset local state every time the dialog re-opens, mirroring Angular's
-  // fresh component instance per dialogService.show() call.
   useEffect(() => {
     if (!open) return
     setSelected(null)
@@ -95,7 +89,6 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:grid-cols-12">
-          {/* Preview panel — read-only line items of the currently selected row */}
           <div className="md:col-span-5 rounded-lg border">
             <div className="border-b bg-muted/30 px-3 py-2 text-xs font-semibold">
               {t('pages.actives.order.searchDialogPreview')}
@@ -134,7 +127,6 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
             </div>
           </div>
 
-          {/* Result list */}
           <div className="md:col-span-7 flex min-h-0 flex-col rounded-lg border">
             <div className="flex-1 overflow-y-auto">
               <table className="w-full text-xs">

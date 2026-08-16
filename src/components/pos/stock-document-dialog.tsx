@@ -511,12 +511,12 @@ export function StockDocumentDialog({
       </DialogContent>
     </Dialog>
     <Dialog open={!!pdfPreviewUrl} onOpenChange={open => { if (!open) closePdfPreview() }}>
-      <DialogContent className="h-[86vh] max-w-4xl p-0">
-        <DialogHeader className="border-b px-4 py-3">
+      <DialogContent className="flex h-[86vh] max-w-4xl flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 border-b px-4 py-3">
           <DialogTitle>Lưu xem in</DialogTitle>
         </DialogHeader>
         {pdfPreviewUrl && (
-          <iframe src={pdfPreviewUrl} title="stock-input-pdf" className="h-full w-full border-0" />
+          <iframe src={pdfPreviewUrl} title="stock-input-pdf" className="min-h-0 flex-1 w-full border-0" />
         )}
       </DialogContent>
     </Dialog>
