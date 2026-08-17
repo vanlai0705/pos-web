@@ -1,15 +1,16 @@
 import dayjs from 'dayjs'
 import { type LookupItem, LookupSelect } from '@/components/pos/lookup-select'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogTitle, FormDialogBody, FormDialogContent, FormDialogFooter, FormDialogHeader } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, FormDialogBody, FormDialogContent, FormDialogFooter, FormDialogHeader } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NumberInput } from '@/components/ui/number-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { useGenericDownloadMutation, useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
 import { buildModelFormData } from '@/utils/multipart'
+import { Eye, Printer } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -61,7 +62,15 @@ interface Props {
   onOpenChange: (open: boolean) => void
   /** RECEIPT or PAYMENT — drives the title and which reasons are offered */
   type: number
-  endpoints: { detail: string; create: string; update: string }
+  endpoints: {
+    detail: string
+    create: string
+    update: string
+    /** Trigger in trực tiếp (không xem trước) — dùng cho nút "Lưu và in" */
+    printTrigger?: string
+    /** Trả về file PDF để xem trước rồi in — dùng cho nút "Lưu xem in" */
+    printPdf?: string
+  }
   editId?: number
   /** Prefill for vouchers raised from elsewhere, e.g. paying an employee's salary */
   initial?: Partial<ReceiptPayment>
@@ -94,9 +103,12 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
   const isReceipt = type === RECEIPT_PAYMENT_TYPE.RECEIPT
   const header = isReceipt ? t('components.receiptPaymentDialog.receiptTitle') : t('components.receiptPaymentDialog.paymentTitle')
   const [form, setForm] = useState<ReceiptPayment>(emptyReceiptPayment(type))
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
+  const canPrint = !!(endpoints.printTrigger && endpoints.printPdf)
 
   const [fetchDetail] = useLazyGenericGetQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
+  const [downloadFile, { isLoading: printing }] = useGenericDownloadMutation()
 
   useEffect(() => {
     if (!open) return
@@ -115,6 +127,20 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
     // every call site, and re-running would wipe what the user has typed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editId, type, endpoints.detail, fetchDetail])
+
+  useEffect(() => () => {
+    setPdfPreviewUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+  }, [])
+
+  const closePdfPreview = () => {
+    setPdfPreviewUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+  }
 
   /** Switching object type clears the parties that no longer apply. */
   const setObjectType = (v: number) =>
@@ -136,9 +162,10 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
       Address: (item?.Address as string) ?? f.Address,
     }))
 
-  const handleSave = async () => {
-    if (!form.ReceiptPaymentReason?.Id) { toast.error(t('components.receiptPaymentDialog.reasonRequired')); return }
-    if (!Number(form.Amount)) { toast.error(t('components.receiptPaymentDialog.amountRequired')); return }
+  /** Lưu phiếu (create/update), trả về Id đã lưu hoặc undefined nếu lỗi/không hợp lệ. */
+  const doSave = async (): Promise<number | undefined> => {
+    if (!form.ReceiptPaymentReason?.Id) { toast.error(t('components.receiptPaymentDialog.reasonRequired')); return undefined }
+    if (!Number(form.Amount)) { toast.error(t('components.receiptPaymentDialog.amountRequired')); return undefined }
     const payload: ReceiptPayment = {
       ...form,
       Type: type,
@@ -148,11 +175,13 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
       Detail: form.ReceiptPaymentReason?.Name ?? '',
     }
     try {
-      await request({
+      const res = await request({
         url: form.Id ? endpoints.update : endpoints.create,
         method: 'POST',
         body: buildModelFormData(payload),
       }).unwrap()
+      const saved = res?.Data ?? res
+      const savedId = Number(saved?.Id ?? form.Id ?? 0) || form.Id
       if (form.Id) {
         toast.success(t('components.receiptPaymentDialog.updateSuccess'))
       } else {
@@ -160,12 +189,64 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
           ? t('components.receiptPaymentDialog.createReceiptSuccess')
           : t('components.receiptPaymentDialog.createPaymentSuccess'))
       }
-      onOpenChange(false)
-      onSaved()
+      return savedId
+    } catch (e) {
+      toast.error(errMsg(e, t))
+      return undefined
+    }
+  }
+
+  const handleSave = async () => {
+    const savedId = await doSave()
+    if (!savedId) return
+    onOpenChange(false)
+    onSaved()
+  }
+
+  /** "Lưu và in": lưu rồi gọi API in trực tiếp (không xem trước). Đóng dialog
+   * ngay khi lưu xong — luồng in chạy nền phía sau, độc lập với dialog. */
+  const handleSaveAndPrint = async () => {
+    const savedId = await doSave()
+    if (!savedId) return
+    onOpenChange(false)
+    onSaved()
+    if (!endpoints.printTrigger) return
+    try {
+      await request({ url: endpoints.printTrigger, method: 'POST', body: { ReceiptPaymentId: savedId } }).unwrap()
     } catch (e) { toast.error(errMsg(e, t)) }
   }
 
+  /**
+   * "Lưu xem in": lưu, lấy file PDF trước (dialog nhập liệu vẫn đang mở lúc
+   * chờ mạng), rồi mới đóng dialog nhập liệu — và đợi hết animation đóng của
+   * Radix mới mở dialog xem PDF. Đóng — mở đồng thời trong cùng 1 lần render
+   * khiến Radix xử lý 2 dialog cùng đổi trạng thái một lúc không ổn định
+   * (dialog xem PDF không hiện lên dù không báo lỗi gì), nên phải tách làm 2
+   * bước riêng biệt như dưới đây.
+   */
+  const handleSaveAndViewPrint = async () => {
+    const savedId = await doSave()
+    if (!savedId) return
+    onSaved()
+    if (!endpoints.printPdf) { onOpenChange(false); return }
+    try {
+      const blob = await downloadFile({ url: endpoints.printPdf, method: 'POST', body: { ReceiptPaymentId: savedId } }).unwrap()
+      const pdfBlob = new Blob([blob], { type: 'application/pdf' })
+      const url = URL.createObjectURL(pdfBlob)
+      onOpenChange(false)
+      await new Promise(resolve => setTimeout(resolve, 300))
+      setPdfPreviewUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev)
+        return url
+      })
+    } catch (e) {
+      toast.error(errMsg(e, t))
+      onOpenChange(false)
+    }
+  }
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <FormDialogContent className="max-w-3xl">
         <FormDialogHeader>
@@ -274,11 +355,39 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
           </div>
         </FormDialogBody>
 
-        <FormDialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? t('components.receiptPaymentDialog.savingText') : t('common.save')}</Button>
+        <FormDialogFooter className="items-center justify-between sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            {canPrint && (
+              <>
+                <Button type="button" variant="secondary" onClick={handleSaveAndPrint} disabled={saving || printing}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  Lưu và in
+                </Button>
+                <Button type="button" variant="outline" onClick={handleSaveAndViewPrint} disabled={saving || printing}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Lưu xem in
+                </Button>
+              </>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? t('components.receiptPaymentDialog.savingText') : t('common.save')}</Button>
+          </div>
         </FormDialogFooter>
       </FormDialogContent>
     </Dialog>
+
+    <Dialog open={!!pdfPreviewUrl} onOpenChange={open => { if (!open) closePdfPreview() }}>
+      <DialogContent className="flex h-[86vh] max-w-4xl flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 border-b px-4 py-3">
+          <DialogTitle>Lưu xem in</DialogTitle>
+        </DialogHeader>
+        {pdfPreviewUrl && (
+          <iframe src={pdfPreviewUrl} title="receipt-payment-pdf" className="min-h-0 flex-1 w-full border-0" />
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

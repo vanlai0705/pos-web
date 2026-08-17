@@ -4,12 +4,52 @@ import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useGetAreasQuery, useGetTablesQuery, useMergeTablesMutation, useSplitTableMutation, useTransferTableMutation } from '@/store/slice/tables/api'
 import { TPosArea, TPosTable } from '@/store/slice/users'
 import { cn } from '@/utils'
-import { Armchair, ArrowLeftRight, CheckCircle2, Layers, LayoutGrid, MapPin, Maximize2, Minimize2, QrCode, Scissors, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Armchair, ArrowLeftRight, CheckCircle2, Layers, LayoutGrid, MapPin, Maximize2, Minimize2, Move, QrCode, RotateCcw, RotateCw, Scissors, Users } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { SplitOrderModal } from './split-order-modal'
 type Mode = 'NORMAL' | 'MERGE' | 'MOVE' | 'SPLIT'
+type TableLayout = { x: number; y: number; rotation: number }
+
+const TABLE_WIDTH = 132
+const TABLE_HEIGHT = 112
+const TABLE_LAYOUT_KEY_PREFIX = 'pos-web-v2:tables-layout:v1'
+
+function getLayoutKey(areaId: number) {
+  const path = typeof window === 'undefined' ? 'default' : window.location.pathname.split('/').slice(0, 2).join('/') || 'default'
+  return `${TABLE_LAYOUT_KEY_PREFIX}:${path}:area:${areaId}`
+}
+
+function defaultTableLayout(index: number): TableLayout {
+  const col = index % 6
+  const row = Math.floor(index / 6)
+  return { x: 24 + col * 188, y: 24 + row * 138, rotation: 0 }
+}
+
+function readTableLayout(key: string): Record<string, TableLayout> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, TableLayout>
+    return Object.fromEntries(Object.entries(parsed).filter(([, value]) => (
+      Number.isFinite(value?.x) && Number.isFinite(value?.y) && Number.isFinite(value?.rotation)
+    )))
+  } catch {
+    return {}
+  }
+}
+
+function saveTableLayout(key: string, layout: Record<string, TableLayout>) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(key, JSON.stringify(layout))
+}
+
+function normalizeRotation(value: number) {
+  if (!Number.isFinite(value)) return 0
+  return ((value % 360) + 360) % 360
+}
 
 // ─── Elapsed time ─────────────────────────────────────────────────────────────
 
@@ -22,11 +62,13 @@ function elapsed(dateStr?: string) {
 
 // ─── Table card ───────────────────────────────────────────────────────────────
 
-function TableCard({ table, onClick, selected, blocked }: {
+function TableCard({ table, onClick, onPointerDown, selected, blocked, arrangeMode }: {
   table: TPosTable
   onClick: () => void
+  onPointerDown?: (event: PointerEvent<HTMLButtonElement>) => void
   selected: boolean
   blocked: boolean
+  arrangeMode?: boolean
 }) {
   const { t } = useTranslation()
   const occupied = !!table.OrderId
@@ -52,10 +94,11 @@ function TableCard({ table, onClick, selected, blocked }: {
   return (
     <button
       onClick={onClick}
+      onPointerDown={onPointerDown}
       disabled={blocked}
       className={cn(
         'group relative h-[112px] w-[132px] transition-transform duration-150',
-        blocked ? 'cursor-not-allowed opacity-40 grayscale' : 'cursor-pointer active:scale-[0.97]',
+        blocked ? 'cursor-not-allowed opacity-40 grayscale' : arrangeMode ? 'cursor-grab touch-none active:cursor-grabbing' : 'cursor-pointer active:scale-[0.97]',
       )}
     >
       {selected && (
@@ -179,6 +222,11 @@ export default function TablesOrderPage() {
   const [fromTable, setFromTable] = useState<TPosTable | null>(null)
   const [splitToTable, setSplitToTable] = useState<TPosTable | null>(null)
   const [splitOpen, setSplitOpen] = useState(false)
+  const [isArrangeMode, setIsArrangeMode] = useState(false)
+  const [tableLayout, setTableLayout] = useState<Record<string, TableLayout>>({})
+  const [draggingTable, setDraggingTable] = useState<{ id: number; offsetX: number; offsetY: number } | null>(null)
+  const [selectedLayoutTableId, setSelectedLayoutTableId] = useState<number | null>(null)
+  const floorRef = useRef<HTMLDivElement>(null)
 
   // Drives a full-viewport overlay (see the root div below) that hides the
   // app's own sidebar/header, not just the OS-level Fullscreen API — that API
@@ -194,10 +242,10 @@ export default function TablesOrderPage() {
   const toggleFullscreen = () => {
     if (isFullscreen) {
       setIsFullscreen(false)
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => { })
     } else {
       setIsFullscreen(true)
-      document.documentElement.requestFullscreen?.().catch(() => {})
+      document.documentElement.requestFullscreen?.().catch(() => { })
     }
   }
 
@@ -216,6 +264,80 @@ export default function TablesOrderPage() {
   const [transferTable] = useTransferTableMutation()
   const [mergeTables] = useMergeTablesMutation()
   const [splitTable] = useSplitTableMutation()
+  const layoutAreaId = selectedAreaId > 0 ? selectedAreaId : 0
+  const layoutKey = useMemo(() => getLayoutKey(layoutAreaId), [layoutAreaId])
+  const positionedTables = useMemo(() => allTables.map((table, index) => ({
+    table,
+    layout: tableLayout[String(table.Id)] ?? defaultTableLayout(index),
+  })), [allTables, tableLayout])
+  const floorWidth = Math.max(760, ...positionedTables.map(({ layout }) => layout.x + TABLE_WIDTH + 72))
+  const floorHeight = Math.max(520, ...positionedTables.map(({ layout }) => layout.y + TABLE_HEIGHT + 72))
+
+  useEffect(() => {
+    setTableLayout(readTableLayout(layoutKey))
+    setDraggingTable(null)
+    setSelectedLayoutTableId(null)
+  }, [layoutKey])
+
+  const updateTableLayout = (updater: (current: Record<string, TableLayout>) => Record<string, TableLayout>) => {
+    setTableLayout(current => {
+      const next = updater(current)
+      saveTableLayout(layoutKey, next)
+      return next
+    })
+  }
+
+  const resetLayout = () => {
+    updateTableLayout(() => ({}))
+    setSelectedLayoutTableId(null)
+  }
+
+  const startTableDrag = (table: TPosTable, layout: TableLayout) => (event: PointerEvent<HTMLButtonElement>) => {
+    if (!isArrangeMode || !floorRef.current) return
+    event.preventDefault()
+    const rect = floorRef.current.getBoundingClientRect()
+    const scrollLeft = floorRef.current.scrollLeft
+    const scrollTop = floorRef.current.scrollTop
+    setSelectedLayoutTableId(table.Id)
+    setDraggingTable({
+      id: table.Id,
+      offsetX: event.clientX - rect.left + scrollLeft - layout.x,
+      offsetY: event.clientY - rect.top + scrollTop - layout.y,
+    })
+    updateTableLayout(current => ({
+      ...current,
+      [table.Id]: current[String(table.Id)] ?? layout,
+    }))
+  }
+
+  const moveDraggingTable = (event: PointerEvent<HTMLDivElement>) => {
+    if (!draggingTable || !floorRef.current) return
+    const rect = floorRef.current.getBoundingClientRect()
+    const scrollLeft = floorRef.current.scrollLeft
+    const scrollTop = floorRef.current.scrollTop
+    const x = Math.max(0, event.clientX - rect.left + scrollLeft - draggingTable.offsetX)
+    const y = Math.max(0, event.clientY - rect.top + scrollTop - draggingTable.offsetY)
+    updateTableLayout(current => ({
+      ...current,
+      [draggingTable.id]: {
+        ...(current[String(draggingTable.id)] ?? { x, y, rotation: 0 }),
+        x,
+        y,
+      },
+    }))
+  }
+
+  const rotateTable = (tableId: number, rotation: number) => {
+    const current = positionedTables.find(({ table }) => table.Id === tableId)?.layout ?? { x: 0, y: 0, rotation: 0 }
+    updateTableLayout(layout => ({
+      ...layout,
+      [tableId]: {
+        ...current,
+        ...(layout[String(tableId)] ?? {}),
+        rotation: normalizeRotation(rotation),
+      },
+    }))
+  }
 
   // If a table is selected, show POS selling view
   if (activeTable) {
@@ -234,6 +356,7 @@ export default function TablesOrderPage() {
   const resetMode = () => { setMode('NORMAL'); setFromTable(null) }
 
   const startMode = (m: Exclude<Mode, 'NORMAL'>) => {
+    if (isArrangeMode) return
     setMode(mode === m ? 'NORMAL' : m)
     setFromTable(null)
     if (mode !== m) {
@@ -256,6 +379,7 @@ export default function TablesOrderPage() {
   }
 
   const handleTableClick = (table: TPosTable) => {
+    if (isArrangeMode) return
     if (mode === 'NORMAL') { setActiveTable(table); return }
 
     // Can't start a selection on an empty table — nothing to merge/move/split yet.
@@ -328,11 +452,6 @@ export default function TablesOrderPage() {
   return (
     <div className={cn(
       'flex overflow-hidden bg-slate-100',
-      // Fullscreen covers the whole viewport (fixed + a z-index above the
-      // app's own sidebar/header) instead of just this page's own content
-      // area, so toggling it hides everything else and leaves only this
-      // screen visible — not just the browser-level Fullscreen API, which
-      // can silently fail in some embedded contexts anyway.
       isFullscreen ? 'fixed inset-0 z-[60]' : 'absolute inset-0',
     )}>
       <FloorSidebar
@@ -348,9 +467,38 @@ export default function TablesOrderPage() {
             <p className="truncate text-sm font-semibold text-slate-800">{selectedAreaName}</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
-            {modeButton('SPLIT', Scissors, 'pages.actives.tablesOrder.splitModeButton', 'bg-amber-500 text-white shadow-sm shadow-amber-500/20', 'bg-amber-50 text-amber-700 hover:bg-amber-100')}
-            {modeButton('MOVE', ArrowLeftRight, 'pages.actives.tablesOrder.moveModeButton', 'bg-blue-500 text-white shadow-sm shadow-blue-500/20', 'bg-blue-50 text-blue-700 hover:bg-blue-100')}
-            {modeButton('MERGE', Layers, 'pages.actives.tablesOrder.mergeModeButton', 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20', 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100')}
+            {/* <button
+              onClick={() => {
+                setIsArrangeMode(active => {
+                  const next = !active
+                  if (next) resetMode()
+                  if (!next) setDraggingTable(null)
+                  return next
+                })
+              }}
+              className={cn(
+                'flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors',
+                isArrangeMode ? 'bg-rose-600 text-white shadow-sm shadow-rose-600/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+              )}
+            >
+              <Move className="h-4 w-4" />
+              <span className="hidden md:inline">{isArrangeMode ? t('common.done', { defaultValue: 'Xong' }) : t('pages.actives.tablesOrder.arrangeModeButton', { defaultValue: 'Sắp xếp bàn' })}</span>
+            </button> */}
+            {isArrangeMode ? (
+              <button
+                onClick={resetLayout}
+                className="flex h-8 items-center gap-1.5 rounded-md bg-white px-2.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 transition-colors hover:bg-slate-50"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span className="hidden md:inline">{t('common.reset', { defaultValue: 'Reset' })}</span>
+              </button>
+            ) : (
+              <>
+                {modeButton('SPLIT', Scissors, 'pages.actives.tablesOrder.splitModeButton', 'bg-amber-500 text-white shadow-sm shadow-amber-500/20', 'bg-amber-50 text-amber-700 hover:bg-amber-100')}
+                {modeButton('MOVE', ArrowLeftRight, 'pages.actives.tablesOrder.moveModeButton', 'bg-blue-500 text-white shadow-sm shadow-blue-500/20', 'bg-blue-50 text-blue-700 hover:bg-blue-100')}
+                {modeButton('MERGE', Layers, 'pages.actives.tablesOrder.mergeModeButton', 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20', 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100')}
+              </>
+            )}
             <div className="mx-1 h-5 w-px bg-slate-200" />
             <button
               onClick={toggleFullscreen}
@@ -380,9 +528,8 @@ export default function TablesOrderPage() {
             <button
               key={area.id}
               onClick={() => setSelectedAreaId(area.id)}
-              className={`h-8 shrink-0 rounded-md px-3 text-xs font-medium ${
-                selectedAreaId === area.id ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-600'
-              }`}
+              className={`h-8 shrink-0 rounded-md px-3 text-xs font-medium ${selectedAreaId === area.id ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-600'
+                }`}
             >
               {area.name}
             </button>
@@ -390,6 +537,10 @@ export default function TablesOrderPage() {
         </div>
 
         <div
+          ref={floorRef}
+          onPointerMove={moveDraggingTable}
+          onPointerUp={() => setDraggingTable(null)}
+          onPointerCancel={() => setDraggingTable(null)}
           className="flex-1 overflow-auto p-5 md:p-8"
           style={{
             backgroundColor: '#fbfcfd',
@@ -407,15 +558,57 @@ export default function TablesOrderPage() {
               {t('pages.actives.tablesOrder.noTablesFound')}
             </div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(132px,132px))] justify-center gap-x-14 gap-y-10 md:justify-start lg:gap-x-20 lg:gap-y-12">
-              {allTables.map(table => (
-                <TableCard
+            <div
+              className="relative"
+              style={{ minWidth: floorWidth, minHeight: floorHeight }}
+            >
+              {positionedTables.map(({ table, layout }) => (
+                <div
                   key={table.Id}
-                  table={table}
-                  selected={fromTable?.Id === table.Id}
-                  blocked={mode !== 'NORMAL' && !table.OrderId && !fromTable}
-                  onClick={() => handleTableClick(table)}
-                />
+                  className="absolute left-0 top-0"
+                  style={{
+                    transform: `translate(${layout.x}px, ${layout.y}px) rotate(${layout.rotation}deg)`,
+                    transformOrigin: 'center',
+                  }}
+                >
+                  {isArrangeMode && selectedLayoutTableId === table.Id ? (
+                    <div
+                      className="absolute -top-10 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-lg"
+                      style={{ transform: `translateX(-50%) rotate(${-layout.rotation}deg)` }}
+                      onPointerDown={event => event.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => rotateTable(table.Id, layout.rotation - 15)}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                        title={t('pages.actives.tablesOrder.rotateLeft', { defaultValue: 'Xoay trái' })}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+                      <input
+                        value={Math.round(layout.rotation)}
+                        onChange={event => rotateTable(table.Id, Number(event.target.value))}
+                        className="h-7 w-14 rounded-md border border-slate-200 text-center text-xs font-semibold outline-none focus:border-rose-400"
+                        aria-label={t('pages.actives.tablesOrder.rotationAngle', { defaultValue: 'Góc xoay' })}
+                      />
+                      <span className="text-xs font-semibold text-slate-400">°</span>
+                      <button
+                        onClick={() => rotateTable(table.Id, layout.rotation + 15)}
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                        title={t('pages.actives.tablesOrder.rotateRight', { defaultValue: 'Xoay phải' })}
+                      >
+                        <RotateCw className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : null}
+                  <TableCard
+                    table={table}
+                    selected={(isArrangeMode && selectedLayoutTableId === table.Id) || fromTable?.Id === table.Id}
+                    blocked={!isArrangeMode && mode !== 'NORMAL' && !table.OrderId && !fromTable}
+                    arrangeMode={isArrangeMode}
+                    onPointerDown={startTableDrag(table, layout)}
+                    onClick={() => handleTableClick(table)}
+                  />
+                </div>
               ))}
             </div>
           )}

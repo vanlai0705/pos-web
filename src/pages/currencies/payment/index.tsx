@@ -107,7 +107,10 @@ export default function PaymentPage() {
       <ReceiptPaymentDialog
         open={modal} onOpenChange={setDialogOpen}
         type={RECEIPT_PAYMENT_TYPE.PAYMENT}
-        endpoints={{ detail: 'payment/detail', create: 'payment/create', update: 'payment/update' }}
+        endpoints={{
+          detail: 'payment/detail', create: 'payment/create', update: 'payment/update',
+          printTrigger: 'Payment/print-receipt', printPdf: 'Payment/print-payment-pdf',
+        }}
         editId={editId}
         onSaved={refetch}
       />

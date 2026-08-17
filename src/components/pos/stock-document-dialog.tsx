@@ -269,33 +269,46 @@ export function StockDocumentDialog({
 
   const requestStockInputPdf = async (orderId: number) => {
     const blob = await downloadFile({
-      url: 'orders/print-order-pdf',
+      url: 'stockinputs/print-stock-input-pdf',
       method: 'POST',
       body: { OrderId: orderId, IsTemplateTemp: true },
     }).unwrap()
     return new Blob([blob], { type: 'application/pdf' })
   }
 
+  /**
+   * "Lưu in": không có dialog phụ nào cần mở, nên đóng dialog nhập liệu ngay
+   * là an toàn — luồng in vẫn chạy nền phía sau.
+   */
   const handleSaveAndPrint = async () => {
-    const savedId = await saveDocument(false)
+    const savedId = await saveDocument(true)
     if (!savedId) return
     try {
       await requestStockInputPdf(savedId)
       printStockInput(savedId)
-      onOpenChange(false)
     } catch (e) {
       toast.error(errMsg(e, t('components.stockDocumentDialog.genericError')))
     }
   }
 
+  /**
+   * "Lưu xem in": lấy PDF xong (dialog nhập liệu vẫn mở lúc chờ mạng) rồi mới
+   * đóng dialog nhập liệu, và đợi hết animation đóng của Radix mới mở dialog
+   * xem PDF. Đóng — mở đồng thời trong cùng 1 lần render khiến Radix xử lý 2
+   * dialog cùng đổi trạng thái một lúc không ổn định (dialog xem PDF không
+   * hiện lên dù không báo lỗi gì), nên phải tách làm 2 bước riêng biệt.
+   */
   const handleSavePreviewAndPrint = async () => {
     const savedId = await saveDocument(false)
     if (!savedId) return
     try {
       const blob = await requestStockInputPdf(savedId)
+      const url = URL.createObjectURL(blob)
+      onOpenChange(false)
+      await new Promise(resolve => setTimeout(resolve, 300))
       setPdfPreviewUrl(prev => {
         if (prev) URL.revokeObjectURL(prev)
-        return URL.createObjectURL(blob)
+        return url
       })
       printStockInput(savedId)
     } catch (e) {
