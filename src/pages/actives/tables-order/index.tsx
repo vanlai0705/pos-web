@@ -467,7 +467,7 @@ export default function TablesOrderPage() {
             <p className="truncate text-sm font-semibold text-slate-800">{selectedAreaName}</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
-            {/* <button
+            <button
               onClick={() => {
                 setIsArrangeMode(active => {
                   const next = !active
@@ -483,7 +483,7 @@ export default function TablesOrderPage() {
             >
               <Move className="h-4 w-4" />
               <span className="hidden md:inline">{isArrangeMode ? t('common.done', { defaultValue: 'Xong' }) : t('pages.actives.tablesOrder.arrangeModeButton', { defaultValue: 'Sắp xếp bàn' })}</span>
-            </button> */}
+            </button>
             {isArrangeMode ? (
               <button
                 onClick={resetLayout}

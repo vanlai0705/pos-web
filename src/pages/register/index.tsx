@@ -1,40 +1,63 @@
-import { useGetProductCategoriesQuery, useGetProvincesQuery, useInitShopDataMutation } from '@/store/slice/registration-users/api'
+import { useEffect, useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
+import { useGetProductCategoriesQuery, useGetProvincesQuery, useInitShopDataMutation, useLazyGetMenuQuery } from '@/store/slice/registration-users/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useRegisterMutation } from '@/store/slice/auth/api'
+import { useLazyGetMeQuery, useRegisterMutation } from '@/store/slice/auth/api'
+import { useAppDispatch } from '@/store/hooks'
+import { setMenu } from '@/store/slice/users/app'
+import { useAuth } from '@/hooks/useAuth'
 import { computePasswordSalt } from '@/utils/crypto'
+import { setStoredDomainName, withDomainPath } from '@/utils/domain-route'
 import { ArrowRight, Check, Store } from 'lucide-react'
-import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+
+// ─── Constants ──────────────────────────────────────────────────────────────
+// pos_web's register flow never lets the user pick credentials — every new
+// tenant is always provisioned with UserName/Password = 'admin'/'admin'
+// (shown back to the user on the success screen). Mirror that exactly.
+const DEFAULT_USERNAME = 'admin'
+const DEFAULT_PASSWORD = 'admin'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// Matches pos_web's RegisterComponent.buildTenancyName / removeVietnameseTones
+// exactly: strip diacritics, lowercase, collapse anything non [a-z0-9] into a
+// single '-', trim leading/trailing '-'. (The previous version stripped all
+// separators instead of hyphenating, producing different slugs than pos_web.)
+
+const VIETNAMESE_TONE_MAP: Record<string, string> = {
+  à: "a", á: "a", ả: "a", ã: "a", ạ: "a",
+  ă: "a", ắ: "a", ằ: "a", ẳ: "a", ẵ: "a", ặ: "a",
+  â: "a", ấ: "a", ầ: "a", ẩ: "a", ẫ: "a", ậ: "a",
+  è: "e", é: "e", ẻ: "e", ẽ: "e", ẹ: "e",
+  ê: "e", ế: "e", ề: "e", ể: "e", ễ: "e", ệ: "e",
+  ì: "i", í: "i", ỉ: "i", ĩ: "i", ị: "i",
+  ò: "o", ó: "o", ỏ: "o", õ: "o", ọ: "o",
+  ô: "o", ố: "o", ồ: "o", ổ: "o", ỗ: "o", ộ: "o",
+  ơ: "o", ớ: "o", ờ: "o", ở: "o", ỡ: "o", ợ: "o",
+  ù: "u", ú: "u", ủ: "u", ũ: "u", ụ: "u",
+  ư: "u", ứ: "u", ừ: "u", ử: "u", ữ: "u", ự: "u",
+  ỳ: "y", ý: "y", ỷ: "y", ỹ: "y", ỵ: "y",
+  đ: "d",
+}
+
+function removeVietnameseTones(value: string): string {
+  return (value || '')
+    .toLowerCase()
+    .split('')
+    .map(c => VIETNAMESE_TONE_MAP[c] ?? c)
+    .join('')
+}
 
 function buildTenancyName(shopName: string): string {
-  const map: Record<string, string> = {
-    à: "a", á: "a", ả: "a", ã: "a", ạ: "a",
-    ă: "a", ắ: "a", ằ: "a", ẳ: "a", ẵ: "a", ặ: "a",
-    â: "a", ấ: "a", ầ: "a", ẩ: "a", ẫ: "a", ậ: "a",
-    è: "e", é: "e", ẻ: "e", ẽ: "e", ẹ: "e",
-    ê: "e", ế: "e", ề: "e", ể: "e", ễ: "e", ệ: "e",
-    ì: "i", í: "i", ỉ: "i", ĩ: "i", ị: "i",
-    ò: "o", ó: "o", ỏ: "o", õ: "o", ọ: "o",
-    ô: "o", ố: "o", ồ: "o", ổ: "o", ỗ: "o", ộ: "o",
-    ơ: "o", ớ: "o", ờ: "o", ở: "o", ỡ: "o", ợ: "o",
-    ù: "u", ú: "u", ủ: "u", ũ: "u", ụ: "u",
-    ư: "u", ứ: "u", ừ: "u", ử: "u", ữ: "u", ự: "u",
-    ỳ: "y", ý: "y", ỷ: "y", ỹ: "y", ỵ: "y",
-    đ: "d",
-  };
-  return shopName
-    .toLowerCase()
-    .split("")
-    .map((c) => map[c] ?? c)
-    .join("")
-    .replace(/[^a-z0-9]/g, "")
-    .slice(0, 32);
+  return removeVietnameseTones(shopName)
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,8 +68,6 @@ interface RegisterForm {
   Phone: string;
   ProvinceId: string;
   productCategoryId: string;
-  Password: string;
-  ConfirmPassword: string;
 }
 
 // ─── Stepper component ─────────────────────────────────────────────────────────
@@ -93,12 +114,16 @@ function Stepper({ current }: { current: number }) {
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { setUser, setUserInfo } = useAuth();
   const [step, setStep] = useState(0);
   const [serverError, setServerError] = useState("");
   const [registeredDomain, setRegisteredDomain] = useState("");
 
   const [register, { isLoading: isRegistering }] = useRegisterMutation();
   const [initShopData, { isLoading: isIniting }] = useInitShopDataMutation();
+  const [getMe] = useLazyGetMeQuery();
+  const [getMenu] = useLazyGetMenuQuery();
   const { data: provinces = [] } = useGetProvincesQuery();
   const { data: productCategories = [] } = useGetProductCategoriesQuery();
 
@@ -109,6 +134,7 @@ export default function RegisterPage() {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<RegisterForm>({
     defaultValues: {
@@ -117,33 +143,53 @@ export default function RegisterPage() {
       Phone: "",
       ProvinceId: "",
       productCategoryId: "",
-      Password: "",
-      ConfirmPassword: "",
     },
   });
 
   const shopNameValue = watch("ShopName");
-  const passwordValue = watch("Password");
   const selectedCatId = watch("productCategoryId");
+  const provinceIdValue = watch("ProvinceId");
 
   const tenancyName = buildTenancyName(shopNameValue || "");
 
+  // Mirrors pos_web's setDefaultProvince(): once the province list loads,
+  // preselect "Hồ Chí Minh" if nothing has been chosen yet.
+  useEffect(() => {
+    if (provinceIdValue || !provinces.length) return
+    const hoChiMinh = provinces.find(p => {
+      const normalized = removeVietnameseTones(`${p?.Name ?? ''}`)
+        .toLowerCase()
+        .replace(/\./g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+      return normalized === 'ho chi minh' || normalized === 'thanh pho ho chi minh' || normalized === 'tp ho chi minh'
+    })
+    if (hoChiMinh?.Id) setValue('ProvinceId', String(hoChiMinh.Id))
+  }, [provinces, provinceIdValue, setValue])
+
   const onSubmit = async (values: RegisterForm) => {
     setServerError("");
+
+    const shopName = values.ShopName.trim()
+    const tenancyNameToSubmit = buildTenancyName(shopName)
+    if (!tenancyNameToSubmit) {
+      setServerError("Tên cửa hàng chưa hợp lệ")
+      return
+    }
+
     setStep(1); // move to "processing" step immediately
 
     try {
       const res = await register({
-        ShopName: values.ShopName,
-        Name: values.ShopName,
-        TenantDisplayName: values.ShopName,
-        TenancyName: tenancyName,
-        Surname: values.ShopName,
+        Surname: DEFAULT_USERNAME,
+        Name: shopName,
+        TenantDisplayName: shopName,
+        TenancyName: tenancyNameToSubmit,
         Email: values.Email.trim(),
         Phone: values.Phone?.trim() || undefined,
-        UserName: "admin",
-        PasswordSalt: computePasswordSalt(values.Password),
-        ConfirmPasswordSalt: computePasswordSalt(values.ConfirmPassword),
+        UserName: DEFAULT_USERNAME,
+        PasswordSalt: computePasswordSalt(DEFAULT_PASSWORD),
+        ConfirmPasswordSalt: computePasswordSalt(DEFAULT_PASSWORD),
         ProvinceId: values.ProvinceId || null,
         productCategoryId: values.productCategoryId || null,
       }).unwrap();
@@ -155,14 +201,32 @@ export default function RegisterPage() {
         return;
       }
 
-      // Initialize shop data
+      // Server is authoritative on the actual domain name assigned (it may
+      // differ from our client-computed slug, e.g. to dedupe collisions).
+      const domainName = `${res.Data?.DomainName ?? ''}`.trim() || tenancyNameToSubmit;
+
+      // Auto-login as the freshly created tenant admin so the init-data call
+      // below (and the rest of the app) runs under the correct auth context
+      // — pos_web does the equivalent via processLogin() before init-data.
+      setUser(res.Data);
+      setStoredDomainName(domainName);
+
       try {
         await initShopData().unwrap();
       } catch {
         // Non-critical — continue even if init-data fails
       }
 
-      setRegisteredDomain(tenancyName);
+      await Promise.allSettled([
+        getMe().then(({ data: meData }) => {
+          if (meData?.User) setUserInfo(meData.User as any);
+        }),
+        getMenu().then(({ data: menuData }) => {
+          if (menuData) dispatch(setMenu(menuData));
+        }),
+      ]);
+
+      setRegisteredDomain(domainName);
       setStep(2);
     } catch (err: any) {
       const msg =
@@ -207,10 +271,7 @@ export default function RegisterPage() {
                 />
                 {tenancyName && (
                   <p className="text-xs text-muted-foreground">
-                    Tên miền:{" "}
-                    <span className="font-mono text-foreground">
-                      {tenancyName}.posmobile.vn
-                    </span>
+                    Tên miền: <span className="font-mono text-foreground">{tenancyName}</span>
                   </p>
                 )}
                 {errors.ShopName && (
@@ -309,50 +370,6 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              {/* Password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Mật khẩu *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Mật khẩu đăng nhập"
-                  autoComplete="new-password"
-                  {...formRegister("Password", {
-                    required: "Vui lòng nhập mật khẩu",
-                    minLength: {
-                      value: 6,
-                      message: "Mật khẩu tối thiểu 6 ký tự",
-                    },
-                  })}
-                  className={errors.Password ? "border-destructive" : ""}
-                />
-                {errors.Password && (
-                  <p className="text-xs text-destructive">{errors.Password.message}</p>
-                )}
-              </div>
-
-              {/* Confirm password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="confirm-password">Xác nhận mật khẩu *</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="Nhập lại mật khẩu"
-                  autoComplete="new-password"
-                  {...formRegister("ConfirmPassword", {
-                    required: "Vui lòng xác nhận mật khẩu",
-                    validate: (v) =>
-                      v === passwordValue || "Mật khẩu không khớp",
-                  })}
-                  className={errors.ConfirmPassword ? "border-destructive" : ""}
-                />
-                {errors.ConfirmPassword && (
-                  <p className="text-xs text-destructive">
-                    {errors.ConfirmPassword.message}
-                  </p>
-                )}
-              </div>
-
               {serverError && (
                 <div className="rounded-md bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive">
                   {serverError}
@@ -360,7 +377,7 @@ export default function RegisterPage() {
               )}
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                Tiếp theo
+                Tạo tài khoản
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
 
@@ -416,30 +433,28 @@ export default function RegisterPage() {
                   <p>
                     Tên miền:{" "}
                     <span className="font-mono text-foreground font-medium">
-                      {registeredDomain}.posmobile.vn
+                      {registeredDomain}
                     </span>
                   </p>
                   <p>
-                    Tài khoản quản trị:{" "}
-                    <span className="font-mono text-foreground font-medium">admin</span>
+                    Tài khoản đăng nhập:{" "}
+                    <span className="font-mono text-foreground font-medium">{DEFAULT_USERNAME}</span>
+                  </p>
+                  <p>
+                    Mật khẩu mặc định:{" "}
+                    <span className="font-mono text-foreground font-medium">{DEFAULT_PASSWORD}</span>
                   </p>
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                    ⚠️ Hãy lưu lại tên miền để đăng nhập lần sau
+                    ⚠️ Hãy lưu lại tên miền và mật khẩu để đăng nhập lần sau
                   </p>
                 </div>
               </div>
 
               <Button
                 className="w-full"
-                onClick={() =>
-                  navigate("/login", {
-                    state: {
-                      message: `Đăng ký thành công! Tên miền: ${registeredDomain}. Tài khoản: admin`,
-                    },
-                  })
-                }
+                onClick={() => navigate(withDomainPath("/dashboard", registeredDomain), { replace: true })}
               >
-                Đăng nhập ngay
+                Vào cửa hàng ngay
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
