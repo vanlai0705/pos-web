@@ -1,15 +1,18 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Archive,
   Building2,
   DatabaseBackup,
   Download,
+  Eye,
+  EyeOff,
   Lock,
   LogIn,
   MoreHorizontal,
   RefreshCcw,
   Search,
+  Settings,
   ShieldCheck,
   Store,
   Unlock,
@@ -124,6 +127,22 @@ interface TTenantUser {
   Image?: { Url?: string }
 }
 
+interface TenantSetting {
+  Id?: number
+  InvoiceManagementPassword?: string
+  DataDeletionPassword?: string
+  LoginPassword?: string
+}
+
+function emptyTenantSetting(): TenantSetting {
+  return {
+    Id: 0,
+    InvoiceManagementPassword: '',
+    DataDeletionPassword: '',
+    LoginPassword: '',
+  }
+}
+
 function getData<T = any>(response: any): T | undefined {
   return response?.Data ?? response
 }
@@ -193,6 +212,10 @@ export default function AdminTenantsPage() {
   const [backupTokenMap, setBackupTokenMap] = useState<Record<number, string>>({})
   const [restoreFileMap, setRestoreFileMap] = useState<Record<number, File | null>>({})
   const [rowLoadingMap, setRowLoadingMap] = useState<Record<number, boolean>>({})
+  const [tenantSettingModal, setTenantSettingModal] = useState(false)
+  const [tenantSettingForm, setTenantSettingForm] = useState<TenantSetting>(emptyTenantSetting())
+  const [tenantSettingLoading, setTenantSettingLoading] = useState(false)
+  const [tenantSettingSaving, setTenantSettingSaving] = useState(false)
 
   const { data, isLoading, refetch } = useFilterReportQuery({
     path: 'tenants/filter',
@@ -315,17 +338,17 @@ export default function AdminTenantsPage() {
     }
   }
 
-  const loginAsUser = async (user: TTenantUser) => {
-    if (!user.TenantId || !user.Id) return
+  const loginAsUser = async (user: TTenantUser, password: string): Promise<boolean> => {
+    if (!user.TenantId || !user.Id) return false
     try {
       const response = await fetchDetail({
         url: 'tenants/login-as',
-        params: { tenantId: user.TenantId, userId: user.Id },
+        params: { tenantId: user.TenantId, userId: user.Id, password },
       }).unwrap()
       const loginData = getData<any>(response)
       if (!loginData?.SessionToken) {
         toast.error('Không thể đăng nhập đối tác')
-        return
+        return false
       }
 
       setUser(loginData)
@@ -339,8 +362,52 @@ export default function AdminTenantsPage() {
       ])
       toast.success('Đã đăng nhập vào đối tác')
       navigate(withDomainPath('/dashboard', loginData.DomainName), { replace: true })
+      return true
     } catch {
       toast.error('Không thể đăng nhập đối tác')
+      return false
+    }
+  }
+
+  const openTenantSetting = async () => {
+    setTenantSettingModal(true)
+    setTenantSettingLoading(true)
+    try {
+      const response = await fetchDetail({ url: 'setting/get-tenant' }).unwrap()
+      const detail = getData<any>(response) || {}
+      setTenantSettingForm({
+        Id: detail.Id ?? detail.id ?? 0,
+        InvoiceManagementPassword: detail.InvoiceManagementPassword ?? detail.invoiceManagementPassword ?? '',
+        DataDeletionPassword: detail.DataDeletionPassword ?? detail.dataDeletionPassword ?? '',
+        LoginPassword: detail.LoginPassword ?? detail.loginPassword ?? '',
+      })
+    } catch {
+      toast.error('Không thể tải thông tin cài đặt')
+      setTenantSettingModal(false)
+    } finally {
+      setTenantSettingLoading(false)
+    }
+  }
+
+  const saveTenantSetting = async () => {
+    setTenantSettingSaving(true)
+    try {
+      await request({
+        url: 'setting/update-tenant',
+        method: 'POST',
+        body: {
+          Id: tenantSettingForm.Id ?? 0,
+          InvoiceManagementPassword: tenantSettingForm.InvoiceManagementPassword || '',
+          DataDeletionPassword: tenantSettingForm.DataDeletionPassword || '',
+          LoginPassword: tenantSettingForm.LoginPassword || '',
+        },
+      }).unwrap()
+      toast.success('Cập nhật cài đặt thành công')
+      setTenantSettingModal(false)
+    } catch {
+      toast.error('Không thể lưu cài đặt')
+    } finally {
+      setTenantSettingSaving(false)
     }
   }
 
@@ -544,10 +611,15 @@ export default function AdminTenantsPage() {
             </select>
           )}
           actions={(
-            <ToolbarButton tone="neutral" onClick={() => refetch()}>
-              <RefreshCcw className="h-4 w-4" />
-              Tải lại
-            </ToolbarButton>
+            <>
+              <ToolbarButton tone="neutral" onClick={() => refetch()}>
+                <RefreshCcw className="h-4 w-4" />
+                Tải lại
+              </ToolbarButton>
+              <Button type="button" variant="outline" size="icon" className="h-10 w-10" onClick={openTenantSetting} title="Cài đặt">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </>
           )}
         />
 
@@ -592,6 +664,16 @@ export default function AdminTenantsPage() {
         }}
         onClose={() => setBackupAction(null)}
         onSubmit={submitBackupAction}
+      />
+
+      <TenantSettingDialog
+        open={tenantSettingModal}
+        onOpenChange={setTenantSettingModal}
+        form={tenantSettingForm}
+        onFormChange={setTenantSettingForm}
+        loading={tenantSettingLoading}
+        saving={tenantSettingSaving}
+        onSave={saveTenantSetting}
       />
     </div>
   )
@@ -686,10 +768,13 @@ function LoginAsDialog({
 }: {
   tenant: TTenant | null
   onClose: () => void
-  onLogin: (user: TTenantUser) => void
+  onLogin: (user: TTenantUser, password: string) => Promise<boolean>
 }) {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
+  const [promptUser, setPromptUser] = useState<TTenantUser | null>(null)
+  const [password, setPassword] = useState('')
+  const [loggingIn, setLoggingIn] = useState(false)
   const { data, isLoading } = useFilterReportQuery({
     path: 'tenants/filter-user',
     params: {
@@ -703,58 +788,118 @@ function LoginAsDialog({
 
   const users = (data?.Items ?? []) as TTenantUser[]
 
+  const openPrompt = (user: TTenantUser) => {
+    setPromptUser(user)
+    setPassword('')
+  }
+
+  const closePrompt = () => {
+    if (loggingIn) return
+    setPromptUser(null)
+    setPassword('')
+  }
+
+  const confirmLogin = async () => {
+    if (!promptUser || loggingIn) return
+    if (!password.trim()) {
+      toast.error('Vui lòng nhập mật khẩu')
+      return
+    }
+
+    setLoggingIn(true)
+    const success = await onLogin(promptUser, password)
+    setLoggingIn(false)
+    if (success) {
+      setPromptUser(null)
+      setPassword('')
+    }
+  }
+
   return (
-    <Dialog open={!!tenant} onOpenChange={value => !value && onClose()}>
-      <FormDialogContent className="max-w-3xl">
-        <FormDialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Danh sách đăng nhập
-          </DialogTitle>
-        </FormDialogHeader>
-        <FormDialogBody className="space-y-3 p-4">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={keyword} onChange={event => { setKeyword(event.target.value); setPage(1) }} placeholder="Tìm người dùng..." className="pl-9" />
-          </div>
-          <div className="max-h-[50vh] overflow-auto rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
-                <tr>
-                  <th className="w-16 px-3 py-2"></th>
-                  <th className="px-3 py-2">Tên</th>
-                  <th className="px-3 py-2 text-center">Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {isLoading ? (
-                  <tr><td colSpan={3} className="px-3 py-8 text-center text-muted-foreground">Đang tải...</td></tr>
-                ) : users.length ? users.map(user => (
-                  <tr key={user.Id} className="hover:bg-muted/30">
-                    <td className="px-3 py-2 text-center">
-                      <Button size="icon" className="h-8 w-8" title="Đăng nhập" onClick={() => onLogin(user)}>
-                        <LogIn className="h-4 w-4" />
-                      </Button>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{user.FullName || '-'}</div>
-                      <div className="text-xs text-muted-foreground">{user.Email || '-'}</div>
-                    </td>
-                    <td className="px-3 py-2 text-center"><StatusBadge status={user.Status} /></td>
+    <>
+      <Dialog open={!!tenant} onOpenChange={value => !value && onClose()}>
+        <FormDialogContent className="max-w-3xl">
+          <FormDialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Danh sách đăng nhập
+            </DialogTitle>
+          </FormDialogHeader>
+          <FormDialogBody className="space-y-3 p-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={keyword} onChange={event => { setKeyword(event.target.value); setPage(1) }} placeholder="Tìm người dùng..." className="pl-9" />
+            </div>
+            <div className="max-h-[50vh] overflow-auto rounded-lg border">
+              <table className="w-full text-sm">
+                <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
+                  <tr>
+                    <th className="w-16 px-3 py-2"></th>
+                    <th className="px-3 py-2">Tên</th>
+                    <th className="px-3 py-2 text-center">Trạng thái</th>
                   </tr>
-                )) : (
-                  <tr><td colSpan={3} className="px-3 py-8 text-center text-muted-foreground">Không có người dùng nào</td></tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y">
+                  {isLoading ? (
+                    <tr><td colSpan={3} className="px-3 py-8 text-center text-muted-foreground">Đang tải...</td></tr>
+                  ) : users.length ? users.map(user => (
+                    <tr key={user.Id} className="hover:bg-muted/30">
+                      <td className="px-3 py-2 text-center">
+                        <Button size="icon" className="h-8 w-8" title="Đăng nhập" onClick={() => openPrompt(user)}>
+                          <LogIn className="h-4 w-4" />
+                        </Button>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="font-medium">{user.FullName || '-'}</div>
+                        <div className="text-xs text-muted-foreground">{user.Email || '-'}</div>
+                      </td>
+                      <td className="px-3 py-2 text-center"><StatusBadge status={user.Status} /></td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan={3} className="px-3 py-8 text-center text-muted-foreground">Không có người dùng nào</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <DataPagination page={page} total={data?.TotalItemCount ?? 0} pageSize={PAGE_SIZE} onPageChange={setPage} hideWhenSingle />
+          </FormDialogBody>
+          <FormDialogFooter>
+            <Button variant="outline" onClick={onClose}>Đóng</Button>
+          </FormDialogFooter>
+        </FormDialogContent>
+      </Dialog>
+
+      {promptUser ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-sm rounded-md bg-background p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-foreground">Xác nhận đăng nhập</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Nhập mật khẩu để đăng nhập với tài khoản{' '}
+              <strong className="text-foreground">{promptUser.FullName} ({promptUser.Email})</strong>
+            </p>
+
+            <div className="mt-4 space-y-1.5">
+              <Label>Mật khẩu</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+                onKeyDown={event => { if (event.key === 'Enter') confirmLogin() }}
+                placeholder="Nhập mật khẩu"
+                disabled={loggingIn}
+              />
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={closePrompt} disabled={loggingIn}>Hủy</Button>
+              <Button onClick={confirmLogin} disabled={loggingIn}>
+                {loggingIn ? 'Đang đăng nhập...' : 'Đăng nhập'}
+              </Button>
+            </div>
           </div>
-          <DataPagination page={page} total={data?.TotalItemCount ?? 0} pageSize={PAGE_SIZE} onPageChange={setPage} hideWhenSingle />
-        </FormDialogBody>
-        <FormDialogFooter>
-          <Button variant="outline" onClick={onClose}>Đóng</Button>
-        </FormDialogFooter>
-      </FormDialogContent>
-    </Dialog>
+        </div>
+      ) : null}
+    </>
   )
 }
 
@@ -821,6 +966,121 @@ function BackupActionDialog({
             className={isRestore ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600' : 'bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-700 dark:hover:bg-sky-600'}
           >
             {submitting ? 'Đang xử lý...' : isRestore ? 'Restore dữ liệu' : 'Backup dữ liệu'}
+          </Button>
+        </FormDialogFooter>
+      </FormDialogContent>
+    </Dialog>
+  )
+}
+
+function TenantSettingDialog({
+  open,
+  onOpenChange,
+  form,
+  onFormChange,
+  loading,
+  saving,
+  onSave,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  form: TenantSetting
+  onFormChange: (updater: (form: TenantSetting) => TenantSetting) => void
+  loading: boolean
+  saving: boolean
+  onSave: () => void
+}) {
+  const [showInvoiceManagementPassword, setShowInvoiceManagementPassword] = useState(false)
+  const [showDataDeletionPassword, setShowDataDeletionPassword] = useState(false)
+  const [showLoginPassword, setShowLoginPassword] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setShowInvoiceManagementPassword(false)
+      setShowDataDeletionPassword(false)
+      setShowLoginPassword(false)
+    }
+  }, [open])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <FormDialogContent className="max-w-lg">
+        <FormDialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5 text-primary" />
+            Cài đặt
+          </DialogTitle>
+        </FormDialogHeader>
+        <FormDialogBody className="space-y-4">
+          {loading ? (
+            <div className="space-y-3">
+              <div className="h-9 w-full animate-pulse rounded-md bg-muted" />
+              <div className="h-9 w-full animate-pulse rounded-md bg-muted" />
+              <div className="h-9 w-full animate-pulse rounded-md bg-muted" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label>Mật khẩu quản lý hoá đơn</Label>
+                <div className="relative">
+                  <Input
+                    type={showInvoiceManagementPassword ? 'text' : 'password'}
+                    value={form.InvoiceManagementPassword || ''}
+                    onChange={event => onFormChange(f => ({ ...f, InvoiceManagementPassword: event.target.value }))}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowInvoiceManagementPassword(v => !v)}
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                  >
+                    {showInvoiceManagementPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Mật khẩu xoá dữ liệu</Label>
+                <div className="relative">
+                  <Input
+                    type={showDataDeletionPassword ? 'text' : 'password'}
+                    value={form.DataDeletionPassword || ''}
+                    onChange={event => onFormChange(f => ({ ...f, DataDeletionPassword: event.target.value }))}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDataDeletionPassword(v => !v)}
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                  >
+                    {showDataDeletionPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Mật khẩu đăng nhập</Label>
+                <div className="relative">
+                  <Input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    value={form.LoginPassword || ''}
+                    onChange={event => onFormChange(f => ({ ...f, LoginPassword: event.target.value }))}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(v => !v)}
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                  >
+                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </FormDialogBody>
+        <FormDialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
+          <Button onClick={onSave} disabled={saving || loading}>
+            {saving ? 'Đang lưu...' : 'Lưu'}
           </Button>
         </FormDialogFooter>
       </FormDialogContent>

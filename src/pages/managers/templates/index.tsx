@@ -11,7 +11,7 @@ import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useGenericDownloadMutation, useGenericPostMutation } from '@/store/slice/generic/api'
 import { cn, downloadBlob, query } from '@/utils'
 import { buildModelFormData } from '@/utils/multipart'
-import { Copy, Download, FileText, MoreHorizontal, Plus, RefreshCw, Upload } from 'lucide-react'
+import { Copy, Download, Eye, EyeOff, FileText, MoreHorizontal, Plus, RefreshCw, Settings, Upload } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -64,6 +64,22 @@ interface CloneTenantOption {
   Value: number
   Name: string
   SearchText: string
+}
+
+interface TenantSetting {
+  Id?: number
+  InvoiceManagementPassword?: string
+  DataDeletionPassword?: string
+  LoginPassword?: string
+}
+
+function emptyTenantSetting(): TenantSetting {
+  return {
+    Id: 0,
+    InvoiceManagementPassword: '',
+    DataDeletionPassword: '',
+    LoginPassword: '',
+  }
 }
 
 function emptyGroup(): InvoiceTemplateGroup {
@@ -172,6 +188,19 @@ export default function TemplatesPage() {
   const [cloneTenantOptions, setCloneTenantOptions] = useState<CloneTenantOption[]>([])
   const [cloneLoading, setCloneLoading] = useState(false)
 
+  const [tenantSettingModal, setTenantSettingModal] = useState(false)
+  const [tenantSettingForm, setTenantSettingForm] = useState<TenantSetting>(emptyTenantSetting())
+  const [tenantSettingLoading, setTenantSettingLoading] = useState(false)
+  const [tenantSettingSaving, setTenantSettingSaving] = useState(false)
+  const [showInvoiceManagementPassword, setShowInvoiceManagementPassword] = useState(false)
+  const [showDataDeletionPassword, setShowDataDeletionPassword] = useState(false)
+  const [showLoginPassword, setShowLoginPassword] = useState(false)
+
+  const [authenticated, setAuthenticated] = useState(false)
+  const [passwordInput, setPasswordInput] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [verifyingPassword, setVerifyingPassword] = useState(false)
+
   const templateInputRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -263,9 +292,34 @@ export default function TemplatesPage() {
   }, [request, t])
 
   useEffect(() => {
+    if (!authenticated) return
     loadTemplateTypeOptions()
     loadGroups()
-  }, [loadGroups, loadTemplateTypeOptions])
+  }, [authenticated, loadGroups, loadTemplateTypeOptions])
+
+  const submitPassword = async () => {
+    if (!passwordInput.trim()) {
+      setPasswordError('Vui lòng nhập mật khẩu.')
+      return
+    }
+    if (verifyingPassword) return
+
+    setVerifyingPassword(true)
+    try {
+      const response = await request({ url: `report-templates/verify-password${query({ password: passwordInput })}`, method: 'GET' }).unwrap()
+      const isValid = response?.Data === true
+      if (isValid) {
+        setAuthenticated(true)
+        setPasswordError('')
+        return
+      }
+      setPasswordError('Mật khẩu không đúng. Vui lòng thử lại.')
+    } catch {
+      setPasswordError('Không thể xác thực mật khẩu. Vui lòng thử lại.')
+    } finally {
+      setVerifyingPassword(false)
+    }
+  }
 
   useEffect(() => {
     loadTemplatesByGroup(selectedGroupId)
@@ -534,6 +588,51 @@ export default function TemplatesPage() {
     }
   }
 
+  const openTenantSetting = async () => {
+    setTenantSettingModal(true)
+    setTenantSettingLoading(true)
+    setShowInvoiceManagementPassword(false)
+    setShowDataDeletionPassword(false)
+    setShowLoginPassword(false)
+    try {
+      const response = await request({ url: 'setting/get-tenant', method: 'GET' }).unwrap()
+      const detail = response?.Data || response || {}
+      setTenantSettingForm({
+        Id: detail.Id ?? detail.id ?? 0,
+        InvoiceManagementPassword: detail.InvoiceManagementPassword ?? detail.invoiceManagementPassword ?? '',
+        DataDeletionPassword: detail.DataDeletionPassword ?? detail.dataDeletionPassword ?? '',
+        LoginPassword: detail.LoginPassword ?? detail.loginPassword ?? '',
+      })
+    } catch {
+      toast.error('Không thể tải thông tin cài đặt')
+      setTenantSettingModal(false)
+    } finally {
+      setTenantSettingLoading(false)
+    }
+  }
+
+  const saveTenantSetting = async () => {
+    setTenantSettingSaving(true)
+    try {
+      await request({
+        url: 'setting/update-tenant',
+        method: 'POST',
+        body: {
+          Id: tenantSettingForm.Id ?? 0,
+          InvoiceManagementPassword: tenantSettingForm.InvoiceManagementPassword || '',
+          DataDeletionPassword: tenantSettingForm.DataDeletionPassword || '',
+          LoginPassword: tenantSettingForm.LoginPassword || '',
+        },
+      }).unwrap()
+      toast.success('Cập nhật cài đặt thành công')
+      setTenantSettingModal(false)
+    } catch {
+      toast.error('Không thể lưu cài đặt')
+    } finally {
+      setTenantSettingSaving(false)
+    }
+  }
+
   const updateTemplateStatus = async (item: InvoiceTemplate, nextActive: boolean) => {
     if (!item.Id) return
     const group = groupOptions.find(option => Number(option.Id) === Number(item.TemplateGroupId))
@@ -747,6 +846,49 @@ export default function TemplatesPage() {
     },
   ]
 
+  if (!authenticated) {
+    return (
+      <div className="mx-auto max-w-md">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70">
+          <div className="bg-slate-900 px-6 py-6 text-white">
+            <h1 className="mt-2 text-2xl font-bold">Quản lý mẫu hóa đơn</h1>
+            <p className="mt-2 text-sm text-slate-300">Nhập mật khẩu để tiếp tục.</p>
+          </div>
+
+          <div className="space-y-4 px-6 py-6">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">Mật khẩu</label>
+              <input
+                value={passwordInput}
+                onChange={event => { setPasswordInput(event.target.value); if (passwordError) setPasswordError('') }}
+                onKeyDown={event => { if (event.key === 'Enter') submitPassword() }}
+                type="password"
+                placeholder="Nhập mật khẩu"
+                disabled={verifyingPassword}
+                className="w-full rounded-md border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-100 disabled:opacity-60"
+              />
+            </div>
+
+            {passwordError ? (
+              <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-600">
+                {passwordError}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={submitPassword}
+              disabled={verifyingPassword}
+              className="w-full rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
+            >
+              {verifyingPassword ? 'Đang xác thực...' : 'Tiếp tục'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
@@ -798,6 +940,9 @@ export default function TemplatesPage() {
                 </ToolbarButton>
                 <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={() => { loadGroups(); loadTemplatesByGroup(selectedGroupId) }} title={t('pages.managers.templates.reloadTooltip')}>
                   <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button type="button" variant="ghost" size="icon" className="h-10 w-10" onClick={openTenantSetting} title="Cài đặt">
+                  <Settings className="h-4 w-4" />
                 </Button>
               </>
             )}
@@ -1015,6 +1160,81 @@ export default function TemplatesPage() {
             <Button variant="outline" onClick={() => setCloneModal(false)}>{t('pages.managers.templates.cancelButton')}</Button>
             <Button onClick={cloneTemplateToTenant} disabled={saving || cloneLoading || !cloneTargetTenantId}>
               {saving ? t('pages.managers.templates.cloning') : t('pages.managers.templates.cloneButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={tenantSettingModal} onOpenChange={setTenantSettingModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cài đặt</DialogTitle>
+          </DialogHeader>
+          {tenantSettingLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-9 w-full rounded-md" />
+              <Skeleton className="h-9 w-full rounded-md" />
+              <Skeleton className="h-9 w-full rounded-md" />
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              <Field label="Mật khẩu quản lý hoá đơn">
+                <div className="relative">
+                  <Input
+                    type={showInvoiceManagementPassword ? 'text' : 'password'}
+                    value={tenantSettingForm.InvoiceManagementPassword || ''}
+                    onChange={event => setTenantSettingForm(form => ({ ...form, InvoiceManagementPassword: event.target.value }))}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowInvoiceManagementPassword(v => !v)}
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 hover:text-slate-600"
+                  >
+                    {showInvoiceManagementPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </Field>
+              <Field label="Mật khẩu xoá dữ liệu">
+                <div className="relative">
+                  <Input
+                    type={showDataDeletionPassword ? 'text' : 'password'}
+                    value={tenantSettingForm.DataDeletionPassword || ''}
+                    onChange={event => setTenantSettingForm(form => ({ ...form, DataDeletionPassword: event.target.value }))}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDataDeletionPassword(v => !v)}
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 hover:text-slate-600"
+                  >
+                    {showDataDeletionPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </Field>
+              <Field label="Mật khẩu đăng nhập">
+                <div className="relative">
+                  <Input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    value={tenantSettingForm.LoginPassword || ''}
+                    onChange={event => setTenantSettingForm(form => ({ ...form, LoginPassword: event.target.value }))}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(v => !v)}
+                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-400 hover:text-slate-600"
+                  >
+                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </Field>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTenantSettingModal(false)}>{t('pages.managers.templates.cancelButton')}</Button>
+            <Button onClick={saveTenantSetting} disabled={tenantSettingSaving || tenantSettingLoading}>
+              {tenantSettingSaving ? t('pages.managers.templates.saving') : t('pages.managers.templates.saveButton')}
             </Button>
           </DialogFooter>
         </DialogContent>
