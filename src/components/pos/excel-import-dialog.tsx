@@ -101,7 +101,7 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) close(); else onOpenChange(o) }}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-6xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> {t('components.excelImportDialog.title')}

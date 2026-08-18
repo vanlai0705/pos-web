@@ -1,3 +1,4 @@
+import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag } from '@/components/ui/data-tag'
@@ -5,11 +6,12 @@ import { confirmAction } from '@/components/ui/use-confirm-action'
 import { useApiMutation } from '@/hooks/use-api-mutation'
 import { ListPageHeader, PAGE_SIZE, SearchBar, StatusBadge } from '@/pages/actives/shared'
 import { RowActions } from '@/pages/managers/components'
-import { useFilterReportQuery, useLazyGenericGetQuery } from '@/store/slice/generic/api'
-import { Plus, Truck } from 'lucide-react'
+import { useFilterReportQuery, useGenericDownloadMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { Download, Plus, Truck, Upload } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { buildModelFormData } from '@/utils/multipart'
+import { downloadBlob, query } from '@/utils'
 import { STATUS } from '@/constants/status'
 import { emptySupplier, SupplierDialog, type TSupplier } from '@/components/pos/supplier-form-dialog'
 
@@ -20,12 +22,31 @@ export default function SuppliersPage() {
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<TSupplier>(emptySupplier())
+  const [importOpen, setImportOpen] = useState(false)
 
   const { data, isLoading, refetch } = useFilterReportQuery({
     path: 'suppliers/filter',
     params: { Keyword: keyword || undefined, StatusId: statusId || undefined, PageIndex: page - 1, PageSize: pageSize },
   })
   const [fetchDetail] = useLazyGenericGetQuery()
+  const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
+
+  const exportExcel = async () => {
+    try {
+      const blob = await downloadFile({
+        url: `suppliers/export-excel${query({
+          Keyword: keyword || undefined,
+          StatusId: statusId === '' ? undefined : statusId,
+          PageIndex: page - 1,
+          PageSize: pageSize,
+        })}`,
+      }).unwrap()
+      downloadBlob(blob, 'nha-cung-cap.xlsx')
+      toast.success('Xuất Excel thành công')
+    } catch {
+      toast.error('Không thể xuất Excel')
+    }
+  }
 
   const { mutate: save, isLoading: saving } = useApiMutation(
     (body: TSupplier) => ({ url: body.Id ? 'suppliers/update' : 'suppliers/create', method: 'POST' as const, body: buildModelFormData(body) }),
@@ -99,12 +120,26 @@ export default function SuppliersPage() {
           <option value={STATUS.ACTIVE}>Hoạt động</option>
           <option value={STATUS.LOCKED}>Đã khoá</option>
         </select>
+        <Button size="sm" variant="outline" className="h-8" onClick={() => setImportOpen(true)}>
+          <Upload className="h-3.5 w-3.5 mr-1" /> Nhập
+        </Button>
+        <Button size="sm" variant="outline" className="h-8" disabled={exporting} onClick={exportExcel}>
+          <Download className="h-3.5 w-3.5 mr-1" /> Xuất
+        </Button>
         <Button size="sm" className="h-8" onClick={() => { setForm(emptySupplier()); setModal(true) }}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Thêm NCC
         </Button>
       </ListPageHeader>
 
       <DataTable columns={columns} data={items} loading={isLoading} total={total} page={page} pageSize={pageSize} onPageSizeChange={setPageSize} onPageChange={setPage} emptyText="Không có nhà cung cấp nào" />
+
+      <ExcelImportDialog
+        open={importOpen} onOpenChange={setImportOpen}
+        headerUrl="suppliers/get-excel-header"
+        dataUrl="suppliers/get-excel-data"
+        importUrl="suppliers/import-excel"
+        onImported={refetch}
+      />
 
       <SupplierDialog
         open={modal}
