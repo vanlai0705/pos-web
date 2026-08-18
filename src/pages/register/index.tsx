@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useGetProductCategoriesQuery, useGetProvincesQuery, useInitShopDataMutation, useLazyGetMenuQuery } from '@/store/slice/registration-users/api'
@@ -76,35 +76,37 @@ const STEPS = ["Thông tin cửa hàng", "Xác nhận", "Hoàn thành"];
 
 function Stepper({ current }: { current: number }) {
   return (
-    <div className="flex items-center gap-2 mb-8">
+    <div className="flex items-center gap-2 mb-6">
       {STEPS.map((label, i) => (
-        <div key={i} className="flex items-center gap-2 flex-1 last:flex-none">
-          <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium transition-colors ${
-              i < current
-                ? "bg-primary text-primary-foreground"
-                : i === current
-                ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {i < current ? <Check className="h-4 w-4" /> : i + 1}
+        <Fragment key={i}>
+          <div className="flex items-center gap-2 shrink-0">
+            <div
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium transition-colors ${
+                i < current
+                  ? "bg-primary text-primary-foreground"
+                  : i === current
+                  ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {i < current ? <Check className="h-4 w-4" /> : i + 1}
+            </div>
+            <span
+              className={`hidden sm:block text-xs whitespace-nowrap ${
+                i === current ? "text-foreground font-medium" : "text-muted-foreground"
+              }`}
+            >
+              {label}
+            </span>
           </div>
-          <span
-            className={`hidden sm:block text-xs ${
-              i === current ? "text-foreground font-medium" : "text-muted-foreground"
-            }`}
-          >
-            {label}
-          </span>
           {i < STEPS.length - 1 && (
             <div
-              className={`flex-1 h-px mx-2 ${
+              className={`flex-1 h-px mx-1 ${
                 i < current ? "bg-primary" : "bg-border"
               }`}
             />
           )}
-        </div>
+        </Fragment>
       ))}
     </div>
   );
@@ -119,6 +121,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(0);
   const [serverError, setServerError] = useState("");
   const [registeredDomain, setRegisteredDomain] = useState("");
+  const [registeredShopName, setRegisteredShopName] = useState("");
 
   const [register, { isLoading: isRegistering }] = useRegisterMutation();
   const [initShopData, { isLoading: isIniting }] = useInitShopDataMutation();
@@ -226,6 +229,7 @@ export default function RegisterPage() {
         }),
       ]);
 
+      setRegisteredShopName(shopName);
       setRegisteredDomain(domainName);
       setStep(2);
     } catch (err: any) {
@@ -237,20 +241,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-6 sm:py-10">
       <div className="w-full max-w-lg">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+        <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
           <Store className="h-7 w-7 text-primary" />
           <span className="text-xl font-bold text-primary">POS Mobile</span>
         </div>
 
-        <div className="rounded-xl border bg-card p-6 sm:p-8 shadow-sm">
+        <div className="rounded-xl border bg-card p-5 sm:p-6 shadow-sm">
           <Stepper current={step} />
 
           {/* ── Step 0: Info form ───────────────────────────────────────── */}
           {step === 0 && (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
                 <h2 className="text-xl font-bold text-foreground">Đăng ký cửa hàng</h2>
                 <p className="text-muted-foreground text-sm mt-1">
@@ -263,7 +267,7 @@ export default function RegisterPage() {
                 <Label htmlFor="shop-name">Tên cửa hàng *</Label>
                 <Input
                   id="shop-name"
-                  placeholder="vd: Cửa hàng Minh Anh"
+                  placeholder="Tên cửa hàng"
                   {...formRegister("ShopName", {
                     required: "Vui lòng nhập tên cửa hàng",
                   })}
@@ -279,38 +283,39 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* Email */}
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@example.com"
-                  autoComplete="email"
-                  {...formRegister("Email", {
-                    required: "Vui lòng nhập email",
-                    pattern: {
-                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                      message: "Email không hợp lệ",
-                    },
-                  })}
-                  className={errors.Email ? "border-destructive" : ""}
-                />
-                {errors.Email && (
-                  <p className="text-xs text-destructive">{errors.Email.message}</p>
-                )}
-              </div>
+              {/* Email + Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Email"
+                    autoComplete="email"
+                    {...formRegister("Email", {
+                      required: "Vui lòng nhập email",
+                      pattern: {
+                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                        message: "Email không hợp lệ",
+                      },
+                    })}
+                    className={errors.Email ? "border-destructive" : ""}
+                  />
+                  {errors.Email && (
+                    <p className="text-xs text-destructive">{errors.Email.message}</p>
+                  )}
+                </div>
 
-              {/* Phone */}
-              <div className="space-y-1.5">
-                <Label htmlFor="phone">Số điện thoại</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="0901234567"
-                  autoComplete="tel"
-                  {...formRegister("Phone")}
-                />
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone">Số điện thoại</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="Điện thoại"
+                    autoComplete="tel"
+                    {...formRegister("Phone")}
+                  />
+                </div>
               </div>
 
               {/* Province */}
@@ -322,7 +327,7 @@ export default function RegisterPage() {
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Chọn tỉnh thành" />
+                        <SelectValue placeholder="Chọn tỉnh / thành phố" />
                       </SelectTrigger>
                       <SelectContent>
                         {provinces.map((p) => (
@@ -340,7 +345,7 @@ export default function RegisterPage() {
               {productCategories.length > 0 && (
                 <div className="space-y-2">
                   <Label>Ngành hàng kinh doanh</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {productCategories.map((cat) => (
                       <button
                         key={cat.Id}
@@ -421,7 +426,9 @@ export default function RegisterPage() {
                   Đăng ký thành công! 🎉
                 </h2>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Cửa hàng của bạn đã được tạo
+                  Cửa hàng{" "}
+                  <span className="font-semibold text-foreground">{registeredShopName}</span>{" "}
+                  đã sẵn sàng để truy cập
                 </p>
               </div>
 

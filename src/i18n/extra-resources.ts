@@ -127,6 +127,7 @@ export const extraResources: Record<string, any> = {
         thisYear: "Năm nay",
         lastYear: "Năm ngoái"
       },
+      warehouse: "Kho hàng",
       stockIn: "Kho nhập",
       stockOut: "Kho xuất",
       qtyIn: "SL nhập",
@@ -1782,6 +1783,7 @@ export const extraResources: Record<string, any> = {
         thisYear: "This year",
         lastYear: "Last year"
       },
+      warehouse: "Warehouse",
       stockIn: "Stock in",
       stockOut: "Stock out",
       qtyIn: "Qty in",
@@ -3443,6 +3445,7 @@ extraResources.km = {
       thisYear: "ឆ្នាំនេះ",
       lastYear: "ឆ្នាំមុន"
     },
+    warehouse: "ឃ្លាំង",
     stockIn: "ឃ្លាំងនាំចូល",
     stockOut: "ឃ្លាំងនាំចេញ",
     qtyIn: "ចំនួននាំចូល",
@@ -5100,6 +5103,7 @@ extraResources.zh = {
       thisYear: "今年",
       lastYear: "去年"
     },
+    warehouse: "仓库",
     stockIn: "入库仓",
     stockOut: "出库仓",
     qtyIn: "入库数量",

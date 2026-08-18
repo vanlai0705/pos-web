@@ -25,7 +25,7 @@ import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ProductDialog } from './product-dialog'
 
-const PAGE_SIZE = 15
+const PAGE_SIZE = 100
 const STATUS_ACTIVE = 0
 const STATUS_LOCKED = 1
 const STATUS_DELETED = 2

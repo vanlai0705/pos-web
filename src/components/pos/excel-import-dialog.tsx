@@ -123,36 +123,38 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
         {step === 'map' && (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">{t('components.excelImportDialog.mapInstruction')}</p>
-            <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
-                  <tr className="h-9">
-                    <th className="w-10 px-2">{t('common.index')}</th>
-                    <th className="px-2 text-left">{t('components.excelImportDialog.dataColumnName')}</th>
-                    <th className="px-2 text-left">{t('components.excelImportDialog.excelColumn')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item, index) => (
-                    <tr key={item.Id ?? index} className="border-t">
-                      <td className="px-2 py-1.5 text-center text-muted-foreground">{index + 1}</td>
-                      <td className="px-2 py-1.5 font-medium">{item.Name}</td>
-                      <td className="px-2 py-1.5">
-                        <select
-                          value={item.Value ?? ''}
-                          onChange={e => setColumn(item.Id, e.target.value)}
-                          className="h-8 w-full rounded-md border bg-background px-2 text-sm"
-                        >
-                          <option value="">{t('components.excelImportDialog.noSelection')}</option>
-                          {headerOptions.map(h => (
-                            <option key={h.Value} value={h.Value}>{h.Name}</option>
-                          ))}
-                        </select>
-                      </td>
+            <div className="max-h-[50vh] overflow-hidden rounded-lg border">
+              <div className="max-h-[50vh] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
+                    <tr className="h-9">
+                      <th className="w-10 px-2">{t('common.index')}</th>
+                      <th className="px-2 text-left">{t('components.excelImportDialog.dataColumnName')}</th>
+                      <th className="px-2 text-left">{t('components.excelImportDialog.excelColumn')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {items.map((item, index) => (
+                      <tr key={item.Id ?? index} className="border-t">
+                        <td className="px-2 py-1.5 text-center text-muted-foreground">{index + 1}</td>
+                        <td className="px-2 py-1.5 font-medium">{item.Name}</td>
+                        <td className="px-2 py-1.5">
+                          <select
+                            value={item.Value ?? ''}
+                            onChange={e => setColumn(item.Id, e.target.value)}
+                            className="h-8 w-full rounded-md border bg-background px-2 text-sm"
+                          >
+                            <option value="">{t('components.excelImportDialog.noSelection')}</option>
+                            {headerOptions.map(h => (
+                              <option key={h.Value} value={h.Value}>{h.Name}</option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -162,23 +164,25 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
             <p className="text-xs text-muted-foreground">
               {t('components.excelImportDialog.previewRowsCount', { count: previewRows?.length ?? 0 })}
             </p>
-            <div className="max-h-[50vh] overflow-auto rounded-lg border">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-muted/50 text-muted-foreground">
-                  <tr className="h-8">
-                    <th className="w-10 px-2">#</th>
-                    {items.map((item, i) => <th key={item.Id ?? i} className="px-2 text-left whitespace-nowrap">{item.Name}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(previewRows ?? []).map((row, r) => (
-                    <tr key={r} className="border-t">
-                      <td className="px-2 py-1 text-center text-muted-foreground">{r + 1}</td>
-                      {row.map((cell, c) => <td key={c} className="px-2 py-1 whitespace-nowrap">{cell == null ? '' : String(cell)}</td>)}
+            <div className="max-h-[50vh] overflow-hidden rounded-lg border">
+              <div className="max-h-[50vh] overflow-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-muted/50 text-muted-foreground">
+                    <tr className="h-8">
+                      <th className="w-10 px-2">#</th>
+                      {items.map((item, i) => <th key={item.Id ?? i} className="px-2 text-left whitespace-nowrap">{item.Name}</th>)}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {(previewRows ?? []).map((row, r) => (
+                      <tr key={r} className="border-t">
+                        <td className="px-2 py-1 text-center text-muted-foreground">{r + 1}</td>
+                        {row.map((cell, c) => <td key={c} className="px-2 py-1 whitespace-nowrap">{cell == null ? '' : String(cell)}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

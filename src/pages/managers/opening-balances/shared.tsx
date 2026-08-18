@@ -439,7 +439,7 @@ export function OpeningBalanceEntityPage({
         />
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
+      <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
         <div className="text-sm font-semibold text-muted-foreground">
           Tổng giá trị: <span className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</span>
         </div>
@@ -654,6 +654,8 @@ export function OpeningInventoryPageContent() {
             <div>
               <h1 className="text-sm font-bold text-foreground">Cập nhật tồn kho ban đầu</h1>
               <p className="text-xs text-muted-foreground">
+                Tổng mặt hàng: <b className="text-sky-700 dark:text-sky-400">{formatMoney(rows.length)}</b>
+                <span className="mx-2">|</span>
                 SL: <b className="text-sky-700 dark:text-sky-400">{formatMoney(totalQuantity)}</b>
                 <span className="mx-2">|</span>
                 Giá trị: <b className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</b>
@@ -696,6 +698,14 @@ export function OpeningInventoryPageContent() {
               <Download className="h-4 w-4" />
               Xuất
             </ToolbarButton>
+            <ToolbarButton tone="primary" disabled={saving} onClick={saveData}>
+              <Save className="h-4 w-4" />
+              Ghi dữ liệu
+            </ToolbarButton>
+            <ToolbarButton tone="danger" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4" />
+              Thoát
+            </ToolbarButton>
           </>
         )}
       />
@@ -720,24 +730,6 @@ export function OpeningInventoryPageContent() {
           onPageSizeChange={size => { setPageSize(size); setPage(1) }}
           emptyText="Không có dữ liệu tồn kho ban đầu"
         />
-      </div>
-
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-5 text-sm font-semibold text-muted-foreground">
-          <span>Tổng mặt hàng: <b className="text-sky-700 dark:text-sky-400">{formatMoney(rows.length)}</b></span>
-          <span>Tổng số lượng: <b className="text-sky-700 dark:text-sky-400">{formatMoney(totalQuantity)}</b></span>
-          <span>Tổng giá trị: <b className="text-red-600 dark:text-red-400">{formatMoney(totalAmount)}</b></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <ToolbarButton tone="primary" disabled={saving} onClick={saveData}>
-            <Save className="h-4 w-4" />
-            Ghi dữ liệu
-          </ToolbarButton>
-          <ToolbarButton tone="danger" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
-            Thoát
-          </ToolbarButton>
-        </div>
       </div>
     </div>
   )

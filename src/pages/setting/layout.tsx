@@ -18,7 +18,7 @@ const NAV_ITEMS = [
 export default function SettingLayout() {
   const { t } = useTranslation()
   return (
-    <div className="flex gap-5 min-h-[calc(100vh-4rem)]">
+    <div className="flex gap-5 h-full min-h-0">
       {/* Side nav */}
       <aside className="w-52 flex-none">
         <nav className="sticky top-4 rounded-xl border bg-card shadow-sm overflow-hidden">
@@ -48,8 +48,12 @@ export default function SettingLayout() {
         </nav>
       </aside>
 
-      {/* Page content */}
-      <main className="flex-1 min-w-0">
+      {/* Page content — min-h-0 lets this pane take the row's bounded height
+          instead of growing with content; overflow-y-auto is its own
+          fallback scrollbar for pages that don't manage an internal scroll
+          region themselves (DataTable-based list pages using h-full/min-h-0
+          fit exactly, so this scrollbar stays inactive for them). */}
+      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto">
         <Outlet />
       </main>
     </div>
