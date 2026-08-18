@@ -1,5 +1,7 @@
 import dayjs from 'dayjs'
 import { type LookupItem, LookupSelect } from '@/components/pos/lookup-select'
+import { StaffSelect } from '@/components/pos/staff-select'
+import type { TPosUser } from '@/store/slice/users'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -120,9 +122,9 @@ export function RewardPunishDialog({ open, onOpenChange, editId, lockedUser, onS
 
           <div className="space-y-1">
             <Label>{t('components.rewardPunishDialog.employee')} <span className="text-destructive">*</span></Label>
-            <LookupSelect endpoint="users/filter-simple" placeholder={t('components.rewardPunishDialog.selectEmployeePlaceholder')}
+            <StaffSelect placeholder={t('components.rewardPunishDialog.selectEmployeePlaceholder')}
               disabled={!!lockedUser}
-              value={form.User} onChange={v => setForm(f => ({ ...f, User: v }))} />
+              value={form.User as TPosUser | null} onChange={v => setForm(f => ({ ...f, User: v }))} />
           </div>
 
           <div className="space-y-1">
@@ -148,7 +150,8 @@ export function RewardPunishDialog({ open, onOpenChange, editId, lockedUser, onS
             <LookupSelect endpoint="rewardpunishreasons/filter-simple" placeholder={t('components.rewardPunishDialog.selectReasonPlaceholder')}
               params={{ Type: form.Type ?? REWARD_PUNISH_TYPE.REWARD }}
               value={form.RewardPunishReason}
-              onChange={v => setForm(f => ({ ...f, RewardPunishReason: v }))} />
+              onChange={v => setForm(f => ({ ...f, RewardPunishReason: v }))}
+              listPath="/human-resources/reward-punish-reason" />
           </div>
 
           <div className="space-y-1">

@@ -208,6 +208,14 @@ export function InternalOrderPanel({
     money.setPayment(value)
   }
 
+  // "Khách đưa" formats like every other money field (thousands separators
+  // at rest, raw digits while typing) but must NOT collapse to 0 on blur —
+  // an untouched '' still means "trả đủ tổng tiền" (see `paid` above), so a
+  // stray focus/blur without typing has to leave it exactly as-is.
+  const [paymentEditing, setPaymentEditing] = useState(false)
+  const [paymentDraft, setPaymentDraft] = useState('')
+  const paymentDisplay = paymentEditing ? paymentDraft : (paymentValue === '' ? '' : paymentValue.toLocaleString('vi-VN'))
+
   const setShortageValue = (value: number) => {
     const next = Math.min(total, Math.max(0, value))
     money.setShortage(next)
@@ -479,9 +487,22 @@ export function InternalOrderPanel({
                 </div>
 
                 <MoneyRow label={t('pages.actives.order.customerPaidLabel')}>
-                  <input type="number" min={0} value={paymentValue}
-                    onChange={e => setPaymentValue(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder={String(Math.round(total))}
+                  <input type="text" inputMode="decimal" value={paymentDisplay}
+                    onFocus={e => {
+                      setPaymentDraft(paymentValue === '' ? '' : String(paymentValue))
+                      setPaymentEditing(true)
+                      requestAnimationFrame(() => e.target.select())
+                    }}
+                    onChange={e => {
+                      const raw = e.target.value
+                      setPaymentDraft(raw)
+                      if (raw === '') { setPaymentValue(''); return }
+                      const n = Number(raw)
+                      if (Number.isNaN(n)) return
+                      setPaymentValue(Math.max(0, n))
+                    }}
+                    onBlur={() => setPaymentEditing(false)}
+                    placeholder={Math.round(total).toLocaleString('vi-VN')}
                     className="flex-1 w-0 border border-input rounded px-1.5 py-0.5 text-xs bg-background focus:outline-none placeholder:text-muted-foreground/50 text-foreground tabular-nums text-right" />
                 </MoneyRow>
                 {selectedCustomer && (

@@ -1,5 +1,8 @@
 import dayjs from 'dayjs'
 import { type LookupItem, LookupSelect } from '@/components/pos/lookup-select'
+import { CustomerSelect } from '@/components/pos/customer-select'
+import { StaffSelect } from '@/components/pos/staff-select'
+import { SupplierSelect } from '@/components/pos/supplier-select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, FormDialogBody, FormDialogContent, FormDialogFooter, FormDialogHeader } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -9,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useGenericDownloadMutation, useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import type { TPosCustomerSimple, TPosUser } from '@/store/slice/users'
 import { buildModelFormData } from '@/utils/multipart'
 import { Eye, Printer } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -270,7 +274,7 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
             <div className="space-y-1">
               <Label>{t('components.receiptPaymentDialog.fundTypeLabel')}</Label>
               <LookupSelect endpoint="fundType/filter-simple" placeholder={t('components.receiptPaymentDialog.selectFundTypePlaceholder')}
-                value={form.FundType} onChange={v => setForm(f => ({ ...f, FundType: v }))} />
+                value={form.FundType} onChange={v => setForm(f => ({ ...f, FundType: v }))} listPath="/currencies/fund-type" />
             </div>
           </div>
 
@@ -280,7 +284,8 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
               <LookupSelect endpoint="receiptpaymentreason/filter-simple" placeholder={t('components.receiptPaymentDialog.selectReasonPlaceholder')}
                 params={{ Type: type }}
                 value={form.ReceiptPaymentReason}
-                onChange={v => setForm(f => ({ ...f, ReceiptPaymentReason: v, Detail: (v?.Name as string) ?? '' }))} />
+                onChange={v => setForm(f => ({ ...f, ReceiptPaymentReason: v, Detail: (v?.Name as string) ?? '' }))}
+                listPath="/currencies/receipt-payment-reason" />
             </div>
             <div className="space-y-1">
               <Label>{t('components.receiptPaymentDialog.originDocumentLabel')}</Label>
@@ -303,16 +308,16 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
             <div className="space-y-1">
               <Label>&nbsp;</Label>
               {form.ObjectType === OBJECT_TYPE.Customer && (
-                <LookupSelect endpoint="customers/filter-simple" placeholder={t('components.receiptPaymentDialog.selectCustomerPlaceholder')} disabled={disableObjectType}
-                  value={form.Customer} onChange={v => pickParty('Customer', v)} />
+                <CustomerSelect placeholder={t('components.receiptPaymentDialog.selectCustomerPlaceholder')} disabled={disableObjectType}
+                  value={form.Customer as TPosCustomerSimple | null} onChange={v => pickParty('Customer', v)} />
               )}
               {form.ObjectType === OBJECT_TYPE.Supplier && (
-                <LookupSelect endpoint="suppliers/filter-simple" placeholder={t('components.receiptPaymentDialog.selectSupplierPlaceholder')} disabled={disableObjectType}
+                <SupplierSelect placeholder={t('components.receiptPaymentDialog.selectSupplierPlaceholder')} disabled={disableObjectType}
                   value={form.Supplier} onChange={v => pickParty('Supplier', v)} />
               )}
               {form.ObjectType === OBJECT_TYPE.User && (
-                <LookupSelect endpoint="users/filter-simple" placeholder={t('components.receiptPaymentDialog.selectEmployeePlaceholder')} disabled={disableObjectType}
-                  value={form.User} onChange={v => pickParty('User', v)} />
+                <StaffSelect placeholder={t('components.receiptPaymentDialog.selectEmployeePlaceholder')} disabled={disableObjectType}
+                  value={form.User as TPosUser | null} onChange={v => pickParty('User', v)} />
               )}
               {form.ObjectType === OBJECT_TYPE.Another && (
                 <Input placeholder={t('components.receiptPaymentDialog.objectNamePlaceholder')} value={form.ObjectName ?? ''}
@@ -341,7 +346,7 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
             <div className="space-y-1">
               <Label>{t('components.receiptPaymentDialog.shopLabel')}</Label>
               <LookupSelect endpoint="shop/filter-simple" placeholder={t('components.receiptPaymentDialog.selectShopPlaceholder')}
-                value={form.Shop} onChange={v => setForm(f => ({ ...f, Shop: v }))} />
+                value={form.Shop} onChange={v => setForm(f => ({ ...f, Shop: v }))} listPath="/managers/shops" />
             </div>
             <label className="flex cursor-pointer select-none items-center gap-2 py-2">
               <Switch checked={!!form.IsTransfer} onCheckedChange={v => setForm(f => ({ ...f, IsTransfer: v }))} />

@@ -12,12 +12,15 @@ import { confirmAction } from '@/components/ui/use-confirm-action'
 import { STATUS } from '@/constants/status'
 import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
 import { useFilterReportQuery, useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
-import { useGetSalaryTypesQuery } from '@/store/slice/human-resources/api'
+import { useGetSalaryTypesQuery, useSaveShiftMutation } from '@/store/slice/human-resources/api'
 import { buildModelFormData } from '@/utils/multipart'
 import { Banknote, Check, Lock, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
+import { type LookupItem } from '@/components/pos/lookup-select'
+import { SimpleNameSelect } from '@/components/pos/simple-name-select'
+import { StaffSelect } from '@/components/pos/staff-select'
+import type { TPosUser } from '@/store/slice/users'
 
 /** Per-employee salary settings the sheet copies from the member record. */
 interface TUserSalary {
@@ -33,7 +36,7 @@ interface TSalary {
   Year?: number
   Type?: number
   SalaryTypeName?: string
-  User?: LookupItem | null
+  User?: TPosUser | null
   Shift?: LookupItem | null
   UserSalary?: TUserSalary
   /** Day numbers within the month that were worked */
@@ -112,6 +115,7 @@ export default function SalariesPage() {
   const [fetchUserSalary] = useLazyGenericGetQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
   const { data: salaryTypes = [] } = useGetSalaryTypesQuery()
+  const [saveShift] = useSaveShiftMutation()
 
   const items = (data?.Items ?? []) as TSalary[]
   const total = data?.TotalItemCount ?? 0
@@ -129,7 +133,7 @@ export default function SalariesPage() {
   }, [modal, editId, fetchDetail])
 
   /** Picking an employee pulls their configured salary, like Angular does. */
-  const pickUser = async (u: LookupItem | null) => {
+  const pickUser = async (u: TPosUser | null) => {
     setForm(f => ({ ...f, User: u }))
     if (!u?.Id) return
     try {
@@ -238,14 +242,16 @@ export default function SalariesPage() {
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label>Nhân viên <span className="text-destructive">*</span></Label>
-                <LookupSelect endpoint="users/filter-simple" placeholder="Chọn nhân viên"
+                <StaffSelect placeholder="Chọn nhân viên"
                   value={form.User} onChange={pickUser} />
               </div>
 
               <div className="space-y-1">
                 <Label>Ca làm việc</Label>
-                <LookupSelect endpoint="shift/filter-simple" placeholder="Chọn ca"
-                  value={form.Shift} onChange={v => setForm(f => ({ ...f, Shift: v }))} />
+                <SimpleNameSelect endpoint="shift/filter-simple" placeholder="Chọn ca"
+                  value={form.Shift} onChange={v => setForm(f => ({ ...f, Shift: v }))} listPath="/human-resources/shifts"
+                  addTitle="Thêm ca làm việc" namePlaceholder="Tên ca làm việc"
+                  save={d => saveShift(d).unwrap()} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">

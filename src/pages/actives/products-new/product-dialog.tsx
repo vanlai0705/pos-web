@@ -1,6 +1,8 @@
 import type { TPosActiveProduct,TPosProductPriceRow,TPosProductRecipeRow,TPosProductType,TPosShop } from '@/store/slice/users/types/pos-types'
 import { LookupSelect } from '@/components/pos/lookup-select'
 import { ProductImageUploads, emptySlot, withTrailingEmpty, type ImageSlot } from '@/components/pos/product-image-uploads'
+import { SimpleNameSelect } from '@/components/pos/simple-name-select'
+import { useSaveUnitMutation } from '@/store/slice/managers/api'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogTitle, FormDialogBody, FormDialogContent, FormDialogFooter, FormDialogHeader } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -382,6 +384,7 @@ function ProductTab({
   onPrint: () => void
 }) {
   const { t } = useTranslation()
+  const [saveUnit] = useSaveUnitMutation()
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
       <div className="space-y-3 lg:col-span-8">
@@ -424,9 +427,11 @@ function ProductTab({
             </select>
           </Field>
           <Field label={t('pages.actives.productDialog.unitLabel')}>
-            <LookupSelect endpoint="units/filter-simple" placeholder={t('pages.actives.productDialog.unitPlaceholder')}
+            <SimpleNameSelect endpoint="units/filter-simple" placeholder={t('pages.actives.productDialog.unitPlaceholder')}
               value={form.Unit as { Id?: number; Name?: string } | null}
-              onChange={v => set({ Unit: v ? { Id: v.Id, Name: v.Name ?? '' } : undefined })} />
+              onChange={v => set({ Unit: v ? { Id: v.Id, Name: v.Name ?? '' } : undefined })} listPath="/managers/units"
+              addTitle="Thêm đơn vị tính" namePlaceholder="Ví dụ: Cái, Hộp, Kg..."
+              save={d => saveUnit(d).unwrap()} />
           </Field>
           <Field label={t('pages.actives.productDialog.productTypeLabel')}>
             <LookupSelect<TPosProductType> endpoint="producttypes/get-list" placeholder={t('pages.actives.productDialog.productTypePlaceholder')}

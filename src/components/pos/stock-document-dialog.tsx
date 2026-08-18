@@ -1,5 +1,8 @@
 import dayjs from 'dayjs'
 import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
+import { CustomerSelect } from '@/components/pos/customer-select'
+import { StaffSelect } from '@/components/pos/staff-select'
+import { SupplierSelect } from '@/components/pos/supplier-select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -7,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { useGenericDownloadMutation, useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
 import { useFilterActiveProductsQuery } from '@/store/slice/products/api'
 import { useGetSettingOrderQuery } from '@/store/slice/settings/api'
-import { TPosActiveProduct } from '@/store/slice/users'
+import { TPosActiveProduct, type TPosCustomerSimple, type TPosUser } from '@/store/slice/users'
 import { getImageUrl } from '@/utils/common'
 import { buildModelFormData } from '@/utils/multipart'
 import { Eye, Package, Printer, Search, Trash2 } from 'lucide-react'
@@ -329,9 +332,10 @@ export function StockDocumentDialog({
       <DialogContent className="max-w-6xl">
         <DialogHeader><DialogTitle>{form.Id ? `${t('components.stockDocumentDialog.editPrefix')} ${title.toLowerCase()}` : title}</DialogTitle></DialogHeader>
 
-        <div className="grid gap-4 max-h-[70vh] overflow-y-auto pr-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <div className="space-y-3">
-            {/* Header fields — mirrors view-order-edit */}
+        <div className="flex min-h-0 max-h-[70vh] flex-col gap-3">
+          {/* Header fields — mirrors view-order-edit. Fixed height, never
+              part of any scroll region, so it's always fully visible. */}
+          <div className="shrink-0">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>{t('common.date')}</Label>
@@ -355,44 +359,51 @@ export function StockDocumentDialog({
                 <div className="space-y-1">
                   <Label>{t('common.stockOut')}</Label>
                   <LookupSelect endpoint="stock/filter-simple" placeholder={t('components.stockDocumentDialog.selectStockOut')}
-                    value={form.StockOut} onChange={v => setForm(f => ({ ...f, StockOut: v }))} />
+                    value={form.StockOut} onChange={v => setForm(f => ({ ...f, StockOut: v }))} listPath="/stocks/stocks" />
                 </div>
               )}
               {options.stockIn && (
                 <div className="space-y-1">
                   <Label>{t('common.stockIn')}</Label>
                   <LookupSelect endpoint="stock/filter-simple" placeholder={t('components.stockDocumentDialog.selectStockIn')}
-                    value={form.StockIn} onChange={v => setForm(f => ({ ...f, StockIn: v }))} />
+                    value={form.StockIn} onChange={v => setForm(f => ({ ...f, StockIn: v }))} listPath="/stocks/stocks" />
                 </div>
               )}
               {options.supplier && (
                 <div className="space-y-1">
                   <Label>{t('common.supplier')}</Label>
-                  <LookupSelect endpoint="suppliers/filter-simple" placeholder={t('components.stockDocumentDialog.selectSupplier')}
+                  <SupplierSelect placeholder={t('components.stockDocumentDialog.selectSupplier')}
                     value={form.Supplier} onChange={v => setForm(f => ({ ...f, Supplier: v }))} />
                 </div>
               )}
               {options.customer && (
                 <div className="space-y-1">
                   <Label>{t('common.customer')}</Label>
-                  <LookupSelect endpoint="customers/filter-simple" placeholder={t('components.stockDocumentDialog.selectCustomer')}
-                    value={form.Customer} onChange={v => setForm(f => ({ ...f, Customer: v }))} />
+                  <CustomerSelect placeholder={t('components.stockDocumentDialog.selectCustomer')}
+                    value={form.Customer as TPosCustomerSimple | null} onChange={v => setForm(f => ({ ...f, Customer: v }))} />
                 </div>
               )}
               <div className="space-y-1">
                 <Label>{t('components.stockDocumentDialog.employee')}</Label>
-                <LookupSelect endpoint="users/filter-simple" placeholder={t('components.stockDocumentDialog.selectEmployee')}
-                  value={form.User} onChange={v => setForm(f => ({ ...f, User: v }))} />
+                <StaffSelect placeholder={t('components.stockDocumentDialog.selectEmployee')}
+                  value={form.User as TPosUser | null} onChange={v => setForm(f => ({ ...f, User: v }))} />
               </div>
               <div className="space-y-1">
                 <Label>{t('common.note')}</Label>
                 <Input value={form.Note ?? ''} onChange={e => setForm(f => ({ ...f, Note: e.target.value }))} />
               </div>
             </div>
+          </div>
 
+          {/* Items table (left) + product picker (right) share one bounded
+              row so both fill all remaining height instead of stopping at an
+              arbitrary max-height, and the grand total below stays pinned
+              outside the table's own scroll — no dialog-wide scrolling
+              needed to reach it. */}
+          <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             {/* Line items */}
-            <div className="rounded-lg border overflow-hidden">
-              <div className="max-h-72 overflow-auto">
+            <div className="flex min-h-0 flex-col rounded-lg border overflow-hidden">
+              <div className="min-h-0 flex-1 overflow-auto">
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-muted/60 backdrop-blur">
                     <tr>
@@ -454,46 +465,46 @@ export function StockDocumentDialog({
                 </table>
               </div>
               {!isCheck && (
-                <div className="flex justify-between border-t bg-muted/30 px-3 py-2 text-sm">
+                <div className="shrink-0 flex justify-between border-t bg-muted/30 px-3 py-2 text-sm">
                   <span className="font-medium">{t('components.stockDocumentDialog.grandTotal')}</span>
                   <span className="font-bold tabular-nums text-primary">{subTotal.toLocaleString('vi-VN')}</span>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Product picker — replaces view-product-search */}
-          <div className="rounded-lg border p-2 space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input className="h-9 pl-8" placeholder={t('components.stockDocumentDialog.searchProductPlaceholder')}
-                value={keyword} onChange={e => setKeyword(e.target.value)} />
-            </div>
-            <div className="max-h-[420px] space-y-1 overflow-y-auto">
-              {loadingProducts && <div className="px-2 py-3 text-xs text-muted-foreground">{t('common.loading')}</div>}
-              {!loadingProducts && products.length === 0 && (
-                <div className="px-2 py-3 text-xs text-muted-foreground">{t('components.stockDocumentDialog.noProductsFound')}</div>
-              )}
-              {products.map(p => {
-                const img = getImageUrl(p.Image?.Url ?? p.Images?.[0]?.Url ?? undefined)
-                return (
-                  <button key={p.Id} type="button" onClick={() => addProduct(p)}
-                    className="flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/40">
-                    {img
-                      ? <img src={img} alt="" className="h-8 w-8 rounded object-cover" />
-                      : <div className="flex h-8 w-8 items-center justify-center rounded bg-muted"><Package className="h-4 w-4 text-muted-foreground/60" /></div>}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-medium">{p.Name}</div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {p.ProductCode ?? p.Code} · {t('common.inventory')} {p.Quantity?.toLocaleString('vi-VN') ?? 0}
+            {/* Product picker — replaces view-product-search */}
+            <div className="flex min-h-0 flex-col gap-2 rounded-lg border p-2">
+              <div className="relative shrink-0">
+                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input className="h-9 pl-8" placeholder={t('components.stockDocumentDialog.searchProductPlaceholder')}
+                  value={keyword} onChange={e => setKeyword(e.target.value)} />
+              </div>
+              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+                {loadingProducts && <div className="px-2 py-3 text-xs text-muted-foreground">{t('common.loading')}</div>}
+                {!loadingProducts && products.length === 0 && (
+                  <div className="px-2 py-3 text-xs text-muted-foreground">{t('components.stockDocumentDialog.noProductsFound')}</div>
+                )}
+                {products.map(p => {
+                  const img = getImageUrl(p.Image?.Url ?? p.Images?.[0]?.Url ?? undefined)
+                  return (
+                    <button key={p.Id} type="button" onClick={() => addProduct(p)}
+                      className="flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/40">
+                      {img
+                        ? <img src={img} alt="" className="h-8 w-8 rounded object-cover" />
+                        : <div className="flex h-8 w-8 items-center justify-center rounded bg-muted"><Package className="h-4 w-4 text-muted-foreground/60" /></div>}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-xs font-medium">{p.Name}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {p.ProductCode ?? p.Code} · {t('common.inventory')} {p.Quantity?.toLocaleString('vi-VN') ?? 0}
+                        </div>
                       </div>
-                    </div>
-                    <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
-                      {(p.Price ?? 0).toLocaleString('vi-VN')}
-                    </span>
-                  </button>
-                )
-              })}
+                      <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
+                        {(p.Price ?? 0).toLocaleString('vi-VN')}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>

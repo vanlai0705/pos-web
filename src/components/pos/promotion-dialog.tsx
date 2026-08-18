@@ -1,5 +1,6 @@
 import dayjs from 'dayjs'
 import { type LookupItem, LookupSelect } from '@/components/pos/lookup-select'
+import { SimpleNameSelect } from '@/components/pos/simple-name-select'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -9,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { STATUS } from '@/constants/status'
 import { useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import { useSaveProductGroupMutation } from '@/store/slice/managers/api'
 import { buildModelFormData } from '@/utils/multipart'
 import { Plus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -132,6 +134,7 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
 
   const [fetchDetail] = useLazyGenericGetQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
+  const [saveProductGroup] = useSaveProductGroupMutation()
 
   useEffect(() => {
     if (!open) return
@@ -273,14 +276,16 @@ export function PromotionDialog({ open, onOpenChange, type, title, editId, onSav
                   {t('components.promotionDialog.itemsDetail')} <span className="text-destructive">*</span>
                 </Label>
                 {mode === 'productGroup' && (
-                  <LookupSelect className="w-64" endpoint="productgroups/filter-simple"
+                  <SimpleNameSelect className="w-64" endpoint="productgroups/filter-simple"
                     placeholder={t('components.promotionDialog.selectGroupToAdd')}
-                    value={null} onChange={v => addByPick('ProductGroup', v)} />
+                    value={null} onChange={v => addByPick('ProductGroup', v)} listPath="/managers/product-groups"
+                    addTitle="Thêm nhóm mặt hàng" namePlaceholder="Tên nhóm mặt hàng"
+                    save={d => saveProductGroup(d).unwrap()} />
                 )}
                 {mode === 'product' && (
                   <LookupSelect<TProduct> className="w-64" endpoint="products/filter-simple"
                     placeholder={t('components.promotionDialog.selectProductToAdd')}
-                    subtitle={p => p.Barcode} value={null} onChange={v => addByPick('Product', v)} />
+                    subtitle={p => p.Barcode} value={null} onChange={v => addByPick('Product', v)} listPath="/actives/products-new" />
                 )}
                 {mode === 'manual' && (
                   <Button type="button" size="sm" variant="outline"

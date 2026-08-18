@@ -336,7 +336,12 @@ export default function TablesManagePage() {
   }
 
   const submitBatch = async () => {
-    if (batchRows.some(row => !row.AreaId || !row.FromNumber || !row.ToNumber || !row.StartNameWith.trim())) {
+    // Rows are pre-seeded per area so the user can fill in just the ones
+    // they actually want — an untouched row (all 3 fields still blank)
+    // is simply skipped, not treated as an incomplete submission. A row
+    // the user *started* filling in still has to be completed, though.
+    const touchedRows = batchRows.filter(row => row.FromNumber || row.ToNumber || row.StartNameWith.trim())
+    if (touchedRows.length === 0 || touchedRows.some(row => !row.AreaId || !row.FromNumber || !row.ToNumber || !row.StartNameWith.trim())) {
       toast.error(t('pages.actives.tables.batchFieldsRequired'))
       return
     }
@@ -344,7 +349,7 @@ export default function TablesManagePage() {
       await request({
         url: 'tables/batch-create',
         method: 'POST',
-        body: batchRows.map(row => ({
+        body: touchedRows.map(row => ({
           areaId: row.AreaId,
           fromNumber: Number(row.FromNumber),
           toNumber: Number(row.ToNumber),

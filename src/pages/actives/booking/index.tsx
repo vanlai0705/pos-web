@@ -60,19 +60,15 @@ export default function BookingPage() {
           className="cursor-pointer"
           onClick={() => row.original.Id && openEdit(row.original.Id)}
         >
-          <VoucherTag value={row.original.Code} />
+          <VoucherTag value={row.original.Name} />
         </button>
       ),
     },
-    {
-      id: 'date',
-      header: t('common.date'),
-      cell: ({ row }) => <span className="whitespace-nowrap">{fmtDate(row.original.Date)}</span>,
-    },
+
     {
       id: 'deliveryDate',
       header: t('common.deliveryDate'),
-      cell: ({ row }) => <span className="whitespace-nowrap">{fmtDate(row.original.DeliveryDate)}</span>,
+      cell: ({ row }) => <span className="whitespace-nowrap">{fmtDate(row.original.Date)}</span>,
     },
     {
       id: 'customer',
@@ -90,6 +86,11 @@ export default function BookingPage() {
       cell: ({ row }) => (
         <MoneyTag value={row.original.Total ?? row.original.SubTotal} />
       ),
+    },
+    {
+      id: 'note',
+      header: t('common.note'),
+      cell: ({ row }) => <span className="whitespace-nowrap">{row.original.Note}</span>,
     },
     {
       id: 'status',

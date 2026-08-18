@@ -171,12 +171,12 @@ export default function FundPage() {
               <div className="space-y-1">
                 <Label>Từ quỹ <span className="text-destructive">*</span></Label>
                 <LookupSelect endpoint="fundtype/filter-simple" placeholder="Chọn quỹ nguồn"
-                  value={form.FundTypeFrom} onChange={v => setForm(f => ({ ...f, FundTypeFrom: v }))} />
+                  value={form.FundTypeFrom} onChange={v => setForm(f => ({ ...f, FundTypeFrom: v }))} listPath="/currencies/fund-type" />
               </div>
               <div className="space-y-1">
                 <Label>Đến quỹ <span className="text-destructive">*</span></Label>
                 <LookupSelect endpoint="fundtype/filter-simple" placeholder="Chọn quỹ đích"
-                  value={form.FundTypeTo} onChange={v => setForm(f => ({ ...f, FundTypeTo: v }))} />
+                  value={form.FundTypeTo} onChange={v => setForm(f => ({ ...f, FundTypeTo: v }))} listPath="/currencies/fund-type" />
               </div>
             </div>
 

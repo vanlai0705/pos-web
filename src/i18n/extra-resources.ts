@@ -1639,7 +1639,9 @@ export const extraResources: Record<string, any> = {
       lookupSelect: {
         selectPlaceholder: "Chọn...",
         searchPlaceholder: "Tìm...",
-        noResults: "Không tìm thấy"
+        noResults: "Không tìm thấy",
+        listButton: "Danh sách",
+        listButtonTitle: "Xem danh sách"
       },
       pagination: {
         previousPage: "Trang trước",
@@ -3295,7 +3297,9 @@ export const extraResources: Record<string, any> = {
       lookupSelect: {
         selectPlaceholder: "Select...",
         searchPlaceholder: "Search...",
-        noResults: "Not found"
+        noResults: "Not found",
+        listButton: "List",
+        listButtonTitle: "View list"
       },
       pagination: {
         previousPage: "Previous page",
@@ -4957,7 +4961,9 @@ extraResources.km = {
     lookupSelect: {
       selectPlaceholder: "ជ្រើសរើស...",
       searchPlaceholder: "ស្វែងរក...",
-      noResults: "រកមិនឃើញ"
+      noResults: "រកមិនឃើញ",
+      listButton: "បញ្ជី",
+      listButtonTitle: "មើលបញ្ជី"
     },
     pagination: {
       previousPage: "ទំព័រមុន",
@@ -6615,7 +6621,9 @@ extraResources.zh = {
     lookupSelect: {
       selectPlaceholder: "请选择...",
       searchPlaceholder: "搜索...",
-      noResults: "未找到"
+      noResults: "未找到",
+      listButton: "列表",
+      listButtonTitle: "查看列表"
     },
     pagination: {
       previousPage: "上一页",
