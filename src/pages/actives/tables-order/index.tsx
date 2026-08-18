@@ -266,6 +266,15 @@ export default function TablesOrderPage() {
   const [splitTable] = useSplitTableMutation()
   const layoutAreaId = selectedAreaId > 0 ? selectedAreaId : 0
   const layoutKey = useMemo(() => getLayoutKey(layoutAreaId), [layoutAreaId])
+  // Layout is saved per real area (layoutKey above), so "arrange" only makes
+  // sense once one specific area is picked — bail out of arrange mode the
+  // moment the user switches to "Tất cả khu vực" or a status filter.
+  useEffect(() => {
+    if (selectedAreaId <= 0 && isArrangeMode) {
+      setIsArrangeMode(false)
+      setDraggingTable(null)
+    }
+  }, [selectedAreaId, isArrangeMode])
   const positionedTables = useMemo(() => allTables.map((table, index) => ({
     table,
     layout: tableLayout[String(table.Id)] ?? defaultTableLayout(index),
@@ -467,23 +476,28 @@ export default function TablesOrderPage() {
             <p className="truncate text-sm font-semibold text-slate-800">{selectedAreaName}</p>
           </div>
           <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={() => {
-                setIsArrangeMode(active => {
-                  const next = !active
-                  if (next) resetMode()
-                  if (!next) setDraggingTable(null)
-                  return next
-                })
-              }}
-              className={cn(
-                'flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors',
-                isArrangeMode ? 'bg-rose-600 text-white shadow-sm shadow-rose-600/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-              )}
-            >
-              <Move className="h-4 w-4" />
-              <span className="hidden md:inline">{isArrangeMode ? t('common.done', { defaultValue: 'Xong' }) : t('pages.actives.tablesOrder.arrangeModeButton', { defaultValue: 'Sắp xếp bàn' })}</span>
-            </button>
+            {/* Layout positions are saved per real area — only offer "Sắp xếp
+                bàn" once one specific area is selected, not for "Tất cả khu
+                vực" or the status filters (Đang dùng/Còn trống/Đang đặt QR). */}
+            {selectedAreaId > 0 && (
+              <button
+                onClick={() => {
+                  setIsArrangeMode(active => {
+                    const next = !active
+                    if (next) resetMode()
+                    if (!next) setDraggingTable(null)
+                    return next
+                  })
+                }}
+                className={cn(
+                  'flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors',
+                  isArrangeMode ? 'bg-rose-600 text-white shadow-sm shadow-rose-600/20' : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+                )}
+              >
+                <Move className="h-4 w-4" />
+                <span className="hidden md:inline">{isArrangeMode ? t('common.done', { defaultValue: 'Xong' }) : t('pages.actives.tablesOrder.arrangeModeButton', { defaultValue: 'Sắp xếp bàn' })}</span>
+              </button>
+            )}
             {isArrangeMode ? (
               <button
                 onClick={resetLayout}

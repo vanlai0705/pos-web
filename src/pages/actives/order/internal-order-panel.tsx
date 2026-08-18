@@ -322,16 +322,22 @@ export function InternalOrderPanel({
                           <div className="flex items-center gap-1.5">
                             <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${DOT_COLORS[c]}`} />
                             <div className="min-w-0 flex items-center gap-1">
-                              <span className={cn(
-                                'shrink-0 rounded-full px-1.5 text-[9px] font-bold leading-[14px] whitespace-nowrap',
-                                item.product.Tax == null
-                                  ? 'bg-muted text-muted-foreground'
-                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-                              )}>
-                                {item.product.Tax == null
-                                  ? t('pages.actives.order.taxExemptBadge')
-                                  : t('pages.actives.order.taxableBadge', { percent: item.tax ?? item.product.Tax })}
-                              </span>
+                              {/* Per-item VAT badge only earns its place when tax is actually
+                                  set per line (perItemTax) — otherwise a single order-level
+                                  "% Thuế" already covers it (see the summary block below), so
+                                  repeating it on every row would just be noise. */}
+                              {perItemTax && (
+                                <span className={cn(
+                                  'shrink-0 rounded-full px-1.5 text-[9px] font-bold leading-[14px] whitespace-nowrap',
+                                  item.product.Tax == null
+                                    ? 'bg-muted text-muted-foreground'
+                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+                                )}>
+                                  {item.product.Tax == null
+                                    ? t('pages.actives.order.taxExemptBadge')
+                                    : t('pages.actives.order.taxableBadge', { percent: item.tax ?? item.product.Tax })}
+                                </span>
+                              )}
                               <span className="font-medium text-foreground line-clamp-1">{item.product.Name}</span>
                             </div>
                           </div>
