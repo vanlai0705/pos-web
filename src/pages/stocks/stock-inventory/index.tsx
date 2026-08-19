@@ -1,6 +1,6 @@
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
-import { DateRangeFilter, defaultDateFrom, defaultDateTo, ListPageHeader, PAGE_SIZE, SearchBar, SummaryCard } from '@/pages/actives/shared'
+import { DateRangeFilter, monthToDateFrom, defaultDateTo, ListPageHeader, PAGE_SIZE, SearchBar, SummaryCard } from '@/pages/actives/shared'
 import { useFilterReportQuery } from '@/store/slice/generic/api'
 import { BarChart3 } from 'lucide-react'
 import { useState } from 'react'
@@ -17,7 +17,7 @@ export default function StockInventoryPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [dateFrom, setDateFrom] = useState(defaultDateFrom())
+  const [dateFrom, setDateFrom] = useState(monthToDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
 
   const { data, isLoading } = useFilterReportQuery({

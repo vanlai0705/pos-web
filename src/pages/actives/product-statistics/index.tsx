@@ -6,13 +6,13 @@ import { useFilterProductStatisticsQuery } from '@/store/slice/statistics/api'
 import type { TPosProductStatisticItem } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {
-  ListPageHeader, DateRangeFilter, SummaryCard, useListFilter,
+  ListPageHeader, DateRangeFilter, SummaryCard, useListFilter, defaultDateTo, todayDateFrom,
 } from '../shared'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 
 export default function ProductStatisticsPage() {
   const { t } = useTranslation()
-  const { page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
+  const { page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter(todayDateFrom(), defaultDateTo())
   const [groupId, setGroupId] = useState<number | ''>('')
 
   const { data, isLoading } = useFilterProductStatisticsQuery({

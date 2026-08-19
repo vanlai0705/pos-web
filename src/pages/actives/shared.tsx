@@ -29,6 +29,21 @@ export function defaultDateTo() {
   return toUtcEndOfDay(dayjs())
 }
 
+// ─── Default date range: today — only for the specific list pages that were
+// asked to default to "today" instead of the standard last-30-days above. ────
+
+export function todayDateFrom() {
+  return toUtcStartOfDay(dayjs())
+}
+
+// ─── Default date range: month-to-date — only for the specific list pages
+// that were asked to default to "đầu tháng đến hiện tại" instead of the
+// standard last-30-days above. ─────────────────────────────────────────────
+
+export function monthToDateFrom() {
+  return toUtcStartOfDay(dayjs().startOf('month'))
+}
+
 // ─── DateRange filter ─────────────────────────────────────────────────────────
 
 type DateRange = { from: string; to: string }

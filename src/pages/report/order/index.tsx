@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ShoppingCart } from 'lucide-react'
 import { useFilterReportQuery } from '@/store/slice/generic/api'
 import {
-  fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
+  fmtNum, fmtDateOnly, todayRange, REPORT_PAGE_SIZE,
   StatCards, ReportDateFilter, ReportTabs,
   TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
   CustomerFilter, ShopFilter, ProductGroupFilter,
@@ -189,7 +189,7 @@ export default function ReportOrderPage() {
   const { t } = useTranslation()
   const TABS = [t('pages.report.order.tabSales'), t('pages.report.order.tabItems')]
   const [tab, setTab] = useState(0)
-  const range = currentMonthRange()
+  const range = todayRange()
   const [dateFrom, setDateFrom] = useState(range.from)
   const [dateTo, setDateTo] = useState(range.to)
   const [customerId, setCustomerId] = useState<number | null>(null)

@@ -2,7 +2,7 @@ import type { TPosCashBalanceItem } from '@/store/slice/users/types/pos-types'
 import { LookupSelect, type LookupItem } from '@/components/pos/lookup-select'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
-import { DateRangeFilter, defaultDateFrom, defaultDateTo, ListPageHeader, PAGE_SIZE, SummaryCard } from '@/pages/actives/shared'
+import { DateRangeFilter, todayDateFrom, defaultDateTo, ListPageHeader, PAGE_SIZE, SummaryCard } from '@/pages/actives/shared'
 import { fmtDateTime } from '@/utils'
 import { useFilterReportQuery } from '@/store/slice/generic/api'
 import { Wallet } from 'lucide-react'
@@ -10,7 +10,7 @@ import { useState } from 'react'
 export default function CashBalancePage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [dateFrom, setDateFrom] = useState(defaultDateFrom())
+  const [dateFrom, setDateFrom] = useState(todayDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
   const [fundType, setFundType] = useState<LookupItem | null>(null)
 

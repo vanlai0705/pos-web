@@ -27,11 +27,11 @@ export function fmtDateOnly(dateStr?: string | null) {
   return dayjs(dateStr).format('DD/MM/YYYY')
 }
 
-export function currentMonthRange() {
+export function todayRange() {
   const now = new Date()
   return {
-    from: toUtcStartOfDay(dayjs(now).startOf('month')),
-    to: toUtcEndOfDay(dayjs(now).endOf('month')),
+    from: toUtcStartOfDay(dayjs(now)),
+    to: toUtcEndOfDay(dayjs(now)),
   }
 }
 

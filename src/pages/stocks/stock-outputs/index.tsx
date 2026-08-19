@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { StockDocumentDialog } from '@/components/pos/stock-document-dialog'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, todayDateFrom, defaultDateTo } from '@/pages/actives/shared'
 import { fmtDateTime } from '@/utils'
 import type { TPosStockOutput } from '@/store/slice/users/types/pos-types'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
@@ -22,7 +22,7 @@ export default function StockOutputsPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [dateFrom, setDateFrom] = useState(defaultDateFrom())
+  const [dateFrom, setDateFrom] = useState(todayDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
   const [modal, setModal] = useState(false)
   const [editId, setEditId] = useState<number | undefined>()

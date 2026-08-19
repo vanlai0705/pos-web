@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/generic/api'
 import { ReceiptPaymentDialog, RECEIPT_PAYMENT_TYPE } from '@/components/pos/receipt-payment-dialog'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, todayDateFrom, defaultDateTo } from '@/pages/actives/shared'
 import { RowActions } from '@/pages/managers/components'
 import { fmtDateTime } from '@/utils'
 import type { TPosCurrencyVoucher } from '@/store/slice/users/types/pos-types'
@@ -20,7 +20,7 @@ export default function ReceiptPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [dateFrom, setDateFrom] = useState(defaultDateFrom())
+  const [dateFrom, setDateFrom] = useState(todayDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
   const [modal, setModal] = useState(false)
   const [editId, setEditId] = useState<number | undefined>()

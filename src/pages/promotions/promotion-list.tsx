@@ -4,7 +4,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag } from '@/components/ui/data-tag'
 import { confirmAction } from '@/components/ui/use-confirm-action'
 import { STATUS } from '@/constants/status'
-import { DateRangeFilter, ListPageHeader, PAGE_SIZE, SearchBar, StatusBadge, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { DateRangeFilter, ListPageHeader, PAGE_SIZE, SearchBar, StatusBadge, monthToDateFrom, defaultDateTo } from '@/pages/actives/shared'
 import { RowActions } from '@/pages/managers/components'
 import { useFilterReportQuery, useGenericPostMutation } from '@/store/slice/generic/api'
 import { Plus, Tag } from 'lucide-react'
@@ -37,7 +37,7 @@ export default function PromotionListPage({ type, titleKey }: Props) {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [dateFrom, setDateFrom] = useState(defaultDateFrom())
+  const [dateFrom, setDateFrom] = useState(monthToDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
 
   const [modal, setModal] = useState(false)

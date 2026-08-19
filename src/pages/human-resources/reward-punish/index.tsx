@@ -13,7 +13,7 @@ import { RewardPunishDialog, REWARD_PUNISH_TYPE } from '@/components/pos/reward-
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {
   ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE,
-  defaultDateFrom, defaultDateTo,
+  monthToDateFrom, defaultDateTo,
 } from '@/pages/actives/shared'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
@@ -43,7 +43,7 @@ export default function RewardPunishPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [dateFrom, setDateFrom] = useState(defaultDateFrom())
+  const [dateFrom, setDateFrom] = useState(monthToDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
 
   const [modal, setModal] = useState(false)

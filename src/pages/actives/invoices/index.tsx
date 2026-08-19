@@ -16,8 +16,8 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-function defaultMonthStart() {
-  return toUtcStartOfDay(dayjs().subtract(1, 'month').startOf('month'))
+function defaultDateFrom() {
+  return toUtcStartOfDay(dayjs())
 }
 function defaultToday() {
   return toUtcEndOfDay(dayjs())
@@ -74,7 +74,7 @@ export default function InvoicesPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [dateFrom, setDateFrom] = useState(defaultMonthStart)
+  const [dateFrom, setDateFrom] = useState(defaultDateFrom)
   const [dateTo, setDateTo] = useState(defaultToday)
   const [publishStatus, setPublishStatus] = useState<number | ''>('')
   const [viewer, setViewer] = useState<ViewerState | null>(null)

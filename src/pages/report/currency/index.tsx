@@ -3,7 +3,7 @@ import { Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useFilterReportQuery } from '@/store/slice/generic/api'
 import {
-  fmtNum, fmtDateOnly, currentMonthRange, REPORT_PAGE_SIZE,
+  fmtNum, fmtDateOnly, todayRange, REPORT_PAGE_SIZE,
   StatCards, ReportDateFilter, ReportTabs,
   TH, TD, TableNoData, SkeletonRows, ReportPagination, ExcelBtn, useReportExcel,
 } from '../shared'
@@ -264,7 +264,7 @@ function CashBalanceReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: str
 export default function ReportCurrencyPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState(0)
-  const range = currentMonthRange()
+  const range = todayRange()
   const [dateFrom, setDateFrom] = useState(range.from)
   const [dateTo, setDateTo] = useState(range.to)
   const { exportExcel, exporting } = useReportExcel()

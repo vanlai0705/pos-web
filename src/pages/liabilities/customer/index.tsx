@@ -5,7 +5,7 @@ import { OBJECT_TYPE, RECEIPT_PAYMENT_FOR, RECEIPT_PAYMENT_TYPE, ReceiptPayment,
 import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { MoneyTag } from '@/components/ui/data-tag'
-import { DateRangeFilter, ListPageHeader, PAGE_SIZE, SearchBar, defaultDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { DateRangeFilter, ListPageHeader, PAGE_SIZE, SearchBar, monthToDateFrom, defaultDateTo } from '@/pages/actives/shared'
 import { useFilterReportQuery } from '@/store/slice/generic/api'
 import { Banknote, Info, MoreHorizontal, Users } from 'lucide-react'
 import { useState } from 'react'
@@ -17,7 +17,7 @@ export default function LiabilityCustomerPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [dateFrom, setDateFrom] = useState(defaultDateFrom())
+  const [dateFrom, setDateFrom] = useState(monthToDateFrom())
   const [dateTo, setDateTo] = useState(defaultDateTo())
   const [customerGroup, setCustomerGroup] = useState<LookupItem | null>(null)
   // Angular defaults to showing every customer, not just ones with a debt.

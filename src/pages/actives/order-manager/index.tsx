@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { DateRangeFilter, ListPageHeader, Pagination, SearchBar, useListFilter } from '@/pages/actives/shared'
+import { DateRangeFilter, defaultDateTo, ListPageHeader, Pagination, SearchBar, todayDateFrom, useListFilter } from '@/pages/actives/shared'
 import { fmtDateTime } from '@/utils'
 import { useCancelOrderMutation, useFilterOrdersQuery, useLazyGetOrderDetailQuery } from '@/store/slice/orders/api'
 import { TPosOrder } from '@/store/slice/users'
@@ -130,7 +130,7 @@ function OrderDetailPanel({ order, onCancel }: { order: TPosOrder; onCancel: () 
 export default function OrderManagerPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
+  const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter(todayDateFrom(), defaultDateTo())
   const [selected, setSelected] = useState<TPosOrder | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
 

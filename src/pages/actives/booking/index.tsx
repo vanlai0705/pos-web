@@ -10,11 +10,11 @@ import { CalendarCheck, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { DateRangeFilter, ListPageHeader, SearchBar, StatusBadge, useListFilter } from '../shared'
+import { DateRangeFilter, defaultDateTo, ListPageHeader, SearchBar, StatusBadge, todayDateFrom, useListFilter } from '../shared'
 import { fmtDate } from '@/utils'
 export default function BookingPage() {
   const { t } = useTranslation()
-  const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
+  const { keyword, setKeyword, page, goPage, pageSize, setPageSize, dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter(todayDateFrom(), defaultDateTo())
   const [statusId, setStatusId] = useState<number | ''>('')
   const [modal, setModal] = useState(false)
   const [editId, setEditId] = useState<number | undefined>()

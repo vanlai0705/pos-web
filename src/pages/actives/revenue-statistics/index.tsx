@@ -6,7 +6,7 @@ import { useFilterRevenueStatisticsQuery, useFilterRevenueStatisticsSummaryQuery
 import type { TPosRevenueStatItem } from '@/store/slice/users/types/pos-types'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import {
-  ListPageHeader, DateRangeFilter, SummaryCard, useListFilter, PAGE_SIZE,
+  ListPageHeader, DateRangeFilter, SummaryCard, useListFilter, PAGE_SIZE, defaultDateTo, todayDateFrom,
 } from '../shared'
 import { MoneyTag, VoucherTag } from '@/components/ui/data-tag'
 import { fmtDateTime } from '@/utils'
@@ -148,7 +148,7 @@ function SummaryTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
 export default function RevenueStatisticsPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState<'revenue' | 'summary'>('revenue')
-  const { dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter()
+  const { dateFrom, setDateFrom, dateTo, setDateTo } = useListFilter(todayDateFrom(), defaultDateTo())
 
   const tabs = [
     { key: 'revenue', label: t('pages.actives.revenueStatistics.title') },
