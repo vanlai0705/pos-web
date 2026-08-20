@@ -25,6 +25,8 @@ export type FundKind = 'cash' | 'card' | 'transfer'
  * Card (including Wallet) counts as Transfer.
  */
 export function classifyFundType(fundType?: { FundGroup?: number; Name?: string } | null): FundKind {
+  // No fund type selected at all (e.g. a brand-new, not-yet-touched order) —
+  // safe default is cash, never Transfer.
   if (!fundType) return 'cash'
   const group = fundType.FundGroup
   if (group != null) {
@@ -36,5 +38,10 @@ export function classifyFundType(fundType?: { FundGroup?: number; Name?: string 
   if (name === 'tien mat' || name === 'cash') return 'cash'
   if (name === 'ca the' || name === 'card') return 'card'
   if (name === 'chuyen khoan' || name === 'transfer' || name === 'bank transfer') return 'transfer'
-  return 'cash'
+  // A real, named fund type that just isn't Cash or Card (e.g. "Quỹ", a
+  // custom/internal fund with no FundGroup set server-side) — per the
+  // business rule, anything besides Cash/Card counts as Transfer. Falling
+  // back to 'cash' here made unrelated fund types like "Quỹ" silently look
+  // like a cash option and get picked as the default/matched selection.
+  return 'transfer'
 }

@@ -9,7 +9,7 @@ import { Banknote, CreditCard, FileText, Info, Minus, ShoppingCart, Smartphone, 
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MoneyRow, NumInput, PercentInput } from './order-inputs'
-import { classifyFundType, fmt, fmtCurrency, FUND_GROUP, type FundKind } from './order-format'
+import { classifyFundType, fmt, fmtCurrency, FUND_GROUP, type FundKind, normalizeName } from './order-format'
 import { type CartItem, type InvoiceFormData, type OrderAction, calcTotals, itemAmount } from './order-model'
 import { OrderActions } from './order-actions'
 import { SellInvoiceTab } from './sell-invoice-tab'
@@ -63,6 +63,11 @@ interface InternalOrderPanelProps {
   hasTableOrder?: boolean
   onBack?: () => void
   onFundTypeChange: (fund: TPosFundType | null, accountId?: number) => void
+  /** The fund type the parent has actually resolved for this order (e.g. once
+   * an existing order's saved FundType loads) — mirrored into local state so
+   * the visual selection stays in sync instead of getting stuck on whatever
+   * this panel's own new-order default picked first. */
+  selectedFundTypeId?: number | null
   customerValue: TPosCustomerSimple | null
   staffValue: TPosUser | null
   noteValue: string
@@ -95,7 +100,7 @@ function ci(id?: number, i?: number) {
 export function InternalOrderPanel({
   cart, onQty, onRemove, onClear, onUpdateItem, onSave, onOpenOrderSearch, saving, settings, totals, perItemTax,
   tableLabel, fromOrderManager, hasTableOrder, onBack,
-  onFundTypeChange, customerValue, staffValue, noteValue, onCustomerChange, onStaffChange, onNoteChange,
+  onFundTypeChange, selectedFundTypeId, customerValue, staffValue, noteValue, onCustomerChange, onStaffChange, onNoteChange,
   detail, setDetail, invoiceForm, setInvoiceForm, money,
 }: InternalOrderPanelProps) {
   const { t } = useTranslation()
@@ -125,6 +130,16 @@ export function InternalOrderPanel({
     setNote(noteValue)
   }, [noteValue])
 
+  // Keep the visual selection in sync once the parent resolves the real fund
+  // type for this order (e.g. a saved order's FundType arriving after the
+  // panel already picked its own new-order default) — without this, the
+  // highlighted button could get stuck on that default forever.
+  useEffect(() => {
+    if (selectedFundTypeId != null && selectedFundTypeId !== fundTypeId) {
+      setFundTypeId(selectedFundTypeId)
+    }
+  }, [selectedFundTypeId])
+
   useEffect(() => {
     const hasCustomer = !!(selectedCustomer || customerValue)
     if (!hasCustomer && money.isCustomersDebt) {
@@ -144,9 +159,17 @@ export function InternalOrderPanel({
     money.setShortage(total)
   }, [debtEnabled, money, total])
 
+  // Default for a brand-new order: prefer an actual Cash fund type; if this
+  // shop has none configured, prefer Transfer over blindly taking whatever
+  // fund type happens to be first in the list (which could be an unrelated
+  // fund like "Quỹ").
   useEffect(() => {
     if (fundTypeId != null || !fundTypes.length) return
-    const first = fundTypes.find(f => classifyFundType(f) === 'cash') ?? fundTypes[0]
+    const cash = fundTypes.find(f => classifyFundType(f) === 'cash')
+    const transferCandidates = fundTypes.filter(f => classifyFundType(f) === 'transfer')
+    const preferredTransfer = transferCandidates.find(f =>
+      ['chuyen khoan', 'transfer', 'bank transfer'].includes(normalizeName(f.Name)))
+    const first = cash ?? preferredTransfer ?? transferCandidates[0] ?? fundTypes[0]
     setFundTypeId(first.Id ?? null)
     onFundTypeChange(first, first.Items?.length === 1 ? first.Items[0].Id : undefined)
   }, [fundTypes, fundTypeId, onFundTypeChange])

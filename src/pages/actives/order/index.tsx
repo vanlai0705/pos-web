@@ -576,6 +576,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
           hasTableOrder={!!bookingId && !!tableId}
           onBack={onBack}
           onFundTypeChange={onFundTypeChange}
+          selectedFundTypeId={fund.type?.Id ?? null}
           customerValue={selectedCustomer}
           staffValue={selectedStaff}
           noteValue={note}
