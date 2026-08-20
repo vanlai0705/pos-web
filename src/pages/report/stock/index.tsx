@@ -254,16 +254,19 @@ function StockTransferReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: s
 
 // ─── Inventory (Tồn kho) ──────────────────────────────────────────────────────
 
-function InventoryReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+function InventoryReport({ dateFrom, dateTo, isLowStock }: { dateFrom: string; dateTo: string; isLowStock?: boolean }) {
   const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(REPORT_PAGE_SIZE)
   const { data, isFetching } = useFilterReportQuery({
     path: 'inventory/filter',
-    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize },
+    // `isLowStock` stays undefined for "Tất cả" so the key is omitted from the
+    // query entirely, rather than sent as `false` (which the backend reads as
+    // "only in-stock", not "no filter").
+    params: { DateFrom: dateFrom, DateTo: dateTo, PageIndex: page, PageSize: pageSize, IsLowStock: isLowStock },
   })
 
-  useEffect(() => { setPage(0) }, [dateFrom, dateTo])
+  useEffect(() => { setPage(0) }, [dateFrom, dateTo, isLowStock])
 
   const items = data?.Items ?? []
   const total = data?.TotalItemCount ?? 0
@@ -324,12 +327,21 @@ function InventoryReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: strin
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
+/** undefined = "Tồn kho Tất cả" (no filter sent), matching the other two options. */
+const LOW_STOCK_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Tồn kho Tất cả' },
+  { value: 'true', label: 'Chỉ hiển thị hết hàng' },
+  { value: 'false', label: 'Chỉ hiển thị hàng còn trong kho' },
+]
+
 export default function ReportStockPage() {
   const { t } = useTranslation()
   const [tab, setTab] = useState(0)
   const range = todayRange()
   const [dateFrom, setDateFrom] = useState(range.from)
   const [dateTo, setDateTo] = useState(range.to)
+  const [lowStockFilter, setLowStockFilter] = useState('all')
+  const isLowStock = lowStockFilter === 'all' ? undefined : lowStockFilter === 'true'
   const { exportExcel, exporting } = useReportExcel()
   const tabs = TAB_KEYS.map(key => t(key))
 
@@ -366,6 +378,17 @@ export default function ReportStockPage() {
           <ReportTabs tabs={tabs} active={tab} onSelect={setTab} />
           <div className="flex items-center gap-2 flex-wrap">
             <ReportDateFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
+            {tab === 4 && (
+              <select
+                value={lowStockFilter}
+                onChange={event => setLowStockFilter(event.target.value)}
+                className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 shadow-sm outline-none focus:border-primary/30 focus:ring-2 focus:ring-primary/20"
+              >
+                {LOW_STOCK_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            )}
             {EXPORTS[tab] && <ExcelBtn onClick={handleExport} loading={exporting} />}
           </div>
         </div>
@@ -376,7 +399,7 @@ export default function ReportStockPage() {
         {tab === 1 && <StockOutReport dateFrom={dateFrom} dateTo={dateTo} />}
         {tab === 2 && <StockCheckReport dateFrom={dateFrom} dateTo={dateTo} />}
         {tab === 3 && <StockTransferReport dateFrom={dateFrom} dateTo={dateTo} />}
-        {tab === 4 && <InventoryReport dateFrom={dateFrom} dateTo={dateTo} />}
+        {tab === 4 && <InventoryReport dateFrom={dateFrom} dateTo={dateTo} isLowStock={isLowStock} />}
       </div>
     </div>
   )

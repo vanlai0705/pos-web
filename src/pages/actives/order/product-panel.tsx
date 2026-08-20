@@ -211,7 +211,7 @@ export function ProductPanel({ onAdd }: ProductPanelProps) {
           </div>
         ) : viewMode === 'table' ? (
           <table className="w-full text-xs">
-            <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur border-b">
+            <thead className="sticky top-0 z-10 bg-muted border-b">
               <tr>
                 <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t('common.productName')}</th>
                 <th className="px-2 py-2 text-left font-semibold text-muted-foreground">{t('common.barcode')}</th>

@@ -13,6 +13,8 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useGenericDownloadMutation, useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
 import type { TPosCustomerSimple, TPosUser } from '@/store/slice/users'
+import { useOpeningBalancesDates } from '@/hooks/useOpeningBalancesDates'
+import { clampDateWithinBounds } from '@/utils/format'
 import { buildModelFormData } from '@/utils/multipart'
 import { Eye, Printer } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -109,6 +111,15 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
   const [form, setForm] = useState<ReceiptPayment>(emptyReceiptPayment(type))
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
   const canPrint = !!(endpoints.printTrigger && endpoints.printPdf)
+
+  // Only Customer/Supplier object types have a matching opening-debt date to
+  // check against; Member/Another aren't tied to either.
+  const { customerOpeningDebtDate, supplierOpeningDebtDate } = useOpeningBalancesDates()
+  const minDate = form.ObjectType === OBJECT_TYPE.Customer
+    ? customerOpeningDebtDate
+    : form.ObjectType === OBJECT_TYPE.Supplier
+      ? supplierOpeningDebtDate
+      : null
 
   const [fetchDetail] = useLazyGenericGetQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
@@ -265,7 +276,11 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label>{t('common.date')}</Label>
-              <Input type="date" value={form.Date ?? ''} onChange={e => setForm(f => ({ ...f, Date: e.target.value }))} />
+              <Input type="date" value={form.Date ?? ''} min={minDate ?? undefined}
+                onChange={e => {
+                  const value = clampDateWithinBounds(e.target.value, { min: minDate }, toast.warning)
+                  setForm(f => ({ ...f, Date: value }))
+                }} />
             </div>
             <div className="space-y-1">
               <Label>{t('common.voucherNo')}</Label>

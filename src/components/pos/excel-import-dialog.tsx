@@ -126,7 +126,7 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
             <div className="max-h-[50vh] overflow-hidden rounded-lg border">
               <div className="max-h-[50vh] overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
+                  <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
                     <tr className="h-9">
                       <th className="w-10 px-2">{t('common.index')}</th>
                       <th className="px-2 text-left">{t('components.excelImportDialog.dataColumnName')}</th>
@@ -167,7 +167,7 @@ export function ExcelImportDialog({ open, onOpenChange, headerUrl, dataUrl, impo
             <div className="max-h-[50vh] overflow-hidden rounded-lg border">
               <div className="max-h-[50vh] overflow-auto">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-muted/50 text-muted-foreground">
+                  <thead className="sticky top-0 bg-muted text-muted-foreground">
                     <tr className="h-8">
                       <th className="w-10 px-2">#</th>
                       {items.map((item, i) => <th key={item.Id ?? i} className="px-2 text-left whitespace-nowrap">{item.Name}</th>)}

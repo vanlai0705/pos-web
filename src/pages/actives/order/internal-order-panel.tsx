@@ -9,7 +9,7 @@ import { Banknote, CreditCard, FileText, Info, Minus, ShoppingCart, Smartphone, 
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MoneyRow, NumInput, PercentInput } from './order-inputs'
-import { fmt, fmtCurrency, normalizeName } from './order-format'
+import { classifyFundType, fmt, fmtCurrency, FUND_GROUP, type FundKind } from './order-format'
 import { type CartItem, type InvoiceFormData, type OrderAction, calcTotals, itemAmount } from './order-model'
 import { OrderActions } from './order-actions'
 import { SellInvoiceTab } from './sell-invoice-tab'
@@ -22,14 +22,12 @@ const PANEL_TABS: { key: PanelTab; labelKey: string; icon: React.ElementType }[]
   { key: 'info', labelKey: 'pages.actives.order.infoTabLabel', icon: Info },
 ]
 
-const FUND_STYLES: { match: RegExp; icon: React.ElementType; activeClass: string }[] = [
-  { match: /tien mat|cash/, icon: Banknote, activeClass: 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900 shadow-sm' },
-  { match: /chuyen khoan/, icon: Smartphone, activeClass: 'bg-blue-500 text-white shadow-blue-200 dark:shadow-blue-900 shadow-sm' },
-  { match: /ca the|card/, icon: CreditCard, activeClass: 'bg-violet-500 text-white shadow-violet-200 dark:shadow-violet-900 shadow-sm' },
-  { match: /quy/, icon: Wallet, activeClass: 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-900 shadow-sm' },
-]
-
-const FUND_FALLBACK = { icon: Wallet, activeClass: 'bg-rose-500 text-white shadow-rose-200 dark:shadow-rose-900 shadow-sm' }
+const FUND_STYLE_BY_KIND: Record<FundKind | 'wallet', { icon: React.ElementType; activeClass: string }> = {
+  cash: { icon: Banknote, activeClass: 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-emerald-900 shadow-sm' },
+  transfer: { icon: Smartphone, activeClass: 'bg-blue-500 text-white shadow-blue-200 dark:shadow-blue-900 shadow-sm' },
+  card: { icon: CreditCard, activeClass: 'bg-violet-500 text-white shadow-violet-200 dark:shadow-violet-900 shadow-sm' },
+  wallet: { icon: Wallet, activeClass: 'bg-amber-500 text-white shadow-amber-200 dark:shadow-amber-900 shadow-sm' },
+}
 
 const DOT_COLORS = [
   'bg-blue-400', 'bg-violet-400', 'bg-emerald-400', 'bg-orange-400',
@@ -78,9 +76,12 @@ interface InternalOrderPanelProps {
   money: MoneyControls
 }
 
-function fundStyle(name?: string) {
-  const n = normalizeName(name)
-  return FUND_STYLES.find(s => s.match.test(n)) ?? FUND_FALLBACK
+/** Icon/color for a fund type button — purely cosmetic. Wallet gets its own
+ * distinct look; everything else classifies via `classifyFundType` (FundGroup
+ * first, name matching as fallback), same rule the money split uses. */
+function fundStyle(fund?: { FundGroup?: number; Name?: string }) {
+  if (fund?.FundGroup === FUND_GROUP.WALLET) return FUND_STYLE_BY_KIND.wallet
+  return FUND_STYLE_BY_KIND[classifyFundType(fund)]
 }
 
 function hasAccountInfo(a?: TPosFundAccount) {
@@ -145,7 +146,7 @@ export function InternalOrderPanel({
 
   useEffect(() => {
     if (fundTypeId != null || !fundTypes.length) return
-    const first = fundTypes.find(f => /tien mat|cash/.test(normalizeName(f.Name))) ?? fundTypes[0]
+    const first = fundTypes.find(f => classifyFundType(f) === 'cash') ?? fundTypes[0]
     setFundTypeId(first.Id ?? null)
     onFundTypeChange(first, first.Items?.length === 1 ? first.Items[0].Id : undefined)
   }, [fundTypes, fundTypeId, onFundTypeChange])
@@ -307,7 +308,7 @@ export function InternalOrderPanel({
               </div>
             ) : (
               <table className="w-full text-xs min-w-[540px]">
-                <thead className="sticky top-0 bg-muted/80 backdrop-blur border-b z-10">
+                <thead className="sticky top-0 bg-muted border-b z-10">
                   <tr>
                     {[
                       t('common.index'), t('pages.actives.order.colItemName'), t('pages.actives.order.colQty'),
@@ -416,7 +417,7 @@ export function InternalOrderPanel({
             <div className="grid grid-cols-2 gap-1.5 items-start">
               <div className="flex flex-col gap-1">
                 {fundTypes.map(f => {
-                  const { icon: Icon, activeClass } = fundStyle(f.Name)
+                  const { icon: Icon, activeClass } = fundStyle(f)
                   return (
                     <button key={f.Id} onClick={() => setFund(f)}
                       className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${fundTypeId === f.Id ? activeClass : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}

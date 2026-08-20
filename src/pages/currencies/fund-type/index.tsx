@@ -5,6 +5,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { Textarea } from '@/components/ui/textarea'
 import { confirmAction } from '@/components/ui/use-confirm-action'
@@ -22,10 +23,24 @@ const FUND_TYPE_KIND = [
   { value: 1, label: 'Dùng để thu tiền' },
 ]
 
+const FUND_GROUP = { CASH: 0, CARD: 1, TRANSFER: 2, WALLET: 3 } as const
+
+const FUND_GROUP_OPTIONS = [
+  { value: FUND_GROUP.CASH, label: 'Tiền mặt' },
+  { value: FUND_GROUP.CARD, label: 'Thẻ' },
+  { value: FUND_GROUP.TRANSFER, label: 'Chuyển khoản' },
+  { value: FUND_GROUP.WALLET, label: 'Ví điện tử' },
+]
+
+function fundGroupName(value?: number) {
+  return FUND_GROUP_OPTIONS.find(g => g.value === value)?.label ?? '-'
+}
+
 interface TFundType {
   Id?: number
   Name?: string
   Type?: number
+  FundGroup?: number
   Note?: string
   /** Parent fund type — the list is a tree */
   Parent?: LookupItem | null
@@ -37,7 +52,7 @@ interface TFundType {
 }
 
 const EMPTY = (): TFundType => ({
-  Name: '', Type: 1, Note: '', Parent: null, Bank: null, AccountNumber: '', AccountName: '',
+  Name: '', Type: 1, FundGroup: FUND_GROUP.CASH, Note: '', Parent: null, Bank: null, AccountNumber: '', AccountName: '',
 })
 
 function errMsg(e: any) {
@@ -103,6 +118,10 @@ export default function FundTypePage() {
     { id: 'stt', header: 'STT', cell: ({ row }) => <span className="text-muted-foreground">{(page - 1) * pageSize + row.index + 1}</span> },
     { id: 'name', header: 'Tên loại quỹ', cell: ({ row }) => <span className="font-medium">{row.original.Name}</span> },
     {
+      id: 'fundGroup', header: 'Nhóm quỹ',
+      cell: ({ row }) => <span className="text-xs">{fundGroupName(row.original.FundGroup)}</span>,
+    },
+    {
       id: 'type', header: 'Mục đích',
       cell: ({ row }) => <span className="text-xs">{FUND_TYPE_KIND.find(k => k.value === row.original.Type)?.label ?? '—'}</span>,
     },
@@ -161,6 +180,16 @@ export default function FundTypePage() {
               <Label>Thuộc</Label>
               <LookupSelect endpoint="fundtype/filter-simple" placeholder="Không thuộc quỹ nào"
                 value={form.Parent} onChange={v => setForm(f => ({ ...f, Parent: v }))} />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Nhóm quỹ</Label>
+              <Select value={String(form.FundGroup ?? FUND_GROUP.CASH)} onValueChange={v => setForm(f => ({ ...f, FundGroup: Number(v) }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FUND_GROUP_OPTIONS.map(g => <SelectItem key={g.value} value={String(g.value)}>{g.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1">

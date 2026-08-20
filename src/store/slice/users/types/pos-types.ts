@@ -553,6 +553,9 @@ export interface TPosFundAccount {
   AccountNumber?: string;
   AccountName?: string;
   QrCodeUrl?: string;
+  /** 0=Cash, 1=Card, 2=Transfer, 3=Wallet — authoritative for Cash/Card/Transfer
+   * classification; prefer this over matching on Name. */
+  FundGroup?: number;
 }
 
 /** Payment method from `fundType/get-payment-type`; `Items` are its linked accounts. */
@@ -643,7 +646,7 @@ export interface TPosOrder {
   /** Fields returned by the order list/detail endpoints. */
   Code?: string;
   Stock?: { Id?: number; Name?: string };
-  FundType?: { Id?: number; Name?: string } | null;
+  FundType?: { Id?: number; Name?: string; FundGroup?: number } | null;
   IsInvoice?: boolean;
   CustomerDebt?: boolean;
 }

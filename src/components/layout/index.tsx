@@ -90,10 +90,10 @@ function LayoutThumb({ type }: { type: string }) {
 }
 
 const LAYOUT_OPTIONS: { key: TLayoutMode; label: string; desc: string }[] = [
-  { key: 'sidebar',  label: 'Sidebar',   desc: 'Menu dọc trái' },
-  { key: 'compact',  label: 'Compact',   desc: 'Icon thu gọn'  },
-  { key: 'header',   label: 'Header',    desc: 'Menu trên'     },
-  { key: 'floating', label: 'Floating',  desc: 'Sidebar nổi'   },
+  { key: 'sidebar', label: 'Sidebar', desc: 'Menu dọc trái' },
+  { key: 'compact', label: 'Compact', desc: 'Icon thu gọn' },
+  { key: 'header', label: 'Header', desc: 'Menu trên' },
+  { key: 'floating', label: 'Floating', desc: 'Sidebar nổi' },
 ]
 
 // ─── Settings panel ───────────────────────────────────────────────────────────
@@ -163,11 +163,10 @@ function SettingsPanel() {
                       key={language.code}
                       type="button"
                       onClick={() => i18n.changeLanguage(language.code)}
-                      className={`flex h-9 items-center gap-2 rounded-lg border px-2.5 text-left text-xs font-semibold transition-colors ${
-                        active
+                      className={`flex h-9 items-center gap-2 rounded-lg border px-2.5 text-left text-xs font-semibold transition-colors ${active
                           ? 'border-primary bg-primary/10 text-primary'
                           : 'border-border bg-background text-foreground hover:bg-accent'
-                      }`}
+                        }`}
                     >
                       <span className="text-base leading-none">{language.flag}</span>
                       <span className="min-w-0 flex-1 truncate">{language.label}</span>
@@ -206,11 +205,10 @@ function SettingsPanel() {
                     key={key}
                     onClick={() => { setLayoutMode(key); setOpen(false) }}
                     title={desc}
-                    className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all ${
-                      layoutMode === key
+                    className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all ${layoutMode === key
                         ? 'border-primary text-primary bg-primary/8'
                         : 'border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:bg-muted/50'
-                    }`}
+                      }`}
                   >
                     <LayoutThumb type={key} />
                     <span className="text-[9px] font-semibold leading-tight">{label}</span>
@@ -267,7 +265,7 @@ export default function AppLayout() {
             <RightActions />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 relative">
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 relative">
           <Outlet />
         </main>
       </div>
@@ -293,7 +291,7 @@ export default function AppLayout() {
           <div className="flex-1" />
           <RightActions />
         </header>
-        <main className="flex-1 overflow-y-auto p-4 relative">
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 relative">
           <Outlet />
         </main>
         {/* Sidebar renders as Sheet overlay regardless of screen size */}
@@ -306,7 +304,7 @@ export default function AppLayout() {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar forceCollapsed={layoutMode === 'compact'} />
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0">
         <header
           className="relative z-40 flex-none flex min-h-14 items-center gap-3 text-white px-4 shadow-sm rounded-b-xl"
           style={{ background: HEADER_GRADIENT }}
@@ -316,7 +314,7 @@ export default function AppLayout() {
             <RightActions />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 relative">
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 relative">
           <Outlet />
         </main>
       </div>

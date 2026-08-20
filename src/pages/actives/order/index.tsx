@@ -17,7 +17,7 @@ import { withDomainPath } from '@/utils/domain-route'
 import { toast } from 'sonner'
 import { InternalOrderPanel } from './internal-order-panel'
 import { OrderSearchDialog } from './order-search-dialog'
-import { normalizeName } from './order-format'
+import { classifyFundType, normalizeName } from './order-format'
 import { type CartItem, type InvoiceFormData, type OrderAction, EMPTY_INVOICE_FORM, buildCustomerInvoice, buildOrderItem, calcTotals, createCartItemFromProduct, getDeviceGuid } from './order-model'
 import { ProductItemDialog } from './product-item-dialog'
 import { ProductPanel } from './product-panel'
@@ -185,6 +185,40 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       .catch(() => toast.error(t('pages.actives.order.loadOrderFailed')))
     return () => { cancelled = true }
   }, [applyOrderToCart, initialOrderId, loadOrderDetail, tableId, t])
+
+  // Ticks the payment-method selection to match a loaded order's actual saved
+  // FundType — without this, the panel silently falls back to its own
+  // cash-first default and the real saved method never gets shown/reused.
+  // Prefer the order's FundType.Id if it's still a valid option; otherwise
+  // fall back to whichever of Transfer/Card/Cash actually has an amount, and
+  // pick a fund type that classifies into that same bucket (preferring an
+  // exact name match). Runs once per loaded order (keyed by Id/Guid) so it
+  // never clobbers a selection the user makes afterward, and does nothing
+  // for a brand-new order (baseOrder is null then).
+  const syncedFundOrderKey = useRef<number | string | undefined>(undefined)
+  useEffect(() => {
+    if (!baseOrder || !fundTypes.length) return
+    const key = baseOrder.Id ?? baseOrder.Guid
+    if (key == null || syncedFundOrderKey.current === key) return
+    syncedFundOrderKey.current = key
+
+    const fundTypeId = baseOrder.FundType?.Id
+    const byId = fundTypeId != null ? fundTypes.find(f => f.Id === fundTypeId) : undefined
+    if (byId) {
+      setFund({ type: byId, accountId: fundTypeId })
+      return
+    }
+
+    const findByKind = (kind: 'cash' | 'card' | 'transfer', preferredNames: string[]) => {
+      const candidates = fundTypes.filter(f => classifyFundType(f) === kind)
+      return candidates.find(f => preferredNames.includes(normalizeName(f.Name))) ?? candidates[0]
+    }
+    let picked: TPosFundType | undefined
+    if (Number(baseOrder.Transfer) > 0) picked = findByKind('transfer', ['chuyen khoan', 'transfer', 'bank transfer'])
+    else if (Number(baseOrder.Card) > 0) picked = findByKind('card', ['ca the', 'card'])
+    else if (Number(baseOrder.Cash) > 0) picked = findByKind('cash', ['tien mat', 'cash'])
+    if (picked) setFund({ type: picked, accountId: picked.Id })
+  }, [baseOrder, fundTypes])
 
   const openOrderSearch = (kind: 'booking' | 'quotation' | 'temporary') => {
     if (cart.length > 0) { toast.error(t('pages.actives.order.searchDialogCartNotEmpty')); return }
@@ -400,13 +434,14 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       : undefined
     const items = buildItems()
 
-    const isCard = /ca the|card/.test(normalizeName(fund.type?.Name))
-    const isTransfer = /chuyen khoan|transfer|bank transfer/.test(normalizeName(fund.type?.Name))
+    const fundKind = classifyFundType(fund.type)
+    const isCard = fundKind === 'card'
+    const isTransfer = fundKind === 'transfer'
     const debtEnabled = !!selectedCustomer && isCustomersDebt
     const shortageValue = debtEnabled ? Math.min(total, Math.max(0, shortage)) : 0
     const paid = debtEnabled ? Math.max(0, total - shortageValue) : (payment === '' ? (isTableMode ? 0 : total) : Number(payment))
     const now = new Date().toISOString()
-    const cashFallback = fundTypes.find(f => /tien mat|cash/.test(normalizeName(f.Name))) ?? fundTypes[0]
+    const cashFallback = fundTypes.find(f => classifyFundType(f) === 'cash') ?? fundTypes[0]
     const fundTypeRef = fund.accountId ?? fund.type?.Id ?? cashFallback?.Id
 
     const order: TPosOrder = {

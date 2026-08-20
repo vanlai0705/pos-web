@@ -88,7 +88,7 @@ export function UserGroupPermissionDialog({ open, onOpenChange, groupId, groupNa
 
           <div className="max-h-[60vh] overflow-y-auto rounded-lg border">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted/50 text-xs text-muted-foreground">
+              <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
                 <tr className="h-9">
                   <th className="w-10 px-2">{t('common.index')}</th>
                   <th className="px-2 text-left">{t('components.userGroupPermissionDialog.columnFunctionGroup')}</th>

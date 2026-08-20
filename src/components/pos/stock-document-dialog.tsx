@@ -12,6 +12,7 @@ import { useFilterActiveProductsQuery } from '@/store/slice/products/api'
 import { useGetSettingOrderQuery } from '@/store/slice/settings/api'
 import { TPosActiveProduct, type TPosCustomerSimple, type TPosUser } from '@/store/slice/users'
 import { getImageUrl } from '@/utils/common'
+import { clampDateWithinBounds } from '@/utils/format'
 import { buildModelFormData } from '@/utils/multipart'
 import { Eye, Package, Printer, Search, Trash2 } from 'lucide-react'
 import { printData } from '@/utils/print-service'
@@ -81,6 +82,12 @@ interface Props {
   /** Id to load for editing; omit to create */
   editId?: number
   onSaved: () => void
+  /**
+   * YYYY-MM-DD. No stock movement can be dated before the inventory opening
+   * balance. Only passed by the 4 stock documents (nhập/xuất/chuyển/kiểm kê)
+   * -- quotation/booking, which reuse this same dialog, leave it unset.
+   */
+  minDate?: string | null
 }
 
 export function emptyStockDoc(): StockDoc {
@@ -107,7 +114,7 @@ function errMsg(e: any, fallback: string) {
  * lines carry prices or counted quantities, so those come in as options.
  */
 export function StockDocumentDialog({
-  open, onOpenChange, title, endpoints, options, editId, onSaved,
+  open, onOpenChange, title, endpoints, options, editId, onSaved, minDate,
 }: Props) {
   const { t } = useTranslation()
   const isCheck = !!options.stockCheck
@@ -339,7 +346,11 @@ export function StockDocumentDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>{t('common.date')}</Label>
-                <Input type="date" value={form.Date ?? ''} onChange={e => setForm(f => ({ ...f, Date: e.target.value }))} />
+                <Input type="date" value={form.Date ?? ''} min={minDate ?? undefined}
+                  onChange={e => {
+                    const value = clampDateWithinBounds(e.target.value, { min: minDate }, toast.warning)
+                    setForm(f => ({ ...f, Date: value }))
+                  }} />
               </div>
               <div className="space-y-1">
                 <Label>{t('common.voucherNo')}</Label>
@@ -405,7 +416,7 @@ export function StockDocumentDialog({
             <div className="flex min-h-0 flex-col rounded-lg border overflow-hidden">
               <div className="min-h-0 flex-1 overflow-auto">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-muted/60 backdrop-blur">
+                  <thead className="sticky top-0 bg-muted">
                     <tr>
                       {['#', t('components.stockDocumentDialog.item'), ...(isCheck
                         ? [t('components.stockDocumentDialog.qtySystem'), t('components.stockDocumentDialog.qtyReal'), t('components.stockDocumentDialog.difference')]

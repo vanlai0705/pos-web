@@ -130,7 +130,7 @@ export function OrderSearchDialog({ open, onOpenChange, kind, onConfirm }: Order
           <div className="md:col-span-7 flex min-h-0 flex-col rounded-lg border">
             <div className="flex-1 overflow-y-auto">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-muted/30 text-muted-foreground">
+                <thead className="sticky top-0 bg-muted text-muted-foreground">
                   <tr>
                     <th className="w-10 px-2 py-1.5 text-center">{t('common.index')}</th>
                     <th className="px-2 py-1.5 text-left">{t('common.voucherNo')}</th>

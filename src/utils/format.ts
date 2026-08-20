@@ -52,3 +52,35 @@ export function toDateInputValue(value?: string | null) {
   const date = dayjs(value)
   return date.isValid() ? date.format('YYYY-MM-DD') : ''
 }
+
+export function toDisplayDate(isoDate?: string | null) {
+  if (!isoDate) return ''
+  const date = dayjs(isoDate)
+  return date.isValid() ? date.format('DD/MM/YYYY') : isoDate
+}
+
+/**
+ * Clamps a YYYY-MM-DD value against an optional min/max bound, calling
+ * `onViolation` with a ready-to-show Vietnamese message when it had to
+ * clamp. The native `<input type="date" min max>` already blocks most of
+ * this via the picker UI, but manual typing can still bypass it -- this is
+ * the explicit, always-enforced fallback (mirrors the Angular view-datetime
+ * min/minAlertMessage behavior).
+ */
+export function clampDateWithinBounds(
+  value: string,
+  bounds: { min?: string | null; max?: string | null },
+  onViolation: (message: string) => void,
+): string {
+  if (bounds.max && value > bounds.max) {
+    onViolation(`Không được chọn ngày sau ${toDisplayDate(bounds.max)}`)
+    return bounds.max
+  }
+
+  if (bounds.min && value < bounds.min) {
+    onViolation(`Không được chọn ngày trước ${toDisplayDate(bounds.min)}`)
+    return bounds.min
+  }
+
+  return value
+}

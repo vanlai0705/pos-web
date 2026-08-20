@@ -5,7 +5,7 @@ import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 import { Input } from '@/components/ui/input'
 import { useGenericDownloadMutation, useGenericPostMutation, useLazyFilterReportQuery } from '@/store/slice/generic/api'
 import { useFilterWarehousesQuery } from '@/store/slice/stocks/api'
-import { cn, downloadBlob, formatMoney, formatNumber, parseNumber, toDateInputValue } from '@/utils'
+import { clampDateWithinBounds, cn, downloadBlob, formatMoney, formatNumber, parseNumber, toDateInputValue } from '@/utils'
 import { ArrowLeft, CalendarDays, Download, FileSpreadsheet, Save, Upload, Warehouse } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -44,12 +44,17 @@ function today() {
 
 /**
  * Once a "ngày chốt" (closing date) has been recorded for this entity, the
- * server always echoes it back on `Sumary.Date` — the date field then locks
- * to that value so a stray edit can't silently overwrite a different day's
- * opening balance. Mirrors Angular's syncDateFromSummary exactly.
+ * server always echoes it back on `Sumary.Date` -- from then on the date can
+ * only be edited backward (<=), never moved later, so it's used as the date
+ * input's `max`. First-ever edit (nothing recorded yet) stays free.
+ *
+ * The API returns .NET's DateTime.MinValue ("0001-01-01T00:00:00...")
+ * instead of null/absent when nothing has been recorded yet -- treat that
+ * the same as "no date" too.
  */
 function summaryDateOf(data: any): string | undefined {
-  return data?.Sumary?.Date || data?.Summary?.Date
+  const value = data?.Sumary?.Date || data?.Summary?.Date
+  return value && !`${value}`.startsWith('0001-01-01') ? value : undefined
 }
 
 function toPascalImage(image: any) {
@@ -228,7 +233,11 @@ export function OpeningBalanceEntityPage({
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
 
   const [date, setDate] = useState(today())
-  const [isDateLocked, setIsDateLocked] = useState(false)
+  // YYYY-MM-DD. Null the first time (no data recorded yet) -- free editing.
+  // Once the filter response confirms data exists, the date can only be
+  // edited backward (<=), never moved later, so it's used as the input's
+  // `max`. Re-derived from each filter response (scoped to this entity type).
+  const [openingDate, setOpeningDate] = useState<string | null>(null)
   const [searchInput, setSearchInput] = useState('')
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
@@ -249,8 +258,13 @@ export function OpeningBalanceEntityPage({
       }).unwrap()
 
       const summaryDate = summaryDateOf(data)
-      setIsDateLocked(!!summaryDate)
-      if (summaryDate) setDate(toDateInputValue(summaryDate))
+      if (summaryDate) {
+        const lockedDate = toDateInputValue(summaryDate)
+        setOpeningDate(lockedDate)
+        setDate(lockedDate)
+      } else {
+        setOpeningDate(null)
+      }
 
       const items = data?.Items ?? []
       setRows(items.map(toBalanceRow))
@@ -259,6 +273,12 @@ export function OpeningBalanceEntityPage({
       toast.error('Không thể tải dữ liệu')
     }
   }, [date, fetchRows, filterUrl, keyword, page, pageSize])
+
+  const onDateChange = (value: string) => {
+    const clamped = clampDateWithinBounds(value, { max: openingDate }, toast.warning)
+    setDate(clamped)
+    setPage(1)
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -376,12 +396,12 @@ export function OpeningBalanceEntityPage({
     },
   ], [entityKey, entityLabel, page, pageSize])
 
-  // max-h is a hard, viewport-anchored fallback: if `h-full` below ever fails
-  // to resolve (an ancestor breaking the flex/height chain), this still caps
-  // the column so the table's own internal scroll — and the footer sitting
-  // after it — can't be pushed off past the viewport.
+  // `h-full` fills exactly what <main> (the app shell) makes available —
+  // both now correctly bounded via min-h-0 down the whole chain — and
+  // `overflow-hidden` here keeps this column from ever pushing the footer
+  // below it past that box; the table's own internal scroll absorbs the rest.
   return (
-    <div className="flex h-full max-h-[calc(100vh-160px)] min-h-0 flex-col gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <ListToolbar
         left={(
           <div className="flex items-center gap-2">
@@ -398,13 +418,11 @@ export function OpeningBalanceEntityPage({
         searchPlaceholder="Tìm kiếm..."
         onSearchChange={setSearchInput}
         filters={(
-          <label className={cn(
-            'flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm',
-            isDateLocked && 'opacity-70',
-          )} title={isDateLocked ? 'Đã chốt công nợ ở ngày này — không thể đổi' : undefined}>
+          <label className="flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm"
+            title={openingDate ? `Đã chốt công nợ — chỉ có thể chọn ngày trước ${openingDate}` : undefined}>
             <CalendarDays className="h-4 w-4 text-sky-600" />
-            <Input type="date" value={date} disabled={isDateLocked}
-              onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed" />
+            <Input type="date" value={date} max={openingDate ?? undefined}
+              onChange={event => onDateChange(event.target.value)} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0" />
           </label>
         )}
         actions={(
@@ -429,7 +447,7 @@ export function OpeningBalanceEntityPage({
         onImported={loadRows}
       />
 
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col">
         <DataTable
           columns={columns}
           data={rows}
@@ -471,7 +489,8 @@ export function OpeningInventoryPageContent() {
   const { data: stockData } = useFilterWarehousesQuery({ PageIndex: 0, PageSize: 100, StatusId: 0 })
 
   const [date, setDate] = useState(today())
-  const [isDateLocked, setIsDateLocked] = useState(false)
+  // See OpeningBalanceEntityPage's `openingDate` above for the rule.
+  const [openingDate, setOpeningDate] = useState<string | null>(null)
   const [stockId, setStockId] = useState<number | undefined>()
   const [searchInput, setSearchInput] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -497,8 +516,13 @@ export function OpeningInventoryPageContent() {
       }).unwrap()
 
       const summaryDate = summaryDateOf(data)
-      setIsDateLocked(!!summaryDate)
-      if (summaryDate) setDate(toDateInputValue(summaryDate))
+      if (summaryDate) {
+        const lockedDate = toDateInputValue(summaryDate)
+        setOpeningDate(lockedDate)
+        setDate(lockedDate)
+      } else {
+        setOpeningDate(null)
+      }
 
       const items = data?.Items ?? []
       setRows(items.map(toInventoryRow))
@@ -507,6 +531,20 @@ export function OpeningInventoryPageContent() {
       toast.error('Không thể tải tồn kho ban đầu')
     }
   }, [date, fetchRows, keyword, page, pageSize, stockId])
+
+  const onDateChange = (value: string) => {
+    const clamped = clampDateWithinBounds(value, { max: openingDate }, toast.warning)
+    setDate(clamped)
+    setPage(1)
+  }
+
+  const requireStockSelected = () => {
+    if (!stockId) {
+      toast.warning('Vui lòng chọn kho hàng')
+      return false
+    }
+    return true
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -546,6 +584,8 @@ export function OpeningInventoryPageContent() {
   }
 
   const exportExcel = async () => {
+    if (!requireStockSelected()) return
+
     try {
       const blob = await downloadFile({ url: 'opening-balances/export-excel-inventory' }).unwrap()
       downloadBlob(blob, 'cap-nhat-ton-kho-ban-dau.xlsx')
@@ -556,6 +596,8 @@ export function OpeningInventoryPageContent() {
   }
 
   const saveData = async () => {
+    if (!requireStockSelected()) return
+
     const payload = rows.map(row => ({
       Id: row.Id || 0,
       Product: toPascalProduct(row.Product),
@@ -647,12 +689,12 @@ export function OpeningInventoryPageContent() {
     },
   ], [page, pageSize, selectedStock?.Name])
 
-  // max-h is a hard, viewport-anchored fallback: if `h-full` below ever fails
-  // to resolve (an ancestor breaking the flex/height chain), this still caps
-  // the column so the table's own internal scroll — and the footer sitting
-  // after it — can't be pushed off past the viewport.
+  // `h-full` fills exactly what <main> (the app shell) makes available —
+  // both now correctly bounded via min-h-0 down the whole chain — and
+  // `overflow-hidden` here keeps this column from ever pushing the footer
+  // below it past that box; the table's own internal scroll absorbs the rest.
   return (
-    <div className="flex h-full max-h-[calc(100vh-160px)] min-h-0 flex-col gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
       <ListToolbar
         left={(
           <div className="flex items-center gap-2">
@@ -669,13 +711,11 @@ export function OpeningInventoryPageContent() {
         onSearchChange={setSearchInput}
         filters={(
           <div className="flex flex-wrap items-center gap-2">
-            <label className={cn(
-              'flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm',
-              isDateLocked && 'opacity-70',
-            )} title={isDateLocked ? 'Đã chốt tồn kho ở ngày này — không thể đổi' : undefined}>
+            <label className="flex h-10 items-center gap-2 rounded-md border bg-card px-3 text-xs font-semibold text-muted-foreground shadow-sm"
+              title={openingDate ? `Đã chốt tồn kho — chỉ có thể chọn ngày trước ${openingDate}` : undefined}>
               <CalendarDays className="h-4 w-4 text-sky-600" />
-              <Input type="date" value={date} disabled={isDateLocked}
-                onChange={event => { setDate(event.target.value); setPage(1) }} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0 disabled:cursor-not-allowed" />
+              <Input type="date" value={date} max={openingDate ?? undefined}
+                onChange={event => onDateChange(event.target.value)} className="h-7 w-36 border-0 p-0 shadow-none focus-visible:ring-0" />
             </label>
             <select
               value={stockId ?? ''}
@@ -691,7 +731,7 @@ export function OpeningInventoryPageContent() {
         )}
         actions={(
           <>
-            <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
+            <ToolbarButton tone="neutral" onClick={() => { if (requireStockSelected()) setImportOpen(true) }}>
               <Upload className="h-4 w-4" />
               Nhập
             </ToolbarButton>
@@ -711,7 +751,7 @@ export function OpeningInventoryPageContent() {
         onImported={loadRows}
       />
 
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col">
         <DataTable
           columns={columns}
           data={rows}

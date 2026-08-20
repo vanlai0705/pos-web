@@ -180,19 +180,19 @@ export default function OrderManagerPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full gap-4">
       <ListPageHeader title={t('pages.actives.orderManager.title')} icon={ClipboardList}>
         <SearchBar value={keyword} onChange={setKeyword} placeholder={t('pages.actives.orderManager.searchPlaceholder')} />
         <DateRangeFilter from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
       </ListPageHeader>
 
       {/* Split panel */}
-      <div className="flex gap-4 rounded-xl border bg-card overflow-hidden" style={{ minHeight: '520px' }}>
+      <div className="flex flex-1 gap-4 rounded-xl border bg-card overflow-hidden" style={{ minHeight: 0 }}>
         {/* Left: order list */}
-        <div className={`${selected ? 'w-[55%]' : 'w-full'} flex-none flex flex-col border-r transition-all`}>
-          <div className="overflow-x-auto flex-1">
+        <div className={`${selected ? 'w-[55%]' : 'w-full'} flex-none flex flex-col border-r transition-all`} style={{ minHeight: 0 }}>
+          <div className="overflow-auto flex-1" style={{ minHeight: 0 }}>
             <table className="w-full text-sm">
-              <thead className="border-b bg-muted/40 sticky top-0">
+              <thead className="border-b bg-muted sticky top-0">
                 <tr>
                   {[
                     t('common.index'),
@@ -272,14 +272,14 @@ export default function OrderManagerPage() {
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-3 border-t">
+          <div className="px-4 py-3 border-t shrink-0">
             <Pagination page={page} total={total} pageSize={pageSize} onPageSizeChange={setPageSize} onChange={goPage} />
           </div>
         </div>
 
         {/* Right: detail panel */}
         {selected && (
-          <div className="flex-1 min-w-0 flex flex-col relative">
+          <div className="flex-1 min-w-0 flex flex-col relative" style={{ minHeight: 0 }}>
             <button
               onClick={() => setSelected(null)}
               className="absolute top-2 right-2 z-10 p-1 rounded-full hover:bg-muted transition-colors"
