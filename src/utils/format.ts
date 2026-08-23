@@ -60,6 +60,16 @@ export function toDisplayDate(isoDate?: string | null) {
 }
 
 /**
+ * Some update/create payloads expect Date as a full datetime, not a bare
+ * YYYY-MM-DD. Keeps the exact calendar date the caller picked -- no `Z`/
+ * timezone conversion, so it can't shift to a different day.
+ */
+export function toDateTimeValue(dateOnly?: string | null) {
+  if (!dateOnly) return dateOnly
+  return dateOnly.includes('T') ? dateOnly : `${dateOnly}T00:00:00`
+}
+
+/**
  * Clamps a YYYY-MM-DD value against an optional min/max bound, calling
  * `onViolation` with a ready-to-show Vietnamese message when it had to
  * clamp. The native `<input type="date" min max>` already blocks most of

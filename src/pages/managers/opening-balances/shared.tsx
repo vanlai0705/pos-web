@@ -5,9 +5,10 @@ import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 import { Input } from '@/components/ui/input'
 import { useGenericDownloadMutation, useGenericPostMutation, useLazyFilterReportQuery } from '@/store/slice/generic/api'
 import { useFilterWarehousesQuery } from '@/store/slice/stocks/api'
-import { clampDateWithinBounds, cn, downloadBlob, formatMoney, formatNumber, parseNumber, toDateInputValue } from '@/utils'
+import { useOpeningBalanceSetting } from '@/hooks/useOpeningBalanceSetting'
+import { clampDateWithinBounds, cn, downloadBlob, formatMoney, formatNumber, parseNumber, toDateTimeValue } from '@/utils'
 import { ArrowLeft, CalendarDays, Download, FileSpreadsheet, Save, Upload, Warehouse } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 type EntityKey = 'Customer' | 'Supplier'
@@ -36,25 +37,6 @@ type OpeningInventoryRow = {
   Amount: number
   QuantityCurrent?: number
   Note?: string
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-/**
- * Once a "ngày chốt" (closing date) has been recorded for this entity, the
- * server always echoes it back on `Sumary.Date` -- from then on the date can
- * only be edited backward (<=), never moved later, so it's used as the date
- * input's `max`. First-ever edit (nothing recorded yet) stays free.
- *
- * The API returns .NET's DateTime.MinValue ("0001-01-01T00:00:00...")
- * instead of null/absent when nothing has been recorded yet -- treat that
- * the same as "no date" too.
- */
-function summaryDateOf(data: any): string | undefined {
-  const value = data?.Sumary?.Date || data?.Summary?.Date
-  return value && !`${value}`.startsWith('0001-01-01') ? value : undefined
 }
 
 function toPascalImage(image: any) {
@@ -231,13 +213,19 @@ export function OpeningBalanceEntityPage({
   const [fetchRows, { isFetching }] = useLazyFilterReportQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
+  // The shared "ngày chốt" setting -- same value used by all 3 opening-balance
+  // screens (Customer, Supplier, Inventory alike). Null when nothing has been
+  // set yet -- free editing. Once set, the date can only be edited backward
+  // (<=), never moved later, so it's used as the input's `max`.
+  const { openingDate, updateOpeningDate } = useOpeningBalanceSetting()
 
-  const [date, setDate] = useState(today())
-  // YYYY-MM-DD. Null the first time (no data recorded yet) -- free editing.
-  // Once the filter response confirms data exists, the date can only be
-  // edited backward (<=), never moved later, so it's used as the input's
-  // `max`. Re-derived from each filter response (scoped to this entity type).
-  const [openingDate, setOpeningDate] = useState<string | null>(null)
+  // Left blank -- no committed opening date exists yet, so the user must
+  // explicitly pick one rather than defaulting to (and risking saving
+  // against) today's date.
+  const [date, setDate] = useState('')
+  // Jump `date` to the committed date once it's known (on load, or once the
+  // hook's first fetch resolves), so the user starts on the right period.
+  const hasSyncedInitialDate = useRef(false)
   const [searchInput, setSearchInput] = useState('')
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
@@ -245,7 +233,20 @@ export function OpeningBalanceEntityPage({
   const [rows, setRows] = useState<OpeningBalanceRow[]>([])
   const [total, setTotal] = useState(0)
 
+  useEffect(() => {
+    if (openingDate && !hasSyncedInitialDate.current) {
+      hasSyncedInitialDate.current = true
+      setDate(openingDate)
+    }
+  }, [openingDate])
+
   const loadRows = useCallback(async () => {
+    if (!date) {
+      setRows([])
+      setTotal(0)
+      return
+    }
+
     try {
       const data = await fetchRows({
         path: filterUrl,
@@ -256,15 +257,6 @@ export function OpeningBalanceEntityPage({
           Date: date,
         },
       }).unwrap()
-
-      const summaryDate = summaryDateOf(data)
-      if (summaryDate) {
-        const lockedDate = toDateInputValue(summaryDate)
-        setOpeningDate(lockedDate)
-        setDate(lockedDate)
-      } else {
-        setOpeningDate(null)
-      }
 
       const items = data?.Items ?? []
       setRows(items.map(toBalanceRow))
@@ -306,7 +298,17 @@ export function OpeningBalanceEntityPage({
     }))
   }
 
+  const requireDateSelected = () => {
+    if (!date) {
+      toast.warning('Vui lòng chọn ngày chốt')
+      return false
+    }
+    return true
+  }
+
   const exportExcel = async () => {
+    if (!requireDateSelected()) return
+
     try {
       const blob = await downloadFile({ url: exportUrl }).unwrap()
       downloadBlob(blob, `${title}.xlsx`)
@@ -317,11 +319,13 @@ export function OpeningBalanceEntityPage({
   }
 
   const saveData = async () => {
+    if (!requireDateSelected()) return
+
     const payload = rows.map(row => {
       const entity = getEntity(row, entityKey)
       const item: Record<string, any> = {
         Id: row.Id || 0,
-        Date: date,
+        Date: toDateTimeValue(date),
         Amount: row.Amount || 0,
         Note: row.Note || '',
         Liabilities: row.Liabilities || 0,
@@ -334,6 +338,9 @@ export function OpeningBalanceEntityPage({
     try {
       await request({ url: updateUrl, method: 'POST', body: payload }).unwrap()
       toast.success('Lưu dữ liệu thành công')
+      // Only persist the new cutover once the data itself has actually saved
+      // -- otherwise a failed data save could still move the shared "ngày chốt".
+      updateOpeningDate(date)
       loadRows()
     } catch {
       toast.error('Không thể lưu dữ liệu')
@@ -427,7 +434,7 @@ export function OpeningBalanceEntityPage({
         )}
         actions={(
           <>
-            <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
+            <ToolbarButton tone="neutral" onClick={() => { if (requireDateSelected()) setImportOpen(true) }}>
               <Upload className="h-4 w-4" />
               Nhập
             </ToolbarButton>
@@ -487,10 +494,16 @@ export function OpeningInventoryPageContent() {
   const [request, { isLoading: saving }] = useGenericPostMutation()
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
   const { data: stockData } = useFilterWarehousesQuery({ PageIndex: 0, PageSize: 100, StatusId: 0 })
-
-  const [date, setDate] = useState(today())
   // See OpeningBalanceEntityPage's `openingDate` above for the rule.
-  const [openingDate, setOpeningDate] = useState<string | null>(null)
+  const { openingDate, updateOpeningDate } = useOpeningBalanceSetting()
+
+  // Left blank -- no committed opening date exists yet, so the user must
+  // explicitly pick one rather than defaulting to (and risking saving
+  // against) today's date.
+  const [date, setDate] = useState('')
+  // Jump `date` to the committed date once it's known (on load, or once the
+  // hook's first fetch resolves), so the user starts on the right period.
+  const hasSyncedInitialDate = useRef(false)
   const [stockId, setStockId] = useState<number | undefined>()
   const [searchInput, setSearchInput] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -502,7 +515,20 @@ export function OpeningInventoryPageContent() {
   const stocks = (stockData?.Items ?? []) as Entity[]
   const selectedStock = stocks.find(stock => stock.Id === stockId)
 
+  useEffect(() => {
+    if (openingDate && !hasSyncedInitialDate.current) {
+      hasSyncedInitialDate.current = true
+      setDate(openingDate)
+    }
+  }, [openingDate])
+
   const loadRows = useCallback(async () => {
+    if (!date) {
+      setRows([])
+      setTotal(0)
+      return
+    }
+
     try {
       const data = await fetchRows({
         path: 'opening-balances/filter-inventory',
@@ -514,15 +540,6 @@ export function OpeningInventoryPageContent() {
           StockId: stockId,
         },
       }).unwrap()
-
-      const summaryDate = summaryDateOf(data)
-      if (summaryDate) {
-        const lockedDate = toDateInputValue(summaryDate)
-        setOpeningDate(lockedDate)
-        setDate(lockedDate)
-      } else {
-        setOpeningDate(null)
-      }
 
       const items = data?.Items ?? []
       setRows(items.map(toInventoryRow))
@@ -541,6 +558,14 @@ export function OpeningInventoryPageContent() {
   const requireStockSelected = () => {
     if (!stockId) {
       toast.warning('Vui lòng chọn kho hàng')
+      return false
+    }
+    return true
+  }
+
+  const requireDateSelected = () => {
+    if (!date) {
+      toast.warning('Vui lòng chọn ngày chốt')
       return false
     }
     return true
@@ -584,7 +609,7 @@ export function OpeningInventoryPageContent() {
   }
 
   const exportExcel = async () => {
-    if (!requireStockSelected()) return
+    if (!requireDateSelected() || !requireStockSelected()) return
 
     try {
       const blob = await downloadFile({ url: 'opening-balances/export-excel-inventory' }).unwrap()
@@ -596,14 +621,14 @@ export function OpeningInventoryPageContent() {
   }
 
   const saveData = async () => {
-    if (!requireStockSelected()) return
+    if (!requireDateSelected() || !requireStockSelected()) return
 
     const payload = rows.map(row => ({
       Id: row.Id || 0,
       Product: toPascalProduct(row.Product),
       Stock: toPascalStock(row.Stock || selectedStock, stockId),
       Unit: toPascalUnit(row.Unit || row.Product?.Unit),
-      Date: date,
+      Date: toDateTimeValue(date),
       Quantity: row.Quantity || 0,
       UnitPrice: row.UnitPrice || 0,
       Amount: row.Amount || 0,
@@ -614,6 +639,9 @@ export function OpeningInventoryPageContent() {
     try {
       await request({ url: 'opening-balances/update-inventory', method: 'POST', body: payload }).unwrap()
       toast.success('Lưu dữ liệu thành công')
+      // Only persist the new cutover once the data itself has actually saved
+      // -- otherwise a failed data save could still move the shared "ngày chốt".
+      updateOpeningDate(date)
       loadRows()
     } catch {
       toast.error('Không thể lưu dữ liệu')
@@ -731,7 +759,7 @@ export function OpeningInventoryPageContent() {
         )}
         actions={(
           <>
-            <ToolbarButton tone="neutral" onClick={() => { if (requireStockSelected()) setImportOpen(true) }}>
+            <ToolbarButton tone="neutral" onClick={() => { if (requireDateSelected() && requireStockSelected()) setImportOpen(true) }}>
               <Upload className="h-4 w-4" />
               Nhập
             </ToolbarButton>

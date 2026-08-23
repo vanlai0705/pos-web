@@ -1,35 +1,63 @@
+import { ListToolbar, ToolbarButton } from '@/components/layout/list-toolbar'
+import { TreeSidebar, type TreeSidebarNode } from '@/components/layout/tree-sidebar'
 import { ExcelImportDialog } from '@/components/pos/excel-import-dialog'
+import { emptySupplier, SupplierDialog, type TSupplier } from '@/components/pos/supplier-form-dialog'
 import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag } from '@/components/ui/data-tag'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { PosImage } from '@/components/ui/pos-image'
+import { Textarea } from '@/components/ui/textarea'
 import { confirmAction } from '@/components/ui/use-confirm-action'
-import { useApiMutation } from '@/hooks/use-api-mutation'
-import { ListPageHeader, PAGE_SIZE, SearchBar, StatusBadge } from '@/pages/actives/shared'
-import { RowActions } from '@/pages/managers/components'
-import { useFilterReportQuery, useGenericDownloadMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
-import { Download, Plus, Truck, Upload } from 'lucide-react'
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { buildModelFormData } from '@/utils/multipart'
-import { downloadBlob, query } from '@/utils'
 import { STATUS } from '@/constants/status'
-import { emptySupplier, SupplierDialog, type TSupplier } from '@/components/pos/supplier-form-dialog'
+import { PAGE_SIZE, StatusBadge } from '@/pages/actives/shared'
+import { RowActions } from '@/pages/managers/components'
+import { useFilterSupplierGroupsQuery, useLazyGetSupplierGroupDetailQuery, useSaveSupplierGroupMutation, useUpdateSupplierGroupStatusMutation } from '@/store/slice/managers/api'
+import { useFilterReportQuery, useGenericDownloadMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
+import type { TPosSupplierGroup } from '@/store/slice/users'
+import { downloadBlob, query } from '@/utils'
+import { buildModelFormData } from '@/utils/multipart'
+import { useApiMutation } from '@/hooks/use-api-mutation'
+import { Download, Plus, Upload } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
+
+interface SupplierGroupNode extends TreeSidebarNode {
+  Image?: { Url?: string }
+}
 
 export default function SuppliersPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [statusId, setStatusId] = useState<number | ''>('')
+  const [groupId, setGroupId] = useState<number>(0)
+  const [groupSearch, setGroupSearch] = useState('')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState<TSupplier>(emptySupplier())
   const [importOpen, setImportOpen] = useState(false)
 
+  const [groupModal, setGroupModal] = useState(false)
+  const [groupForm, setGroupForm] = useState<TPosSupplierGroup>({ Name: '' })
+
   const { data, isLoading, refetch } = useFilterReportQuery({
     path: 'suppliers/filter',
-    params: { Keyword: keyword || undefined, StatusId: statusId || undefined, PageIndex: page - 1, PageSize: pageSize },
+    params: { Keyword: keyword || undefined, StatusId: statusId || undefined, SupplierGroupId: groupId || undefined, PageIndex: page - 1, PageSize: pageSize },
   })
+  const { data: groupsData, isLoading: loadingGroups, refetch: refetchGroups } = useFilterSupplierGroupsQuery({ PageIndex: 0, PageSize: 1000, StatusId: STATUS.ACTIVE })
   const [fetchDetail] = useLazyGenericGetQuery()
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
+  const [getGroupDetail] = useLazyGetSupplierGroupDetailQuery()
+  const [saveGroup, { isLoading: savingGroup }] = useSaveSupplierGroupMutation()
+  const [updateGroupStatus] = useUpdateSupplierGroupStatusMutation()
+
+  const groups = useMemo(() => (groupsData?.Items ?? []) as SupplierGroupNode[], [groupsData])
+  const sidebarGroups = useMemo<SupplierGroupNode[]>(
+    () => [{ Id: 0, Name: 'Tất cả' }, ...groups],
+    [groups],
+  )
 
   const exportExcel = async () => {
     try {
@@ -37,6 +65,7 @@ export default function SuppliersPage() {
         url: `suppliers/export-excel${query({
           Keyword: keyword || undefined,
           StatusId: statusId === '' ? undefined : statusId,
+          SupplierGroupId: groupId || undefined,
           PageIndex: page - 1,
           PageSize: pageSize,
         })}`,
@@ -80,6 +109,46 @@ export default function SuppliersPage() {
     }
   }
 
+  const openAddGroup = () => {
+    setGroupForm({ Name: '' })
+    setGroupModal(true)
+  }
+
+  const openEditGroup = async (group: SupplierGroupNode) => {
+    try {
+      const detail = await getGroupDetail(group.Id).unwrap()
+      setGroupForm({ Name: '', ...(detail ?? group) })
+    } catch {
+      setGroupForm({ Id: group.Id, Name: group.Name || '' })
+    }
+    setGroupModal(true)
+  }
+
+  const saveSupplierGroup = async () => {
+    if (!groupForm.Name?.trim()) { toast.error('Vui lòng nhập tên nhóm'); return }
+    try {
+      await saveGroup(groupForm).unwrap()
+      toast.success(groupForm.Id ? 'Đã cập nhật nhóm' : 'Đã thêm nhóm')
+      setGroupModal(false)
+      refetchGroups()
+      refetch()
+    } catch {
+      toast.error('Không thể lưu nhóm nhà cung cấp')
+    }
+  }
+
+  const deleteSupplierGroup = async (group: SupplierGroupNode) => {
+    if (!await confirmAction({ description: `Xoá nhóm nhà cung cấp "${group.Name}"?` })) return
+    try {
+      await updateGroupStatus({ id: group.Id, statusId: STATUS.DELETED }).unwrap()
+      toast.success('Đã xoá nhóm nhà cung cấp')
+      if (groupId === group.Id) { setGroupId(0); setPage(1) }
+      refetchGroups()
+    } catch {
+      toast.error('Không thể xoá nhóm nhà cung cấp')
+    }
+  }
+
   const items = (data?.Items ?? []) as TSupplier[]
   const total = data?.TotalItemCount ?? 0
 
@@ -111,27 +180,60 @@ export default function SuppliersPage() {
   ]
 
   return (
-    <div className="space-y-4">
-      <ListPageHeader title="Nhà cung cấp" icon={Truck}>
-        <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder="Tìm nhà cung cấp..." />
-        <select value={statusId} onChange={e => { setStatusId(e.target.value === '' ? '' : Number(e.target.value)); setPage(1) }}
-          className="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="">Tất cả TT</option>
-          <option value={STATUS.ACTIVE}>Hoạt động</option>
-          <option value={STATUS.LOCKED}>Đã khoá</option>
-        </select>
-        <Button size="sm" variant="outline" className="h-8" onClick={() => setImportOpen(true)}>
-          <Upload className="h-3.5 w-3.5 mr-1" /> Nhập
-        </Button>
-        <Button size="sm" variant="outline" className="h-8" disabled={exporting} onClick={exportExcel}>
-          <Download className="h-3.5 w-3.5 mr-1" /> Xuất
-        </Button>
-        <Button size="sm" className="h-8" onClick={() => { setForm(emptySupplier()); setModal(true) }}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Thêm NCC
-        </Button>
-      </ListPageHeader>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
+        <TreeSidebar
+          title="Nhóm nhà cung cấp"
+          items={sidebarGroups}
+          selectedId={groupId}
+          searchText={groupSearch}
+          searchPlaceholder="Tìm nhóm nhà cung cấp..."
+          loading={loadingGroups}
+          emptyText="Không tìm thấy nhóm nhà cung cấp"
+          onSearchTextChange={setGroupSearch}
+          onSelect={group => { setGroupId(group.Id); setPage(1) }}
+          onCreate={openAddGroup}
+          onEditItem={openEditGroup}
+          onDeleteItem={deleteSupplierGroup}
+          renderMeta={group => group.Id > 0 && group.Image?.Url ? (
+            <PosImage url={group.Image.Url} alt="" className="h-5 w-5 rounded object-cover" />
+          ) : null}
+        />
 
-      <DataTable columns={columns} data={items} loading={isLoading} total={total} page={page} pageSize={pageSize} onPageSizeChange={setPageSize} onPageChange={setPage} emptyText="Không có nhà cung cấp nào" />
+        <section className="flex min-w-0 flex-1 flex-col gap-3">
+          <ListToolbar
+            searchValue={keyword}
+            searchPlaceholder="Tìm nhà cung cấp..."
+            onSearchChange={value => { setKeyword(value); setPage(1) }}
+            filters={(
+              <select value={statusId} onChange={e => { setStatusId(e.target.value === '' ? '' : Number(e.target.value)); setPage(1) }}
+                className="h-10 min-w-[150px] rounded-md border bg-background px-3 text-sm font-semibold shadow-sm outline-none focus:ring-2 focus:ring-ring">
+                <option value="">Tất cả TT</option>
+                <option value={STATUS.ACTIVE}>Hoạt động</option>
+                <option value={STATUS.LOCKED}>Đã khoá</option>
+              </select>
+            )}
+            actions={(
+              <>
+                <ToolbarButton tone="neutral" onClick={() => setImportOpen(true)}>
+                  <Upload className="h-4 w-4" />
+                  Nhập
+                </ToolbarButton>
+                <ToolbarButton tone="neutral" disabled={exporting} onClick={exportExcel}>
+                  <Download className="h-4 w-4" />
+                  Xuất
+                </ToolbarButton>
+                <ToolbarButton tone="primary" onClick={() => { setForm(emptySupplier()); setModal(true) }}>
+                  <Plus className="h-4 w-4" />
+                  Thêm NCC
+                </ToolbarButton>
+              </>
+            )}
+          />
+
+          <DataTable columns={columns} data={items} loading={isLoading} total={total} page={page} pageSize={pageSize} onPageSizeChange={setPageSize} onPageChange={setPage} onRowDoubleClick={openEdit} emptyText="Không có nhà cung cấp nào" />
+        </section>
+      </div>
 
       <ExcelImportDialog
         open={importOpen} onOpenChange={setImportOpen}
@@ -149,6 +251,26 @@ export default function SuppliersPage() {
         onClose={() => setModal(false)}
         onSave={() => { if (!form.Name?.trim()) { toast.error('Vui lòng nhập tên'); return } save(form) }}
       />
+
+      <Dialog open={groupModal} onOpenChange={setGroupModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{groupForm.Id ? 'Chỉnh sửa nhóm nhà cung cấp' : 'Thêm nhóm nhà cung cấp'}</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <div className="space-y-1">
+              <Label>Tên nhóm <span className="text-destructive">*</span></Label>
+              <Input value={groupForm.Name} onChange={e => setGroupForm(f => ({ ...f, Name: e.target.value }))} placeholder="Tên nhóm nhà cung cấp" />
+            </div>
+            <div className="space-y-1">
+              <Label>Ghi chú</Label>
+              <Textarea rows={2} value={groupForm.Note ?? ''} onChange={e => setGroupForm(f => ({ ...f, Note: e.target.value }))} placeholder="Ghi chú" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGroupModal(false)}>Huỷ</Button>
+            <Button onClick={saveSupplierGroup} disabled={savingGroup}>{savingGroup ? 'Đang lưu...' : 'Lưu'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
