@@ -269,7 +269,11 @@ export interface TPosSettingOrder {
   IsDiscount: boolean;
   IsUsingBarcode: boolean;
   IsInputQuantityWithBarcode: boolean;
-  OrderShiftEndTime?: string;
+  /** 0=InvoiceOpeningDate, 1=InvoiceClosingDate, 2=CustomTime — which date an
+   * order counts toward for revenue reporting. OrderShiftEndTime only
+   * applies (and is only sent) when this is CustomTime. */
+  OrderRevenueDateType?: number;
+  OrderShiftEndTime?: string | null;
   IsChangeDate: boolean;
   IsTranferCost: boolean;
   IsServiceFee?: boolean;

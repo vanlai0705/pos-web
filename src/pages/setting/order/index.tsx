@@ -13,12 +13,22 @@ import { toast } from "sonner"
 import { NumberRow, PageHeader, SaveBar, SettingCard, TextRow, ToggleRow } from "../components"
 import { PrinterPickerDialog } from "../printer/printer-picker-dialog"
 
+// Which date an order counts toward for revenue reporting purposes.
+const ORDER_REVENUE_DATE_TYPE = {
+  InvoiceOpeningDate: 0,
+  InvoiceClosingDate: 1,
+  CustomTime: 2,
+} as const
+
 const defaultForm: TPosSettingOrder = {
   IsDupplicateCustomerName: false,
   IsDiscount: true,
   IsUsingBarcode: false,
   IsInputQuantityWithBarcode: false,
-  OrderShiftEndTime: "23:59:59",
+  // Preserves the app's historical behavior (revenue cut off by a fixed
+  // time of day) for shops that haven't touched this setting yet.
+  OrderRevenueDateType: ORDER_REVENUE_DATE_TYPE.CustomTime,
+  OrderShiftEndTime: "00:00:00",
   IsChangeDate: false,
   IsTranferCost: false,
   IsServiceFee: false,
@@ -80,12 +90,21 @@ export default function SettingOrderPage() {
   const setStr = (key: keyof TPosSettingOrder) => (v: string) =>
     setForm(f => ({ ...f, [key]: v }))
 
-  const normalizeForm = (value: TPosSettingOrder): TPosSettingOrder => ({
-    ...value,
-    OrderShiftEndTime: value.OrderShiftEndTime || "23:59:59",
-    IsServiceFee: !!value.IsServiceFee,
-    ServiceFeePercent: Number(value.ServiceFeePercent ?? 0),
-  })
+  const normalizeForm = (value: TPosSettingOrder): TPosSettingOrder => {
+    const orderRevenueDateType = value.OrderRevenueDateType ?? ORDER_REVENUE_DATE_TYPE.CustomTime
+    return {
+      ...value,
+      OrderRevenueDateType: orderRevenueDateType,
+      // Only CustomTime actually uses a shift-end time -- the other 2 modes
+      // derive the revenue date straight from the invoice itself, so there's
+      // nothing to store here.
+      OrderShiftEndTime: orderRevenueDateType === ORDER_REVENUE_DATE_TYPE.CustomTime
+        ? (value.OrderShiftEndTime || "00:00:00")
+        : null,
+      IsServiceFee: !!value.IsServiceFee,
+      ServiceFeePercent: Number(value.ServiceFeePercent ?? 0),
+    }
+  }
 
   const handleSave = async () => {
     try {
@@ -177,15 +196,31 @@ export default function SettingOrderPage() {
           onCheckedChange={toggle("IsInputQuantityWithBarcode")}
           disabled={!form.IsUsingBarcode}
         />
-        <TextRow
-          id="OrderShiftEndTime"
-          label={t("pages.setting.order.orderShiftEndTime")}
-          description={t("pages.setting.order.orderShiftEndTimeDescription")}
-          value={form.OrderShiftEndTime ?? "23:59:59"}
-          onChange={setStr("OrderShiftEndTime")}
-          type="time"
-          step={1}
-        />
+        <div className="space-y-1.5">
+          <label htmlFor="OrderRevenueDateType" className="text-sm font-medium">{t("pages.setting.order.orderShiftEndTime")}</label>
+          <p className="text-xs text-muted-foreground">{t("pages.setting.order.orderShiftEndTimeDescription")}</p>
+          <div className="flex items-center gap-2">
+            <select
+              id="OrderRevenueDateType"
+              value={form.OrderRevenueDateType ?? ORDER_REVENUE_DATE_TYPE.CustomTime}
+              onChange={e => setNum("OrderRevenueDateType")(Number(e.target.value))}
+              className="flex-1 min-w-0 rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value={ORDER_REVENUE_DATE_TYPE.InvoiceOpeningDate}>{t("pages.setting.order.invoiceOpeningDate")}</option>
+              <option value={ORDER_REVENUE_DATE_TYPE.InvoiceClosingDate}>{t("pages.setting.order.invoiceClosingDate")}</option>
+              <option value={ORDER_REVENUE_DATE_TYPE.CustomTime}>{t("pages.setting.order.customTime")}</option>
+            </select>
+            {form.OrderRevenueDateType === ORDER_REVENUE_DATE_TYPE.CustomTime && (
+              <input
+                type="time"
+                step={1}
+                value={form.OrderShiftEndTime ?? "00:00:00"}
+                onChange={e => setStr("OrderShiftEndTime")(e.target.value)}
+                className="w-32 shrink-0 rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            )}
+          </div>
+        </div>
         <ToggleRow id="IsChangeDate" label={t("pages.setting.order.allowChangeInvoiceDate")} checked={form.IsChangeDate} onCheckedChange={toggle("IsChangeDate")} />
         <ToggleRow id="IsTranferCost" label={t("pages.setting.order.hasShippingFee")} checked={form.IsTranferCost} onCheckedChange={toggle("IsTranferCost")} />
         <div className="flex items-center justify-between gap-4 py-1">
