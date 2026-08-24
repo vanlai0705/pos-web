@@ -181,12 +181,15 @@ function DateRangePresetPicker({ onFrom, onTo, compact = false, disablePortal = 
 }
 
 export function DateRangeFilter({
-  from, to, onFrom, onTo, compact = false, disablePortal = false,
+  from, to, onFrom, onTo, compact = false, disablePortal = false, min,
 }: {
   from: string; to: string
   onFrom: (v: string) => void; onTo: (v: string) => void
   compact?: boolean
   disablePortal?: boolean
+  /** YYYY-MM-DD — earliest selectable date, e.g. an opening-balance cutover
+   * before which there's no tracked history to report on. */
+  min?: string | null
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -194,6 +197,7 @@ export function DateRangeFilter({
       <Input
         type="date"
         value={toDateInputValue(from)}
+        min={min ?? undefined}
         onChange={e => onFrom(e.target.value ? toUtcStartOfDay(e.target.value) : '')}
         className={compact ? 'h-8 w-[140px] text-xs' : 'h-8 w-36 text-sm'}
       />
@@ -201,6 +205,7 @@ export function DateRangeFilter({
       <Input
         type="date"
         value={toDateInputValue(to)}
+        min={min ?? undefined}
         onChange={e => onTo(e.target.value ? toUtcEndOfDay(e.target.value) : '')}
         className={compact ? 'h-8 w-[140px] text-xs' : 'h-8 w-36 text-sm'}
       />

@@ -9,6 +9,8 @@ import { useCompleteOrderMutation, useLazyGetOrderDetailQuery, useSaveOrderMutat
 import { useGetPaymentTypesQuery, useGetSettingOrderQuery } from '@/store/slice/settings/api'
 import { useDeleteTableOrderMutation, useLazyGetOrderKitchenQuery, useLazyGetTableOrderDetailQuery, useSaveTableOrderMutation } from '@/store/slice/tables/api'
 import { printData, printDatas, type PrinterSetting } from '@/utils/print-service'
+import { toDateInputValue, toUtcStartOfDay } from '@/utils/format'
+import { useOpeningBalancesDates } from '@/hooks/useOpeningBalancesDates'
 import { Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -73,6 +75,15 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
   const [selectedStaff, setSelectedStaff] = useState<TPosUser | null>(null)
   const [note, setNote] = useState('')
   const [detail, setDetail] = useState('')
+  // YYYY-MM-DD. Only editable when the shop's IsChangeDate setting allows it
+  // (see InternalOrderPanel's "info" tab); otherwise the save just stamps
+  // the real current time, same as before this field existed.
+  const [orderDate, setOrderDate] = useState(() => toDateInputValue(new Date().toISOString()))
+  const { customerOpeningDebtDate, inventoryOpeningBalanceDate } = useOpeningBalancesDates()
+  // Customer already picked on this invoice -> the date can't be earlier
+  // than that customer's opening-debt date; otherwise fall back to the
+  // inventory opening-balance date.
+  const minOrderDate = (selectedCustomer ? customerOpeningDebtDate : inventoryOpeningBalanceDate) ?? undefined
   const [invoiceForm, setInvoiceForm] = useState<InvoiceFormData>(EMPTY_INVOICE_FORM)
 
   const [discountPct, setDiscountPct] = useState(0)
@@ -111,6 +122,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
         })))
         if (order.Note) setNote(order.Note)
         if (order.Detail) setDetail(order.Detail)
+        if (order.Date) setOrderDate(toDateInputValue(order.Date))
         setSelectedCustomer(order.Customer ?? null)
         if (order.User) setSelectedStaff(order.User as TPosUser)
         else setSelectedStaff(null)
@@ -150,6 +162,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
     else setSelectedStaff(null)
     setNote(order.Note ?? '')
     setDetail(order.Detail ?? '')
+    setOrderDate(order.Date ? toDateInputValue(order.Date) : toDateInputValue(new Date().toISOString()))
     setDiscountPct(order.DiscountPercent ?? 0)
     setDiscountAmt(order.Discount ?? 0)
     setVoucher(order.Voucher ?? 0)
@@ -173,8 +186,53 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
     }
   }, [applyOrderToCart, loadOrderDetail, t])
 
+  // Back to a blank new-sale form. Also bumps `resetKey` so InternalOrderPanel
+  // remounts and drops any of its own uncontrolled state.
+  const resetForm = useCallback(() => {
+    setBaseOrder(null)
+    setCart([])
+    setSelectedCustomer(null)
+    setSelectedStaff(null)
+    setNote('')
+    setDetail('')
+    setOrderDate(toDateInputValue(new Date().toISOString()))
+    setDiscountPct(0)
+    setDiscountAmt(0)
+    setVoucher(0)
+    setTransferCost(0)
+    setServiceFeePercent(defaultServiceFeePercent)
+    setTaxOverride(null)
+    setPayment('')
+    setIsCustomersDebt(false)
+    setShortage(0)
+    setInvoiceForm(EMPTY_INVOICE_FORM)
+    setFund({ type: null })
+    setResetKey(k => k + 1)
+  }, [defaultServiceFeePercent])
+
+  // `/actives/order` (no orderId) after having shown a specific order (e.g.
+  // navigating away from `/actives/order?orderId=21&fromOrderManager=1` back
+  // to the bare route) doesn't remount this component -- React Router keeps
+  // the same instance for the same route, so the previous order's data would
+  // otherwise just linger on screen. Reset it back to a blank form instead.
+  //
+  // Tracks the last non-empty `initialOrderId` so this only resets on an
+  // actual orderId -> no-orderId transition, not on every re-run of this
+  // effect while there's already no orderId (e.g. `settings` finishing an
+  // unrelated async load and changing `resetForm`'s identity) -- otherwise
+  // it would keep wiping out a cart the user is actively building for a
+  // brand-new sale.
+  const lastOrderIdRef = useRef(initialOrderId)
   useEffect(() => {
-    if (!initialOrderId || tableId) return
+    if (tableId) return
+
+    if (!initialOrderId) {
+      if (lastOrderIdRef.current) resetForm()
+      lastOrderIdRef.current = initialOrderId
+      return
+    }
+
+    lastOrderIdRef.current = initialOrderId
     let cancelled = false
     loadOrderDetail(initialOrderId)
       .unwrap()
@@ -184,7 +242,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       })
       .catch(() => toast.error(t('pages.actives.order.loadOrderFailed')))
     return () => { cancelled = true }
-  }, [applyOrderToCart, initialOrderId, loadOrderDetail, tableId, t])
+  }, [applyOrderToCart, initialOrderId, loadOrderDetail, resetForm, tableId, t])
 
   // Ticks the payment-method selection to match a loaded order's actual saved
   // FundType — without this, the panel silently falls back to its own
@@ -441,6 +499,12 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
     const shortageValue = debtEnabled ? Math.min(total, Math.max(0, shortage)) : 0
     const paid = debtEnabled ? Math.max(0, total - shortageValue) : (payment === '' ? (isTableMode ? 0 : total) : Number(payment))
     const now = new Date().toISOString()
+    // Only backdate when the shop allows it (IsChangeDate) and the user
+    // actually picked a different date -- otherwise keep stamping the real
+    // current moment, same as before this field existed.
+    const effectiveOrderDate = settings?.IsChangeDate && orderDate && orderDate !== toDateInputValue(now)
+      ? toUtcStartOfDay(orderDate)
+      : now
     const cashFallback = fundTypes.find(f => classifyFundType(f) === 'cash') ?? fundTypes[0]
     const fundTypeRef = fund.accountId ?? fund.type?.Id ?? cashFallback?.Id
 
@@ -449,7 +513,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       Id: isTableMode ? bookingId : baseOrder?.Id,
       Guid: isTableMode ? undefined : baseOrder?.Guid,
       Name: baseOrder?.Name ?? '',
-      Date: now,
+      Date: effectiveOrderDate,
       Detail: detail || t('pages.actives.order.defaultSaleDetail'),
       Note: note || '',
       Customer: selectedCustomer ?? null,
@@ -532,23 +596,11 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       setCart([])
       const finish = () => {
         if (isTableMode) { onBack?.(); return }
-        setBaseOrder(null)
-        setSelectedCustomer(null)
-        setSelectedStaff(null)
-        setNote('')
-        setDetail('')
-        setDiscountPct(0)
-        setDiscountAmt(0)
-        setVoucher(0)
-        setTransferCost(0)
-        setServiceFeePercent(defaultServiceFeePercent)
-        setTaxOverride(null)
-        setPayment('')
-        setIsCustomersDebt(false)
-        setShortage(0)
-        setInvoiceForm(EMPTY_INVOICE_FORM)
-        setFund({ type: null })
-        setResetKey(k => k + 1)
+        // Also clears lastOrderIdRef so the initialOrderId effect above
+        // doesn't reload this just-completed order back in if it re-runs
+        // later while the URL still carries the old orderId.
+        lastOrderIdRef.current = undefined
+        resetForm()
       }
       if (action === 'print' && res?.Id) printBill(res.Id, res.Printers, finish)
       else finish()
@@ -585,6 +637,9 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
           onNoteChange={setNote}
           detail={detail}
           setDetail={setDetail}
+          orderDate={orderDate}
+          setOrderDate={setOrderDate}
+          minOrderDate={minOrderDate}
           invoiceForm={invoiceForm}
           setInvoiceForm={setInvoiceForm}
           money={{

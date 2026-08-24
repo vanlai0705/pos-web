@@ -4,6 +4,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 import { Input } from '@/components/ui/input'
 import { useGenericDownloadMutation, useGenericPostMutation, useLazyFilterReportQuery } from '@/store/slice/generic/api'
+import { useGetSettingOrderQuery } from '@/store/slice/settings/api'
 import { useFilterWarehousesQuery } from '@/store/slice/stocks/api'
 import { useOpeningBalanceSetting } from '@/hooks/useOpeningBalanceSetting'
 import { clampDateWithinBounds, cn, downloadBlob, formatMoney, formatNumber, parseNumber, toDateTimeValue } from '@/utils'
@@ -494,6 +495,7 @@ export function OpeningInventoryPageContent() {
   const [request, { isLoading: saving }] = useGenericPostMutation()
   const [downloadFile, { isLoading: exporting }] = useGenericDownloadMutation()
   const { data: stockData } = useFilterWarehousesQuery({ PageIndex: 0, PageSize: 100, StatusId: 0 })
+  const { data: orderSetting, isLoading: loadingOrderSetting } = useGetSettingOrderQuery()
   // See OpeningBalanceEntityPage's `openingDate` above for the rule.
   const { openingDate, updateOpeningDate } = useOpeningBalanceSetting()
 
@@ -511,9 +513,30 @@ export function OpeningInventoryPageContent() {
   const [pageSize, setPageSize] = useState(100)
   const [rows, setRows] = useState<OpeningInventoryRow[]>([])
   const [total, setTotal] = useState(0)
+  const [stockReady, setStockReady] = useState(false)
 
   const stocks = (stockData?.Items ?? []) as Entity[]
-  const selectedStock = stocks.find(stock => stock.Id === stockId)
+  const defaultStock = orderSetting?.StockDefault as Entity | null | undefined
+  const defaultStockId = Number(defaultStock?.Id ?? defaultStock?.id) || undefined
+  const normalizedDefaultStock = defaultStockId
+    ? { ...defaultStock, Id: defaultStockId, Name: defaultStock?.Name ?? defaultStock?.name ?? '' }
+    : null
+  const stockOptions = useMemo(() => {
+    if (!defaultStockId || stocks.some(stock => stock.Id === defaultStockId)) return stocks
+    return [normalizedDefaultStock, ...stocks].filter(Boolean) as Entity[]
+  }, [defaultStockId, normalizedDefaultStock, stocks])
+  const selectedStock = stockOptions.find(stock => stock.Id === stockId)
+
+  useEffect(() => {
+    if (loadingOrderSetting || stockReady) return
+
+    if (defaultStockId) {
+      setStockId(defaultStockId)
+      setPage(1)
+    }
+
+    setStockReady(true)
+  }, [defaultStockId, loadingOrderSetting, stockReady])
 
   useEffect(() => {
     if (openingDate && !hasSyncedInitialDate.current) {
@@ -523,6 +546,10 @@ export function OpeningInventoryPageContent() {
   }, [openingDate])
 
   const loadRows = useCallback(async () => {
+    if (!stockReady) {
+      return
+    }
+
     if (!date) {
       setRows([])
       setTotal(0)
@@ -547,7 +574,7 @@ export function OpeningInventoryPageContent() {
     } catch {
       toast.error('Không thể tải tồn kho ban đầu')
     }
-  }, [date, fetchRows, keyword, page, pageSize, stockId])
+  }, [date, fetchRows, keyword, page, pageSize, stockId, stockReady])
 
   const onDateChange = (value: string) => {
     const clamped = clampDateWithinBounds(value, { max: openingDate }, toast.warning)
@@ -751,7 +778,7 @@ export function OpeningInventoryPageContent() {
               className="h-10 min-w-[180px] rounded-md border bg-card px-3 text-sm font-medium text-foreground shadow-sm outline-none focus:border-primary/30 focus:ring-2 focus:ring-primary/20"
             >
               <option value="">Tất cả kho</option>
-              {stocks.map(stock => (
+              {stockOptions.map(stock => (
                 <option key={stock.Id} value={stock.Id}>{stock.Name}</option>
               ))}
             </select>

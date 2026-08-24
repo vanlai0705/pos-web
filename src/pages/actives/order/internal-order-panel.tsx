@@ -76,6 +76,11 @@ interface InternalOrderPanelProps {
   onNoteChange: (v: string) => void
   detail: string
   setDetail: (v: string) => void
+  /** YYYY-MM-DD */
+  orderDate: string
+  setOrderDate: (v: string) => void
+  /** YYYY-MM-DD — earliest selectable order date (opening-balance cutover). */
+  minOrderDate?: string
   invoiceForm: InvoiceFormData
   setInvoiceForm: React.Dispatch<React.SetStateAction<InvoiceFormData>>
   money: MoneyControls
@@ -101,7 +106,7 @@ export function InternalOrderPanel({
   cart, onQty, onRemove, onClear, onUpdateItem, onSave, onOpenOrderSearch, saving, settings, totals, perItemTax,
   tableLabel, fromOrderManager, hasTableOrder, onBack,
   onFundTypeChange, selectedFundTypeId, customerValue, staffValue, noteValue, onCustomerChange, onStaffChange, onNoteChange,
-  detail, setDetail, invoiceForm, setInvoiceForm, money,
+  detail, setDetail, orderDate, setOrderDate, minOrderDate, invoiceForm, setInvoiceForm, money,
 }: InternalOrderPanelProps) {
   const { t } = useTranslation()
   const [panelTab, setPanelTab] = useState<PanelTab>('sales')
@@ -287,7 +292,12 @@ export function InternalOrderPanel({
             <div>
               <label className="text-xs font-medium mb-1 block">{t('common.date')}</label>
               <input type="date"
-                className="w-full rounded-lg border border-input px-2 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground"
+                value={orderDate}
+                min={minOrderDate}
+                disabled={!settings?.IsChangeDate}
+                onChange={e => e.target.value && setOrderDate(e.target.value)}
+                title={!settings?.IsChangeDate ? t('pages.actives.order.changeDateDisabledHint') : undefined}
+                className="w-full rounded-lg border border-input px-2 py-1.5 text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 text-foreground disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
             <div>
