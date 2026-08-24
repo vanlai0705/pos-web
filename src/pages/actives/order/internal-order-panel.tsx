@@ -80,7 +80,7 @@ interface InternalOrderPanelProps {
   orderDate: string
   setOrderDate: (v: string) => void
   /** YYYY-MM-DD — earliest selectable order date (opening-balance cutover). */
-  minOrderDate?: string
+  minOrderDate?: string | null
   invoiceForm: InvoiceFormData
   setInvoiceForm: React.Dispatch<React.SetStateAction<InvoiceFormData>>
   money: MoneyControls
@@ -293,7 +293,7 @@ export function InternalOrderPanel({
               <label className="text-xs font-medium mb-1 block">{t('common.date')}</label>
               <input type="date"
                 value={orderDate}
-                min={minOrderDate}
+                min={minOrderDate ?? undefined}
                 disabled={!settings?.IsChangeDate}
                 onChange={e => e.target.value && setOrderDate(e.target.value)}
                 title={!settings?.IsChangeDate ? t('pages.actives.order.changeDateDisabledHint') : undefined}

@@ -117,7 +117,7 @@ export default function SuppliersPage() {
   const openEditGroup = async (group: SupplierGroupNode) => {
     try {
       const detail = await getGroupDetail(group.Id).unwrap()
-      setGroupForm({ Name: '', ...(detail ?? group) })
+      setGroupForm(detail ?? { Id: group.Id, Name: group.Name || '' })
     } catch {
       setGroupForm({ Id: group.Id, Name: group.Name || '' })
     }

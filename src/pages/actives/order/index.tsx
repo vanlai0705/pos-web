@@ -10,7 +10,7 @@ import { useGetPaymentTypesQuery, useGetSettingOrderQuery } from '@/store/slice/
 import { useDeleteTableOrderMutation, useLazyGetOrderKitchenQuery, useLazyGetTableOrderDetailQuery, useSaveTableOrderMutation } from '@/store/slice/tables/api'
 import { printData, printDatas, type PrinterSetting } from '@/utils/print-service'
 import { toDateInputValue, toUtcStartOfDay } from '@/utils/format'
-import { useOpeningBalancesDates } from '@/hooks/useOpeningBalancesDates'
+import { useOpeningBalanceSetting } from '@/hooks/useOpeningBalanceSetting'
 import { Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -79,11 +79,8 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
   // (see InternalOrderPanel's "info" tab); otherwise the save just stamps
   // the real current time, same as before this field existed.
   const [orderDate, setOrderDate] = useState(() => toDateInputValue(new Date().toISOString()))
-  const { customerOpeningDebtDate, inventoryOpeningBalanceDate } = useOpeningBalancesDates()
-  // Customer already picked on this invoice -> the date can't be earlier
-  // than that customer's opening-debt date; otherwise fall back to the
-  // inventory opening-balance date.
-  const minOrderDate = (selectedCustomer ? customerOpeningDebtDate : inventoryOpeningBalanceDate) ?? undefined
+  // Shared "ngày chốt" cutover -- the order date can't be earlier than it.
+  const { openingDate: minOrderDate } = useOpeningBalanceSetting()
   const [invoiceForm, setInvoiceForm] = useState<InvoiceFormData>(EMPTY_INVOICE_FORM)
 
   const [discountPct, setDiscountPct] = useState(0)

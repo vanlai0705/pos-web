@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useFilterReportQuery } from '@/store/slice/users/api/api'
 import { StockDocumentDialog } from '@/components/pos/stock-document-dialog'
-import { useOpeningBalancesDates } from '@/hooks/useOpeningBalancesDates'
+import { useOpeningBalanceSetting } from '@/hooks/useOpeningBalanceSetting'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, todayDateFrom, defaultDateTo } from '@/pages/actives/shared'
 import { RowActions } from '@/pages/managers/components'
@@ -18,7 +18,7 @@ import { STATUS } from '@/constants/status'
 
 
 export default function StockInputsPage() {
-  const { inventoryOpeningBalanceDate } = useOpeningBalancesDates()
+  const { openingDate } = useOpeningBalanceSetting()
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -97,7 +97,7 @@ export default function StockInputsPage() {
         options={{ stockIn: true, supplier: true }}
         editId={editId}
         onSaved={refetch}
-        minDate={inventoryOpeningBalanceDate}
+        minDate={openingDate}
       />
     </div>
   )

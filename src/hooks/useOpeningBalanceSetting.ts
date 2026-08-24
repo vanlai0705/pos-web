@@ -14,11 +14,11 @@ function toRealDate(value?: string | null): string | null {
  * `setting/get-opening-balance-date` / `setting/update-opening-balance-date`
  * hold a single, shared "ngày chốt" (closing date) setting used by all 3
  * opening-balance screens (customer debt, supplier debt, inventory): once
- * saved, none of them can be edited to a date after it.
- *
- * Unlike `useOpeningBalancesDates` (3 read-only dates derived from actually
- * recorded data, used for `min` checks elsewhere), this is a single writable
- * value the 3 screens themselves update on save.
+ * saved, none of them can be edited to a date after it. It's also the single
+ * source of truth for every `min` check elsewhere in the app (stock
+ * documents, reports, order date, receipt/payment date) — this app
+ * deliberately does not use pos_web's separate `opening-balances/dates`
+ * endpoint for that.
  */
 export function useOpeningBalanceSetting() {
   const { data, refetch } = useGenericGetQuery({ url: 'setting/get-opening-balance-date' })

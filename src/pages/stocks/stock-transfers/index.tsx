@@ -11,7 +11,7 @@ import { StockDocumentDialog } from '@/components/pos/stock-document-dialog'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { ListPageHeader, SearchBar, DateRangeFilter, PAGE_SIZE, todayDateFrom, defaultDateTo } from '@/pages/actives/shared'
 import { fmtDateTime } from '@/utils'
-import { useOpeningBalancesDates } from '@/hooks/useOpeningBalancesDates'
+import { useOpeningBalanceSetting } from '@/hooks/useOpeningBalanceSetting'
 import type { TPosStockTransfer } from '@/store/slice/users/types/pos-types'
 import { VoucherTag } from '@/components/ui/data-tag'
 
@@ -20,7 +20,7 @@ const STATUS = { ACTIVE: 0, LOCKED: 1, DELETED: 2 } as const
 
 
 export default function StockTransfersPage() {
-  const { inventoryOpeningBalanceDate } = useOpeningBalancesDates()
+  const { openingDate } = useOpeningBalanceSetting()
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -108,7 +108,7 @@ export default function StockTransfersPage() {
         options={{ stockOut: true, stockIn: true }}
         editId={editId}
         onSaved={refetch}
-        minDate={inventoryOpeningBalanceDate}
+        minDate={openingDate}
       />
     </div>
   )

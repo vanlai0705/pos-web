@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useGenericDownloadMutation, useGenericPostMutation, useLazyGenericGetQuery } from '@/store/slice/generic/api'
 import type { TPosCustomerSimple, TPosUser } from '@/store/slice/users'
-import { useOpeningBalancesDates } from '@/hooks/useOpeningBalancesDates'
+import { useOpeningBalanceSetting } from '@/hooks/useOpeningBalanceSetting'
 import { clampDateWithinBounds } from '@/utils/format'
 import { buildModelFormData } from '@/utils/multipart'
 import { Eye, Printer } from 'lucide-react'
@@ -112,14 +112,12 @@ export function ReceiptPaymentDialog({ open, onOpenChange, type, endpoints, edit
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
   const canPrint = !!(endpoints.printTrigger && endpoints.printPdf)
 
-  // Only Customer/Supplier object types have a matching opening-debt date to
-  // check against; Member/Another aren't tied to either.
-  const { customerOpeningDebtDate, supplierOpeningDebtDate } = useOpeningBalancesDates()
-  const minDate = form.ObjectType === OBJECT_TYPE.Customer
-    ? customerOpeningDebtDate
-    : form.ObjectType === OBJECT_TYPE.Supplier
-      ? supplierOpeningDebtDate
-      : null
+  // Shared "ngày chốt" cutover -- only Customer/Supplier object types have a
+  // matching opening balance to check against; Member/Another aren't tied to either.
+  const { openingDate } = useOpeningBalanceSetting()
+  const minDate = form.ObjectType === OBJECT_TYPE.Customer || form.ObjectType === OBJECT_TYPE.Supplier
+    ? openingDate
+    : null
 
   const [fetchDetail] = useLazyGenericGetQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()

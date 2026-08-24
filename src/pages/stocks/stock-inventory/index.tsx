@@ -2,7 +2,7 @@ import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { CodeTag, MoneyTag } from '@/components/ui/data-tag'
 import { DateRangeFilter, monthToDateFrom, defaultDateTo, ListPageHeader, PAGE_SIZE, SearchBar, SummaryCard } from '@/pages/actives/shared'
 import { useFilterReportQuery } from '@/store/slice/generic/api'
-import { useOpeningBalancesDates } from '@/hooks/useOpeningBalancesDates'
+import { useOpeningBalanceSetting } from '@/hooks/useOpeningBalanceSetting'
 import { BarChart3 } from 'lucide-react'
 import { useState } from 'react'
 interface TInventoryItem {
@@ -22,7 +22,7 @@ export default function StockInventoryPage() {
   const [dateTo, setDateTo] = useState(defaultDateTo())
   // Report dates can't go earlier than the inventory opening-balance date --
   // there's no stock movement history before it.
-  const { inventoryOpeningBalanceDate } = useOpeningBalancesDates()
+  const { openingDate } = useOpeningBalanceSetting()
 
   const { data, isLoading } = useFilterReportQuery({
     path: 'inventory/filter',
@@ -56,7 +56,7 @@ export default function StockInventoryPage() {
     <div className="space-y-4">
       <ListPageHeader title="Tồn kho" icon={BarChart3}>
         <SearchBar value={keyword} onChange={v => { setKeyword(v); setPage(1) }} placeholder="Tìm mặt hàng..." />
-        <DateRangeFilter from={dateFrom} to={dateTo} onFrom={v => { setDateFrom(v); setPage(1) }} onTo={v => { setDateTo(v); setPage(1) }} min={inventoryOpeningBalanceDate} />
+        <DateRangeFilter from={dateFrom} to={dateTo} onFrom={v => { setDateFrom(v); setPage(1) }} onTo={v => { setDateTo(v); setPage(1) }} min={openingDate} />
       </ListPageHeader>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
