@@ -89,11 +89,11 @@ function LayoutThumb({ type }: { type: string }) {
   )
 }
 
-const LAYOUT_OPTIONS: { key: TLayoutMode; label: string; desc: string }[] = [
-  { key: 'sidebar', label: 'Sidebar', desc: 'Menu dọc trái' },
-  { key: 'compact', label: 'Compact', desc: 'Icon thu gọn' },
-  { key: 'header', label: 'Header', desc: 'Menu trên' },
-  { key: 'floating', label: 'Floating', desc: 'Sidebar nổi' },
+const LAYOUT_OPTIONS: { key: TLayoutMode; labelKey: string; descKey: string }[] = [
+  { key: 'sidebar', labelKey: 'common.layoutSidebarLabel', descKey: 'common.layoutSidebarDesc' },
+  { key: 'compact', labelKey: 'common.layoutCompactLabel', descKey: 'common.layoutCompactDesc' },
+  { key: 'header', labelKey: 'common.layoutHeaderLabel', descKey: 'common.layoutHeaderDesc' },
+  { key: 'floating', labelKey: 'common.layoutFloatingLabel', descKey: 'common.layoutFloatingDesc' },
 ]
 
 // ─── Settings panel ───────────────────────────────────────────────────────────
@@ -200,18 +200,18 @@ function SettingsPanel() {
                 {t('common.layout')}
               </div>
               <div className="grid grid-cols-4 gap-1.5">
-                {LAYOUT_OPTIONS.map(({ key, label, desc }) => (
+                {LAYOUT_OPTIONS.map(({ key, labelKey, descKey }) => (
                   <button
                     key={key}
                     onClick={() => { setLayoutMode(key); setOpen(false) }}
-                    title={desc}
+                    title={t(descKey)}
                     className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all ${layoutMode === key
                         ? 'border-primary text-primary bg-primary/8'
                         : 'border-transparent text-muted-foreground hover:border-muted-foreground/30 hover:bg-muted/50'
                       }`}
                   >
                     <LayoutThumb type={key} />
-                    <span className="text-[9px] font-semibold leading-tight">{label}</span>
+                    <span className="text-[9px] font-semibold leading-tight">{t(labelKey)}</span>
                   </button>
                 ))}
               </div>
