@@ -1,5 +1,6 @@
 import type { TPosSettingOrder } from "@/store/slice/users/types"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { baseUrl } from "@/constants"
@@ -184,103 +185,103 @@ export default function SettingOrderPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 items-start lg:grid-cols-2">
-      {/* Group 1: Cấu hình chung */}
-      <SettingCard title={t("pages.setting.order.generalConfigTitle")} icon={<Settings2 className="h-4 w-4 text-primary" />}>
-        <ToggleRow id="IsDupplicateCustomerName" label={t("pages.setting.order.allowDuplicateCustomerName")} checked={form.IsDupplicateCustomerName} onCheckedChange={toggle("IsDupplicateCustomerName")} />
-        <ToggleRow id="IsDiscount" label={t("pages.setting.order.allowDiscountInput")} checked={form.IsDiscount} onCheckedChange={toggle("IsDiscount")} />
-        <ToggleRow id="IsUsingBarcode" label={t("pages.setting.order.useBarcodeScanner")} checked={form.IsUsingBarcode} onCheckedChange={toggle("IsUsingBarcode")} />
-        <ToggleRow
-          id="IsInputQuantityWithBarcode"
-          label={t("pages.setting.order.showQuantityDialogOnBarcodeScan")}
-          checked={form.IsInputQuantityWithBarcode}
-          onCheckedChange={toggle("IsInputQuantityWithBarcode")}
-          disabled={!form.IsUsingBarcode}
-        />
-        <div className="space-y-1.5">
-          <label htmlFor="OrderRevenueDateType" className="text-sm font-medium">{t("pages.setting.order.orderShiftEndTime")}</label>
-          <p className="text-xs text-muted-foreground">{t("pages.setting.order.orderShiftEndTimeDescription")}</p>
-          <div className="flex items-center gap-2">
-            <select
-              id="OrderRevenueDateType"
-              value={form.OrderRevenueDateType ?? ORDER_REVENUE_DATE_TYPE.CustomTime}
-              onChange={e => setNum("OrderRevenueDateType")(Number(e.target.value))}
-              className="flex-1 min-w-0 rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value={ORDER_REVENUE_DATE_TYPE.InvoiceOpeningDate}>{t("pages.setting.order.invoiceOpeningDate")}</option>
-              <option value={ORDER_REVENUE_DATE_TYPE.InvoiceClosingDate}>{t("pages.setting.order.invoiceClosingDate")}</option>
-              <option value={ORDER_REVENUE_DATE_TYPE.CustomTime}>{t("pages.setting.order.customTime")}</option>
-            </select>
-            {form.OrderRevenueDateType === ORDER_REVENUE_DATE_TYPE.CustomTime && (
-              <input
-                type="time"
-                step={1}
-                value={form.OrderShiftEndTime ?? "00:00:00"}
-                onChange={e => setStr("OrderShiftEndTime")(e.target.value)}
-                className="w-32 shrink-0 rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            )}
-          </div>
-        </div>
-        <ToggleRow id="IsChangeDate" label={t("pages.setting.order.allowChangeInvoiceDate")} checked={form.IsChangeDate} onCheckedChange={toggle("IsChangeDate")} />
-        <ToggleRow id="IsTranferCost" label={t("pages.setting.order.hasShippingFee")} checked={form.IsTranferCost} onCheckedChange={toggle("IsTranferCost")} />
-        <div className="flex items-center justify-between gap-4 py-1">
-          <div className="min-w-0">
-            <label htmlFor="IsServiceFee" className="text-sm font-medium leading-none cursor-pointer">
-              {t("pages.setting.order.serviceFee")}
-            </label>
-          </div>
-          <div className="flex flex-none items-center gap-2">
-            <div className="flex items-center rounded-md border bg-background px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring">
-              <input
-                id="ServiceFeePercent"
-                type="number"
-                min={0}
-                max={100}
-                step={0.1}
-                value={form.ServiceFeePercent ?? 0}
-                onChange={e => setNum("ServiceFeePercent")(Number(e.target.value))}
-                disabled={!form.IsServiceFee}
-                className="w-16 bg-transparent text-right text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              />
-              <span className="ml-1 text-sm text-muted-foreground">%</span>
+        {/* Group 1: Cấu hình chung */}
+        <SettingCard title={t("pages.setting.order.generalConfigTitle")} icon={<Settings2 className="h-4 w-4 text-primary" />}>
+          <ToggleRow id="IsDupplicateCustomerName" label={t("pages.setting.order.allowDuplicateCustomerName")} checked={form.IsDupplicateCustomerName} onCheckedChange={toggle("IsDupplicateCustomerName")} />
+          <ToggleRow id="IsDiscount" label={t("pages.setting.order.allowDiscountInput")} checked={form.IsDiscount} onCheckedChange={toggle("IsDiscount")} />
+          <ToggleRow id="IsUsingBarcode" label={t("pages.setting.order.useBarcodeScanner")} checked={form.IsUsingBarcode} onCheckedChange={toggle("IsUsingBarcode")} />
+          <ToggleRow
+            id="IsInputQuantityWithBarcode"
+            label={t("pages.setting.order.showQuantityDialogOnBarcodeScan")}
+            checked={form.IsInputQuantityWithBarcode}
+            onCheckedChange={toggle("IsInputQuantityWithBarcode")}
+            disabled={!form.IsUsingBarcode}
+          />
+          <div className="space-y-1.5">
+            <label htmlFor="OrderRevenueDateType" className="text-sm font-medium">{t("pages.setting.order.orderShiftEndTime")}</label>
+            <div className="flex items-center gap-2">
+              <Select
+                value={String(form.OrderRevenueDateType ?? ORDER_REVENUE_DATE_TYPE.CustomTime)}
+                onValueChange={v => setNum("OrderRevenueDateType")(Number(v))}
+              >
+                <SelectTrigger id="OrderRevenueDateType" className="flex-1 min-w-0"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={String(ORDER_REVENUE_DATE_TYPE.InvoiceOpeningDate)}>{t("pages.setting.order.invoiceOpeningDate")}</SelectItem>
+                  <SelectItem value={String(ORDER_REVENUE_DATE_TYPE.InvoiceClosingDate)}>{t("pages.setting.order.invoiceClosingDate")}</SelectItem>
+                  <SelectItem value={String(ORDER_REVENUE_DATE_TYPE.CustomTime)}>{t("pages.setting.order.customTime")}</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.OrderRevenueDateType === ORDER_REVENUE_DATE_TYPE.CustomTime && (
+                <input
+                  type="time"
+                  step={1}
+                  value={form.OrderShiftEndTime ?? "00:00:00"}
+                  onChange={e => setStr("OrderShiftEndTime")(e.target.value)}
+                  className="w-32 shrink-0 rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              )}
             </div>
-            <Switch id="IsServiceFee" checked={!!form.IsServiceFee} onCheckedChange={toggle("IsServiceFee")} />
           </div>
-        </div>
-        <ToggleRow id="IsTax" label={t("pages.setting.order.hasTax")} description={t("pages.setting.order.taxAppliesToWholeOrder")} checked={form.IsTax} onCheckedChange={toggle("IsTax")} />
-        <ToggleRow
-          id="IsTaxPerItemAllowed"
-          label={t("pages.setting.order.allowPerItemTax")}
-          description={t("pages.setting.order.perItemTaxDescription")}
-          checked={form.IsTaxPerItemAllowed}
-          onCheckedChange={toggle("IsTaxPerItemAllowed")}
-        />
-        <ToggleRow id="IsStock" label={t("pages.setting.order.allowStockInOrder")} checked={form.IsStock} onCheckedChange={toggle("IsStock")} />
+          <ToggleRow id="IsChangeDate" label={t("pages.setting.order.allowChangeInvoiceDate")} checked={form.IsChangeDate} onCheckedChange={toggle("IsChangeDate")} />
+          <ToggleRow id="IsTranferCost" label={t("pages.setting.order.hasShippingFee")} checked={form.IsTranferCost} onCheckedChange={toggle("IsTranferCost")} />
+          <div className="flex items-center justify-between gap-4 py-1">
+            <div className="min-w-0">
+              <label htmlFor="IsServiceFee" className="text-sm font-medium leading-none cursor-pointer">
+                {t("pages.setting.order.serviceFee")}
+              </label>
+            </div>
+            <div className="flex flex-none items-center gap-2">
+              <div className="flex items-center rounded-md border bg-background px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring">
+                <input
+                  id="ServiceFeePercent"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={form.ServiceFeePercent ?? 0}
+                  onChange={e => setNum("ServiceFeePercent")(Number(e.target.value))}
+                  disabled={!form.IsServiceFee}
+                  className="w-16 bg-transparent text-right text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <span className="ml-1 text-sm text-muted-foreground">%</span>
+              </div>
+              <Switch id="IsServiceFee" checked={!!form.IsServiceFee} onCheckedChange={toggle("IsServiceFee")} />
+            </div>
+          </div>
+          <ToggleRow id="IsTax" label={t("pages.setting.order.hasTax")} description={t("pages.setting.order.taxAppliesToWholeOrder")} checked={form.IsTax} onCheckedChange={toggle("IsTax")} />
+          <ToggleRow
+            id="IsTaxPerItemAllowed"
+            label={t("pages.setting.order.allowPerItemTax")}
+            description={t("pages.setting.order.perItemTaxDescription")}
+            checked={form.IsTaxPerItemAllowed}
+            onCheckedChange={toggle("IsTaxPerItemAllowed")}
+          />
+          <ToggleRow id="IsStock" label={t("pages.setting.order.allowStockInOrder")} checked={form.IsStock} onCheckedChange={toggle("IsStock")} />
 
-        <div className="border-t pt-4 space-y-3">
-          <NumberRow id="DefaultDiscount" label={t("pages.setting.order.defaultDiscountPercent")} value={form.DefaultDiscount} onChange={setNum("DefaultDiscount")} min={0} max={100} suffix="%" />
-          <NumberRow id="TaxPercent" label={t("pages.setting.order.taxPercent")} value={form.TaxPercent} onChange={setNum("TaxPercent")} min={0} max={100} suffix="%" />
-          <NumberRow id="Rounting" label={t("pages.setting.order.priceRounding")} description={t("pages.setting.order.priceRoundingDescription")} value={form.Rounting} onChange={setNum("Rounting")} min={0} />
-          <NumberRow id="DayOfRetrurn" label={t("pages.setting.order.returnDays")} value={form.DayOfRetrurn} onChange={setNum("DayOfRetrurn")} min={0} max={365} suffix={t("pages.setting.order.daysSuffix")} />
-        </div>
-      </SettingCard>
+          <div className="border-t pt-4 space-y-3">
+            <NumberRow id="DefaultDiscount" label={t("pages.setting.order.defaultDiscountPercent")} value={form.DefaultDiscount} onChange={setNum("DefaultDiscount")} min={0} max={100} suffix="%" />
+            <NumberRow id="TaxPercent" label={t("pages.setting.order.taxPercent")} value={form.TaxPercent} onChange={setNum("TaxPercent")} min={0} max={100} suffix="%" />
+            <NumberRow id="Rounting" label={t("pages.setting.order.priceRounding")} description={t("pages.setting.order.priceRoundingDescription")} value={form.Rounting} onChange={setNum("Rounting")} min={0} />
+            <NumberRow id="DayOfRetrurn" label={t("pages.setting.order.returnDays")} value={form.DayOfRetrurn} onChange={setNum("DayOfRetrurn")} min={0} max={365} suffix={t("pages.setting.order.daysSuffix")} />
+          </div>
+        </SettingCard>
 
-      {/* Group 2: Quy tắc & Điều kiện */}
-      <SettingCard title={t("pages.setting.order.rulesConditionsTitle")} icon={<ClipboardList className="h-4 w-4 text-primary" />}>
-        <ToggleRow id="IsRequireCustomer" label={t("pages.setting.order.requireCustomer")} checked={form.IsRequireCustomer} onCheckedChange={toggle("IsRequireCustomer")} />
-        <ToggleRow id="IsRequireUser" label={t("pages.setting.order.requireSalesStaff")} checked={form.IsRequireUser} onCheckedChange={toggle("IsRequireUser")} />
-        <ToggleRow id="IsRequireStock" label={t("pages.setting.order.requireStock")} checked={form.IsRequireStock} onCheckedChange={toggle("IsRequireStock")} />
-        <ToggleRow id="IsDebit" label={t("pages.setting.order.allowCustomerDebt")} checked={form.IsDebit} onCheckedChange={toggle("IsDebit")} />
-        <ToggleRow id="IsTempOrder" label={t("pages.setting.order.allowTempOrder")} checked={form.IsTempOrder} onCheckedChange={toggle("IsTempOrder")} />
-        <ToggleRow id="IsRequireRefurnByOrderNo" label={t("pages.setting.order.requireReturnByOrderNo")} checked={form.IsRequireRefurnByOrderNo} onCheckedChange={toggle("IsRequireRefurnByOrderNo")} />
-        <ToggleRow id="IsDisplayProductImage" label={t("pages.setting.order.showProductImageInSalesUI")} checked={form.IsDisplayProductImage} onCheckedChange={toggle("IsDisplayProductImage")} />
-        <ToggleRow id="IsAutoPromotion" label={t("pages.setting.order.enableAutoPromotion")} checked={form.IsAutoPromotion} onCheckedChange={toggle("IsAutoPromotion")} />
-        <ToggleRow id="IsDisplayProductPromotion" label={t("pages.setting.order.showPromotionItemsAtCheckout")} checked={form.IsDisplayProductPromotion} onCheckedChange={toggle("IsDisplayProductPromotion")} />
-        <ToggleRow id="IsVoucher" label={t("pages.setting.order.allowVoucherPayment")} checked={form.IsVoucher} onCheckedChange={toggle("IsVoucher")} />
-        <ToggleRow id="IsTranfer" label={t("pages.setting.order.hasDelivery")} checked={form.IsTranfer} onCheckedChange={toggle("IsTranfer")} />
-        <ToggleRow id="IsPricePerCustomer" label={t("pages.setting.order.usePricePerCustomer")} checked={form.IsPricePerCustomer} onCheckedChange={toggle("IsPricePerCustomer")} />
-        <ToggleRow id="IsDiscountByProduct" label={t("pages.setting.order.useDefaultDiscountPerProduct")} checked={form.IsDiscountByProduct} onCheckedChange={toggle("IsDiscountByProduct")} />
-      </SettingCard>
+        {/* Group 2: Quy tắc & Điều kiện */}
+        <SettingCard title={t("pages.setting.order.rulesConditionsTitle")} icon={<ClipboardList className="h-4 w-4 text-primary" />}>
+          <ToggleRow id="IsRequireCustomer" label={t("pages.setting.order.requireCustomer")} checked={form.IsRequireCustomer} onCheckedChange={toggle("IsRequireCustomer")} />
+          <ToggleRow id="IsRequireUser" label={t("pages.setting.order.requireSalesStaff")} checked={form.IsRequireUser} onCheckedChange={toggle("IsRequireUser")} />
+          <ToggleRow id="IsRequireStock" label={t("pages.setting.order.requireStock")} checked={form.IsRequireStock} onCheckedChange={toggle("IsRequireStock")} />
+          <ToggleRow id="IsDebit" label={t("pages.setting.order.allowCustomerDebt")} checked={form.IsDebit} onCheckedChange={toggle("IsDebit")} />
+          <ToggleRow id="IsTempOrder" label={t("pages.setting.order.allowTempOrder")} checked={form.IsTempOrder} onCheckedChange={toggle("IsTempOrder")} />
+          <ToggleRow id="IsRequireRefurnByOrderNo" label={t("pages.setting.order.requireReturnByOrderNo")} checked={form.IsRequireRefurnByOrderNo} onCheckedChange={toggle("IsRequireRefurnByOrderNo")} />
+          <ToggleRow id="IsDisplayProductImage" label={t("pages.setting.order.showProductImageInSalesUI")} checked={form.IsDisplayProductImage} onCheckedChange={toggle("IsDisplayProductImage")} />
+          <ToggleRow id="IsAutoPromotion" label={t("pages.setting.order.enableAutoPromotion")} checked={form.IsAutoPromotion} onCheckedChange={toggle("IsAutoPromotion")} />
+          <ToggleRow id="IsDisplayProductPromotion" label={t("pages.setting.order.showPromotionItemsAtCheckout")} checked={form.IsDisplayProductPromotion} onCheckedChange={toggle("IsDisplayProductPromotion")} />
+          <ToggleRow id="IsVoucher" label={t("pages.setting.order.allowVoucherPayment")} checked={form.IsVoucher} onCheckedChange={toggle("IsVoucher")} />
+          <ToggleRow id="IsTranfer" label={t("pages.setting.order.hasDelivery")} checked={form.IsTranfer} onCheckedChange={toggle("IsTranfer")} />
+          <ToggleRow id="IsPricePerCustomer" label={t("pages.setting.order.usePricePerCustomer")} checked={form.IsPricePerCustomer} onCheckedChange={toggle("IsPricePerCustomer")} />
+          <ToggleRow id="IsDiscountByProduct" label={t("pages.setting.order.useDefaultDiscountPerProduct")} checked={form.IsDiscountByProduct} onCheckedChange={toggle("IsDiscountByProduct")} />
+        </SettingCard>
       </div>
 
       {/* Group 3: Máy in */}
