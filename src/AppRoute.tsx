@@ -80,10 +80,10 @@ import { useAuth } from '@/hooks/useAuth'
 import { useAppDispatch } from '@/store/hooks'
 import { useLazyGetMeQuery } from '@/store/slice/auth/api'
 import { useLazyGetMenuQuery } from '@/store/slice/registration-users/api'
-import { setMenu } from '@/store/slice/users/app'
-import { getAuthTransferHash } from '@/utils/auth-transfer'
+import { setMenu, setUser, setUserInfo } from '@/store/slice/users/app'
+import { clearAuthTransferHash, getAuthTransferHash } from '@/utils/auth-transfer'
 import { withDomainPath, DOMAIN_KEY, normalizeDomainName, setStoredDomainName } from '@/utils/domain-route'
-import { lazy, Suspense, useEffect, type ReactNode } from "react"
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from "react"
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { setNavigate } from "./utils/navigation-services"
 // DevExpress pulls in jQuery/knockout/ace; loading it eagerly means a failure
@@ -101,37 +101,41 @@ function AuthTransferBridge() {
   const location = useLocation()
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
-  const { setUser, setUserInfo } = useAuth()
   const [getMe] = useLazyGetMeQuery()
   const [getMenu] = useLazyGetMenuQuery()
+  const handledTokenRef = useRef('')
 
   useEffect(() => {
     const transfer = getAuthTransferHash()
     if (!transfer?.token) return
+    if (handledTokenRef.current === transfer.token) return
+
+    handledTokenRef.current = transfer.token
+    clearAuthTransferHash()
 
     let cancelled = false
     const domain = setStoredDomainName(transfer.domainName)
 
-    setUser({
+    dispatch(setUser({
       SessionToken: transfer.token,
       DomainName: domain,
       User: null,
       Permissions: [],
       Shops: [],
-    } as any)
+    } as any))
 
     Promise.allSettled([
       getMe().then(({ data: meData }) => {
         if (cancelled || !meData) return
 
-        setUser({
+        dispatch(setUser({
           ...meData,
           SessionToken: transfer.token,
           DomainName: normalizeDomainName(meData.DomainName) || domain,
-        } as any)
+        } as any))
 
         if (meData.User) {
-          setUserInfo(meData.User as any)
+          dispatch(setUserInfo(meData.User as any))
         }
       }),
       getMenu().then(({ data: menuData }) => {
@@ -148,7 +152,7 @@ function AuthTransferBridge() {
     return () => {
       cancelled = true
     }
-  }, [dispatch, getMe, getMenu, location.pathname, location.search, navigate, setUser, setUserInfo])
+  }, [dispatch, getMe, getMenu, location.pathname, location.search, navigate])
 
   return null
 }

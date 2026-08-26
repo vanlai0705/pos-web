@@ -19,3 +19,16 @@ export function getAuthTransferHash() {
 export function hasAuthTransferHash() {
   return !!getAuthTransferHash()
 }
+
+export function clearAuthTransferHash() {
+  if (typeof window === 'undefined') return
+
+  const transfer = getAuthTransferHash()
+  if (!transfer?.token) return
+
+  window.history.replaceState(
+    window.history.state,
+    document.title,
+    `${window.location.pathname}${window.location.search}`,
+  )
+}
