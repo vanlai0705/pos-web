@@ -81,6 +81,7 @@ import { useAppDispatch } from '@/store/hooks'
 import { useLazyGetMeQuery } from '@/store/slice/auth/api'
 import { useLazyGetMenuQuery } from '@/store/slice/registration-users/api'
 import { setMenu, setUser, setUserInfo } from '@/store/slice/users/app'
+import { persistor } from '@/store/store'
 import { clearAuthTransferHash, getAuthTransferHash } from '@/utils/auth-transfer'
 import { withDomainPath, DOMAIN_KEY, normalizeDomainName, setStoredDomainName } from '@/utils/domain-route'
 import { lazy, Suspense, useEffect, useRef, type ReactNode } from "react"
@@ -143,9 +144,10 @@ function AuthTransferBridge() {
           dispatch(setMenu(menuData))
         }
       }),
-    ]).finally(() => {
+    ]).finally(async () => {
       if (cancelled) return
 
+      await persistor.flush()
       navigate(`${location.pathname}${location.search}`, { replace: true })
     })
 

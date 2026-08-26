@@ -119,7 +119,7 @@ const TITLE_TO_KEY: Record<string, string> = {
   "Operations": "menu.actives",
   "Quản lý bán hàng": "menu.orderManager",
   "Sales management": "menu.orderManager",
-  "Danh sách hoá đơn": "menu.orders",
+  "Danh sách hoá đơn": "menu.eInvoice",
   "Hoá đơn nhà hàng": "menu.orders",
   "Khách đặt hàng": "menu.booking",
   "Bookings": "menu.booking",

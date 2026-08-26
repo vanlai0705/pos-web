@@ -11,7 +11,7 @@ import { useCheckOrderInvoiceMutation, useFilterOrderInvoicesQuery, useImportOrd
 import { TPosOrderInvoice } from '@/store/slice/users'
 import { selectAuth } from '@/store/slice/users/app'
 import { withDomainPath } from '@/utils/domain-route'
-import { Receipt, Eye, RefreshCw, SearchCheck, Send, X } from 'lucide-react'
+import { Receipt, Eye, Pencil, Printer, RefreshCw, SearchCheck, Send, X } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -29,6 +29,28 @@ type ViewerState = { html: string | null; pdfUrl: string | null; fileName: strin
 
 function InvoiceViewer({ state, onClose }: { state: ViewerState; onClose: () => void }) {
   const { t } = useTranslation()
+  const pdfFrameRef = useRef<HTMLIFrameElement | null>(null)
+
+  const handlePrint = () => {
+    if (state.pdfUrl) {
+      const frameWindow = pdfFrameRef.current?.contentWindow
+      if (!frameWindow) return
+      frameWindow.focus()
+      frameWindow.print()
+      return
+    }
+
+    if (!state.html) return
+
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.open()
+    win.document.write(state.html)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div
@@ -36,16 +58,22 @@ function InvoiceViewer({ state, onClose }: { state: ViewerState; onClose: () => 
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
-          <span className="font-semibold text-sm truncate">{state.fileName || t('pages.actives.invoices.invoiceLabel')}</span>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <span className="font-semibold text-sm truncate">{t('pages.actives.invoices.pageTitle')}</span>
+          <div className="flex items-center gap-2">
+            <Button className="h-8 gap-1.5 bg-emerald-600 px-3 text-xs font-semibold hover:bg-emerald-700" onClick={handlePrint}>
+              <Printer className="h-3.5 w-3.5" />
+              {t('pages.actives.invoices.printInvoiceAction')}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div className="flex-1 overflow-auto">
           {state.html ? (
             <div className="p-4" dangerouslySetInnerHTML={{ __html: state.html }} />
           ) : state.pdfUrl ? (
-            <iframe src={state.pdfUrl} className="w-full h-full border-0" title={state.fileName} />
+            <iframe ref={pdfFrameRef} src={state.pdfUrl} className="w-full h-full border-0" title={state.fileName} />
           ) : null}
         </div>
       </div>
@@ -159,8 +187,8 @@ export default function InvoicesPage() {
   }, [])
 
   const goOrder = useCallback((invoice: TPosOrderInvoice) => {
-    if (invoice.PublishStatus === 2 || !invoice.OrderId) return
-    navigate(withDomainPath(`/actives/order?orderId=${invoice.OrderId}`))
+    if (!invoice.OrderId) return
+    navigate(withDomainPath(`/actives/order?orderId=${invoice.OrderId}&fromOrderManager=1`))
   }, [navigate])
 
   const onKeyword = useCallback((v: string) => { setKeyword(v); setPage(1) }, [])
@@ -195,8 +223,10 @@ export default function InvoicesPage() {
           <button
             type="button"
             onClick={() => goOrder(inv)}
-            className={inv.PublishStatus !== 2 ? 'cursor-pointer' : 'cursor-default'}
+            className="inline-flex items-center gap-1.5"
+            title={t('common.edit')}
           >
+            <Pencil className="h-3.5 w-3.5 text-primary" />
             <VoucherTag value={inv.OrderId} className={inv.PublishStatus === 2 ? 'opacity-70' : ''} />
           </button>
         )

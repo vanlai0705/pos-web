@@ -936,7 +936,7 @@ export const extraResources: Record<string, any> = {
           saving: "Đang lưu..."
         },
         invoices: {
-          pageTitle: "Danh sách hoá đơn",
+          pageTitle: "Hoá đơn điện tử",
           defaultRetailCustomer: "BÁN CHO NGƯỜI TIÊU DÙNG",
           statusPending: "Chờ phát hành",
           statusNotIssued: "Không xuất",
@@ -957,6 +957,7 @@ export const extraResources: Record<string, any> = {
           descriptionHistory: "Mô tả",
           publishAction: "Phát hành",
           viewInvoiceAction: "Xem HĐ",
+          printInvoiceAction: "In hoá đơn",
           checkAction: "Kiểm tra",
           emptyText: "Không có hoá đơn nào"
         },
@@ -2627,6 +2628,7 @@ export const extraResources: Record<string, any> = {
           descriptionHistory: "Description",
           publishAction: "Issue",
           viewInvoiceAction: "View Invoice",
+          printInvoiceAction: "Print Invoice",
           checkAction: "Check",
           emptyText: "No invoices found"
         },
@@ -4303,6 +4305,7 @@ extraResources.km = {
           descriptionHistory: "ការពិពណ៌នា",
           publishAction: "ចេញផ្សាយ",
           viewInvoiceAction: "មើលវិក្កយបត្រ",
+          printInvoiceAction: "បោះពុម្ពវិក្កយបត្រ",
           checkAction: "ត្រួតពិនិត្យ",
           emptyText: "មិនមានវិក្កយបត្រទេ"
         },
@@ -5975,6 +5978,7 @@ extraResources.zh = {
           descriptionHistory: "说明",
           publishAction: "开具",
           viewInvoiceAction: "查看发票",
+          printInvoiceAction: "打印发票",
           checkAction: "检查",
           emptyText: "暂无发票"
         },
