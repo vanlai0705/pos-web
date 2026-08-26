@@ -1,6 +1,7 @@
 import type { TPosActiveProduct } from '@/store/slice/users/types/pos-types'
 import { PosImage } from '@/components/ui/pos-image'
 import { Skeleton } from '@/components/ui/skeleton'
+import { STATUS } from '@/constants/status'
 import { useFilterActiveProductsQuery, useGetActiveProductsSimpleQuery } from '@/store/slice/products/api'
 import { useGetProductGroupsSimpleQuery } from '@/store/slice/users'
 import { cn, formatNumber } from '@/utils'
@@ -26,6 +27,24 @@ function colorIndex(id?: number, index?: number) {
   return ((id ?? index ?? 0) % CARD_COLORS.length)
 }
 
+function isActiveProduct(product: TPosActiveProduct) {
+  return product.Status?.Id == null || product.Status.Id === STATUS.ACTIVE
+}
+
+function productKey(product: TPosActiveProduct, index: number) {
+  return String(product.Id ?? product.Barcode ?? product.ProductCode ?? product.Code ?? index)
+}
+
+function uniqueProducts(items: TPosActiveProduct[]) {
+  const seen = new Set<string>()
+  return items.filter((product, index) => {
+    const key = productKey(product, index)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 interface ProductPanelProps {
   onAdd: (product: TPosActiveProduct) => void
 }
@@ -43,36 +62,58 @@ export function ProductPanel({ onAdd }: ProductPanelProps) {
   const scannerLastTs = useRef(0)
   const lastHandledScan = useRef<{ value: string; ts: number } | null>(null)
   const appendedPage = useRef(-1)
+  const loadingNextPage = useRef(false)
 
   const { data: groups = [] } = useGetProductGroupsSimpleQuery()
   const { data: simpleProducts = [] } = useGetActiveProductsSimpleQuery()
-  const { data, isFetching, isLoading } = useFilterActiveProductsQuery({
+  const { currentData, isFetching, isLoading } = useFilterActiveProductsQuery({
     PageIndex: pageIndex,
     PageSize: PRODUCT_PAGE_SIZE,
     Keyword: keyword || undefined,
     ProductGroupId: groupId ?? undefined,
+    StatusId: STATUS.ACTIVE,
   })
+  const activeGroups = groups.filter(group => (group as any).Status?.Id == null || (group as any).Status.Id === STATUS.ACTIVE)
 
-  useEffect(() => {
+  const resetProductPaging = () => {
     setPageIndex(0)
     setProducts([])
     appendedPage.current = -1
+    loadingNextPage.current = false
     gridRef.current?.scrollTo({ top: 0 })
+  }
+
+  const changeKeyword = (value: string) => {
+    resetProductPaging()
+    setKeyword(value)
+  }
+
+  const changeGroup = (value: number | null) => {
+    if (groupId === value) return
+    resetProductPaging()
+    setGroupId(value)
+  }
+
+  useEffect(() => {
+    resetProductPaging()
   }, [keyword, groupId])
 
   useEffect(() => {
-    if (!data || appendedPage.current === pageIndex) return
+    if (!currentData || appendedPage.current === pageIndex) return
     appendedPage.current = pageIndex
-    setProducts(prev => pageIndex === 0 ? data.Items : [...prev, ...data.Items])
-  }, [data, pageIndex])
+    loadingNextPage.current = false
+    const items = (currentData.Items ?? []).filter(isActiveProduct)
+    setProducts(prev => pageIndex === 0 ? uniqueProducts(items) : uniqueProducts([...prev, ...items]))
+  }, [currentData, pageIndex])
 
-  const total = data?.TotalItemCount ?? 0
+  const total = currentData?.TotalItemCount ?? 0
   const hasMore = products.length < total
 
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
-    if (!hasMore || isFetching) return
+    if (!hasMore || isFetching || loadingNextPage.current) return
     const el = event.currentTarget
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 200) {
+      loadingNextPage.current = true
       setPageIndex(page => page + 1)
     }
   }
@@ -89,7 +130,7 @@ export function ProductPanel({ onAdd }: ProductPanelProps) {
       const code = String(product.Code ?? '').trim().toLowerCase()
       return barcode === scanned || productCode === scanned || code === scanned
     }
-    const matched = simpleProducts.find(exactMatch) ?? products.find(exactMatch)
+    const matched = simpleProducts.filter(isActiveProduct).find(exactMatch) ?? products.find(exactMatch)
     if (!matched) return
     onAdd(matched)
     setKeyword('')
@@ -160,7 +201,7 @@ export function ProductPanel({ onAdd }: ProductPanelProps) {
             type="text"
             placeholder={t('pages.actives.order.searchProductPlaceholder')}
             value={keyword}
-            onChange={event => setKeyword(event.target.value)}
+            onChange={event => changeKeyword(event.target.value)}
             onKeyDown={event => {
               if (event.key !== 'Enter') return
               event.preventDefault()
@@ -169,22 +210,22 @@ export function ProductPanel({ onAdd }: ProductPanelProps) {
             className="w-full h-9 pl-8 pr-8 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-muted-foreground text-foreground"
           />
           {keyword && (
-            <button onClick={() => setKeyword('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <button onClick={() => changeKeyword('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
         <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-none">
           <button
-            onClick={() => setGroupId(null)}
+            onClick={() => changeGroup(null)}
             className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${groupId === null ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}
           >
             {t('common.all')}
           </button>
-          {groups.map(group => (
+          {activeGroups.map(group => (
             <button
               key={group.Id}
-              onClick={() => setGroupId(group.Id ?? null)}
+              onClick={() => changeGroup(group.Id ?? null)}
               className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${groupId === group.Id ? 'bg-primary/15 text-primary border border-primary/30' : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}
             >
               {group.Name}

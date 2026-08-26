@@ -1,5 +1,6 @@
 import { userApiSlice } from '@/store/slice/api/base'
 import { query } from '@/utils'
+import dayjs from 'dayjs'
 import type {
   TPosFilterData,
   TPosOrder,
@@ -118,7 +119,10 @@ export const ordersApi = userApiSlice.injectEndpoints({
       query: (data) => ({
         url: "orders/completed",
         method: "POST",
-        body: data,
+        body: {
+          ...data,
+          Today: dayjs().format('YYYY-MM-DDTHH:mm:ss.SSS'),
+        },
       }),
       transformResponse: (res: TPosResponse<TPosOrder>) => res.Data,
     }),

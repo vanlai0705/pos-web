@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { routeConfig } from './constants/data'
 import { useAuth } from './hooks/useAuth'
+import { hasAuthTransferHash } from './utils/auth-transfer'
 import { stripDisplayedDomain } from './utils/domain-route'
 
 const PrivateRoute = () => {
@@ -9,6 +10,10 @@ const PrivateRoute = () => {
 
   // POS API dùng SessionToken thay vì access_token
   if (!user?.data?.SessionToken) {
+    if (hasAuthTransferHash()) {
+      return null;
+    }
+
     return <Navigate to="/login" replace />;
   }
 

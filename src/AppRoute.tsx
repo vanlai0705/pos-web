@@ -77,6 +77,11 @@ import SupportHubPage from "./pages/supports"
 import HelpsPage from "./pages/supports/helps"
 import SupportsPage from "./pages/supports/supports"
 import { useAuth } from '@/hooks/useAuth'
+import { useAppDispatch } from '@/store/hooks'
+import { useLazyGetMeQuery } from '@/store/slice/auth/api'
+import { useLazyGetMenuQuery } from '@/store/slice/registration-users/api'
+import { setMenu } from '@/store/slice/users/app'
+import { getAuthTransferHash } from '@/utils/auth-transfer'
 import { withDomainPath, DOMAIN_KEY, normalizeDomainName, setStoredDomainName } from '@/utils/domain-route'
 import { lazy, Suspense, useEffect, type ReactNode } from "react"
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
@@ -89,6 +94,62 @@ const ReportDesignerPage = lazy(() => import("./pages/report/designer"))
 function NavigationInitializer() {
   const navigate = useNavigate()
   useEffect(() => { setNavigate(navigate) }, [navigate])
+  return null
+}
+
+function AuthTransferBridge() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
+  const { setUser, setUserInfo } = useAuth()
+  const [getMe] = useLazyGetMeQuery()
+  const [getMenu] = useLazyGetMenuQuery()
+
+  useEffect(() => {
+    const transfer = getAuthTransferHash()
+    if (!transfer?.token) return
+
+    let cancelled = false
+    const domain = setStoredDomainName(transfer.domainName)
+
+    setUser({
+      SessionToken: transfer.token,
+      DomainName: domain,
+      User: null,
+      Permissions: [],
+      Shops: [],
+    } as any)
+
+    Promise.allSettled([
+      getMe().then(({ data: meData }) => {
+        if (cancelled || !meData) return
+
+        setUser({
+          ...meData,
+          SessionToken: transfer.token,
+          DomainName: normalizeDomainName(meData.DomainName) || domain,
+        } as any)
+
+        if (meData.User) {
+          setUserInfo(meData.User as any)
+        }
+      }),
+      getMenu().then(({ data: menuData }) => {
+        if (!cancelled && menuData) {
+          dispatch(setMenu(menuData))
+        }
+      }),
+    ]).finally(() => {
+      if (cancelled) return
+
+      navigate(`${location.pathname}${location.search}`, { replace: true })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [dispatch, getMe, getMenu, location.pathname, location.search, navigate, setUser, setUserInfo])
+
   return null
 }
 
@@ -316,6 +377,7 @@ function AppRoute() {
   return (
     <Router>
       <NavigationInitializer />
+      <AuthTransferBridge />
       <Suspense fallback={null}>
       <Routes>
         {/* Public */}

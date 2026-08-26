@@ -16,7 +16,7 @@ import { clampDateWithinBounds } from '@/utils/format'
 import { buildModelFormData } from '@/utils/multipart'
 import { Eye, Package, Printer, Search, Trash2 } from 'lucide-react'
 import { printData } from '@/utils/print-service'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { NumberInput } from '../ui/number-input'
@@ -123,6 +123,7 @@ export function StockDocumentDialog({
   const [form, setForm] = useState<StockDoc>(emptyStockDoc())
   const [keyword, setKeyword] = useState('')
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
+  const defaultStockInAppliedRef = useRef(false)
 
   const [fetchDetail] = useLazyGenericGetQuery()
   const [fetchInventory] = useLazyGenericGetQuery()
@@ -130,6 +131,9 @@ export function StockDocumentDialog({
   const [downloadFile, { isLoading: printing }] = useGenericDownloadMutation()
   const { data: settings } = useGetSettingOrderQuery()
   const canPrintStockInput = endpoints.create.includes('stockinputs')
+  const defaultStockIn = settings?.StockDefault?.Id
+    ? settings.StockDefault
+    : null
 
   const { data: productData, isFetching: loadingProducts } = useFilterActiveProductsQuery(
     { PageIndex: 0, PageSize: 40, Keyword: keyword || undefined },
@@ -140,6 +144,7 @@ export function StockDocumentDialog({
   // Load the document when editing; reset to a blank one when creating.
   useEffect(() => {
     if (!open) return
+    defaultStockInAppliedRef.current = false
     if (!editId) {
       const empty = emptyStockDoc()
       setForm(extraDateField ? { ...empty, [extraDateField]: empty.Date } : empty)
@@ -159,6 +164,22 @@ export function StockDocumentDialog({
       })
       .catch(e => toast.error(errMsg(e, t('components.stockDocumentDialog.genericError'))))
   }, [open, editId, endpoints.detail, extraDateField, fetchDetail, t])
+
+  useEffect(() => {
+    if (
+      !open ||
+      editId ||
+      !canPrintStockInput ||
+      !options.stockIn ||
+      !defaultStockIn?.Id ||
+      defaultStockInAppliedRef.current
+    ) {
+      return
+    }
+
+    defaultStockInAppliedRef.current = true
+    setForm(f => f.StockIn?.Id ? f : ({ ...f, StockIn: defaultStockIn }))
+  }, [canPrintStockInput, defaultStockIn, editId, open, options.stockIn])
 
   useEffect(() => () => {
     setPdfPreviewUrl(prev => {
