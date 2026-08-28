@@ -1,15 +1,22 @@
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { useFirebaseNotifications } from '@/hooks/useFirebaseNotifications'
+import type { MessagePayload } from '@/services/firebase-notifications'
+import { EUserTagTypes } from '@/store/slice/api/tag-types'
 import { useGetNotificationsQuery, useMarkAllNotificationsReadMutation, useUpdateNotificationStatusMutation } from '@/store/slice/notifications/api'
+import { tablesApi } from '@/store/slice/tables/api'
 import { TPosNotificationItem } from '@/store/slice/users'
+import { useAppDispatch } from '@/store/hooks'
 import { cn } from '@/utils'
 import { getImageUrl } from '@/utils/common'
 import { withDomainPath } from '@/utils/domain-route'
 import { type TFunction } from 'i18next'
 import { Bell, Check, CheckCheck, Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+
 function timeAgo(t: TFunction, dateStr?: string) {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -21,10 +28,29 @@ function timeAgo(t: TFunction, dateStr?: string) {
   return t('components.notificationBell.daysAgo', { count: Math.floor(h / 24) })
 }
 
+function getPayloadTitle(payload: MessagePayload, fallback: string) {
+  return payload.notification?.title ||
+    payload.data?.title ||
+    payload.data?.Title ||
+    payload.data?.Name ||
+    fallback
+}
+
+function getPayloadDetail(payload: MessagePayload) {
+  return payload.notification?.body ||
+    payload.data?.body ||
+    payload.data?.Body ||
+    payload.data?.Detail ||
+    payload.data?.Message ||
+    ''
+}
+
 export function NotificationBell() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const dispatch = useAppDispatch()
   const [open, setOpen] = useState(false)
+  const [localPushItems, setLocalPushItems] = useState<TPosNotificationItem[]>([])
 
   const { data, refetch, isFetching } = useGetNotificationsQuery(
     { PageIndex: 0, PageSize: 8 },
@@ -33,25 +59,58 @@ export function NotificationBell() {
   const [updateStatus] = useUpdateNotificationStatusMutation()
   const [markAll, { isLoading: markingAll }] = useMarkAllNotificationsReadMutation()
 
-  const notifications = data?.Notifications ?? []
-  const unreadCount = data?.UnReadedCount ?? 0
+  const handleForegroundMessage = useCallback((payload: MessagePayload) => {
+    const title = getPayloadTitle(payload, t('components.notificationBell.title'))
+    const detail = getPayloadDetail(payload)
+    const item = {
+      Id: `local-${Date.now()}`,
+      Name: title,
+      Detail: detail,
+      Date: new Date().toISOString(),
+      Image: { Url: '' },
+      IsLocalPush: true,
+      Status: { Id: 0, Name: 'Unread' },
+    } as unknown as TPosNotificationItem
+
+    setLocalPushItems(items => [item, ...items].slice(0, 20))
+    toast.info(title, detail ? { description: detail } : undefined)
+    dispatch(tablesApi.util.invalidateTags([{ type: EUserTagTypes.Tables }]))
+    refetch()
+  }, [dispatch, refetch, t])
+
+  useFirebaseNotifications(handleForegroundMessage)
+
+  const notifications = useMemo(() => {
+    const serverItems = data?.Notifications ?? []
+    return [...localPushItems, ...serverItems.filter(item => !`${item.Id}`.startsWith('local-'))].slice(0, 50)
+  }, [data?.Notifications, localPushItems])
+  const unreadCount = (data?.UnReadedCount ?? 0) + localPushItems.length
 
   const handleMarkRead = async (e: React.MouseEvent, item: TPosNotificationItem) => {
     e.stopPropagation()
     if (item.Status?.Id !== 0) return
+    if (`${item.Id}`.startsWith('local-')) {
+      setLocalPushItems(items => items.filter(x => x.Id !== item.Id))
+      return
+    }
     await updateStatus({ id: item.Id, statusId: 1 }).unwrap().catch(() => {})
     refetch()
   }
 
   const handleItemClick = async (item: TPosNotificationItem) => {
     if (item.Status?.Id === 0) {
-      await updateStatus({ id: item.Id, statusId: 1 }).unwrap().catch(() => {})
+      if (`${item.Id}`.startsWith('local-')) {
+        setLocalPushItems(items => items.filter(x => x.Id !== item.Id))
+      } else {
+        await updateStatus({ id: item.Id, statusId: 1 }).unwrap().catch(() => {})
+      }
     }
     setOpen(false)
     navigate(withDomainPath('/notifications'))
   }
 
   const handleMarkAll = async () => {
+    setLocalPushItems([])
     await markAll().unwrap().catch(() => {})
     refetch()
   }

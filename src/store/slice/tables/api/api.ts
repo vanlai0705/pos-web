@@ -1,4 +1,5 @@
 import { userApiSlice } from '@/store/slice/api/base'
+import { EUserTagTypes } from '@/store/slice/api/tag-types'
 import type {
   TPosActiveProduct,
   TPosArea,
@@ -30,6 +31,7 @@ export const tablesApi = userApiSlice.injectEndpoints({
         return { url: `tables/get-list${qs ? "?" + qs : ""}`, method: "GET" };
       },
       transformResponse: (res: TPosResponse<TPosTable[]>) => res.Data ?? [],
+      providesTags: () => [{ type: EUserTagTypes.Tables }],
     }),
 
     // ─── QR self-order (customer-facing, unauthenticated) ────────────────────

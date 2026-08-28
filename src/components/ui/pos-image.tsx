@@ -11,6 +11,14 @@ interface PosImageProps {
   fallbackIcon?: React.ReactNode
 }
 
+type CachedImage = {
+  src?: string
+  promise?: Promise<string>
+  error?: boolean
+}
+
+const authImageCache = new Map<string, CachedImage>()
+
 function needsAuth(url?: string) {
   return !!url && url.includes('images/get-image-file')
 }
@@ -30,17 +38,41 @@ export function PosImage({ url, alt = '', className, variant = 'image', fallback
     if (!fullSrc || !needsAuth(fullSrc) || !token) return
 
     let cancelled = false
-    let objectUrl: string | null = null
+    const cacheKey = `${token}:${fullSrc}`
+    const cached = authImageCache.get(cacheKey)
 
-    fetch(fullSrc, { headers: { Authorization: `Bearer ${token}` } })
+    if (cached?.src) {
+      setBlobSrc(cached.src)
+      return
+    }
+
+    if (cached?.error) {
+      setError(true)
+      return
+    }
+
+    const promise = cached?.promise ?? fetch(fullSrc, { headers: { Authorization: `Bearer ${token}` } })
       .then(response => {
         if (!response.ok) throw new Error('Image request failed')
         return response.blob()
       })
       .then(blob => {
-        if (cancelled) return
-        objectUrl = URL.createObjectURL(blob)
-        setBlobSrc(objectUrl)
+        const objectUrl = URL.createObjectURL(blob)
+        authImageCache.set(cacheKey, { src: objectUrl })
+        return objectUrl
+      })
+      .catch(() => {
+        authImageCache.set(cacheKey, { error: true })
+        throw new Error('Image request failed')
+      })
+
+    if (!cached?.promise) {
+      authImageCache.set(cacheKey, { promise })
+    }
+
+    promise
+      .then(src => {
+        if (!cancelled) setBlobSrc(src)
       })
       .catch(() => {
         if (!cancelled) setError(true)
@@ -48,7 +80,6 @@ export function PosImage({ url, alt = '', className, variant = 'image', fallback
 
     return () => {
       cancelled = true
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [fullSrc, token])
 

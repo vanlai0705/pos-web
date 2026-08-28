@@ -4,6 +4,6 @@ import { EUserTagTypes } from './tag-types'
 export const userApiSlice = createApi({
   baseQuery: getBaseQueryWithReauth(),
   reducerPath: 'userApi',
-  tagTypes: [EUserTagTypes.UserInfo],
+  tagTypes: [EUserTagTypes.UserInfo, EUserTagTypes.Tables],
   endpoints: () => ({}),
 });

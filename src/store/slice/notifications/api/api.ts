@@ -74,6 +74,14 @@ export const notificationsApi = userApiSlice.injectEndpoints({
       }),
     }),
 
+    updateDevice: builder.mutation<void, { deviceType: number; deviceToken: string }>({
+      query: (body) => ({
+        url: "devices/update",
+        method: "POST",
+        body,
+      }),
+    }),
+
     getUserShopSetting: builder.query<
       { Shops: TPosShop[]; SelectedShopId: number },
       void
@@ -111,6 +119,7 @@ export const {
   useLazyFilterNotificationsQuery,
   useUpdateNotificationStatusMutation,
   useMarkAllNotificationsReadMutation,
+  useUpdateDeviceMutation,
   useGetUserShopSettingQuery,
   useLazyGetUserShopSettingQuery,
   useSelectShopMutation
