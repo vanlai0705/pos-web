@@ -34,6 +34,8 @@ interface SalesTabProps {
   onBack?: () => void
 }
 
+const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms))
+
 function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, fromOrderManager, onBack }: SalesTabProps) {
   const { t } = useTranslation()
   const [cart, setCart] = useState<CartItem[]>([])
@@ -437,15 +439,27 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
   }
 
   const printKitchen = async () => {
-    if (!tableGuid) return
+    if (!tableGuid) {
+      toast.error(t('pages.actives.order.kitchenDataFailed'))
+      return
+    }
     try {
       const groups = await fetchOrderKitchen({ tableGuid, deviceGuid: getDeviceGuid() }).unwrap()
-      groups.forEach(g => {
-        if (!g.Printer?.PrinterUrl) return
-        printDatas(g.Printer.PrinterUrl, 'tables/print-kitchen', g.Printer.PrinterName, {
+      if (!Array.isArray(groups) || groups.length === 0) {
+        toast.error(t('pages.actives.order.kitchenNoData'))
+        return
+      }
+      let sent = 0
+      for (const g of groups) {
+        if (!g.Printer?.PrinterUrl) continue
+        await printDatas(g.Printer.PrinterUrl, 'tables/print-kitchen', g.Printer.PrinterName, {
           guid: tableGuid, items: g.Items,
         })
-      })
+        sent += 1
+        await wait(200)
+      }
+      if (sent > 0) toast.success(t('pages.actives.order.kitchenPrintSent'))
+      else toast.error(t('pages.actives.order.kitchenNoPrinter'))
     } catch {
       toast.error(t('pages.actives.order.kitchenDataFailed'))
     }
@@ -571,8 +585,10 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
 
     if (action === 'save-exit' || action === 'print-temp' || action === 'print-kitchen' || action === 'print-label') {
       try {
-        const res = await saveTableOrder({ order: withTable(order), isUpdate: !!bookingId }).unwrap()
+        const tableOrder = withTable(order)
+        const res = await saveTableOrder({ order: tableOrder, isUpdate: !!bookingId }).unwrap()
         const savedId = res?.OrderId ?? bookingId
+        if (savedId) setBaseOrder({ ...tableOrder, Id: savedId })
         toast.success(t('pages.actives.order.orderSavedSuccess'))
         const finish = () => onBack?.()
 
