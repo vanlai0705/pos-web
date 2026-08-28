@@ -5,16 +5,16 @@ import { getMessaging, getToken, isSupported as isMessagingSupported, onMessage,
 const FCM_TOKEN_KEY = 'fcm_token'
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyDSeQOTuP5PMi0mafki1at4qF8XJwxID8M',
-  authDomain: 'posmobile-b7bc4.firebaseapp.com',
-  projectId: 'posmobile-b7bc4',
-  storageBucket: 'posmobile-b7bc4.firebasestorage.app',
-  messagingSenderId: '906877367710',
-  appId: '1:906877367710:web:f93701e74d50703defd28f',
-  measurementId: 'G-BDK0HDEYPS',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
-const vapidKey = 'BF1xz2o3CyC64do-yNm6_-IU9s_gv6uDl_gBWuiR4IU1aH6edA0GH15SFYWxztM9VAENYb_bmlgc8U2dhyLz8fE'
+const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY
 
 type TokenMeta = {
   token: string
@@ -33,6 +33,11 @@ class FirebaseNotifications {
   async initialize() {
     if (this.initialized || typeof window === 'undefined') return
     this.initialized = true
+
+    if (!this.hasFirebaseConfig()) {
+      this.debug('initialize:missingFirebaseConfig')
+      return
+    }
 
     this.app = getApps().length ? getApp() : initializeApp(firebaseConfig)
     this.initializeAnalytics()
@@ -89,7 +94,7 @@ class FirebaseNotifications {
     this.debug('token:permission', { permission })
     if (permission !== 'granted') return ''
 
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    const registration = await navigator.serviceWorker.register(this.getServiceWorkerUrl())
     this.debug('token:serviceWorkerRegistered', { scope: registration.scope })
     const serviceWorkerRegistration = await navigator.serviceWorker.ready
 
@@ -120,6 +125,26 @@ class FirebaseNotifications {
     try {
       if (this.app && await isAnalyticsSupported()) getAnalytics(this.app)
     } catch {}
+  }
+
+  private hasFirebaseConfig() {
+    return !!(
+      firebaseConfig.apiKey &&
+      firebaseConfig.authDomain &&
+      firebaseConfig.projectId &&
+      firebaseConfig.storageBucket &&
+      firebaseConfig.messagingSenderId &&
+      firebaseConfig.appId &&
+      vapidKey
+    )
+  }
+
+  private getServiceWorkerUrl() {
+    const params = new URLSearchParams()
+    Object.entries(firebaseConfig).forEach(([key, value]) => {
+      if (value) params.set(key, value)
+    })
+    return `/firebase-messaging-sw.js?${params.toString()}`
   }
 
   private playNotificationSound() {
