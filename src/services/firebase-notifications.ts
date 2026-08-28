@@ -1,5 +1,4 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app'
-import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics'
 import { getMessaging, getToken, isSupported as isMessagingSupported, onMessage, type MessagePayload, type Messaging } from 'firebase/messaging'
 
 const FCM_TOKEN_KEY = 'fcm_token'
@@ -40,7 +39,6 @@ class FirebaseNotifications {
     }
 
     this.app = getApps().length ? getApp() : initializeApp(firebaseConfig)
-    this.initializeAnalytics()
 
     const messagingSupported = await isMessagingSupported()
     this.debug('initialize:messagingSupported', { messagingSupported })
@@ -119,12 +117,6 @@ class FirebaseNotifications {
       this.playNotificationSound()
       this.listeners.forEach(listener => listener(payload))
     })
-  }
-
-  private async initializeAnalytics() {
-    try {
-      if (this.app && await isAnalyticsSupported()) getAnalytics(this.app)
-    } catch {}
   }
 
   private hasFirebaseConfig() {
