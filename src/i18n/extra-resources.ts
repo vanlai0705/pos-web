@@ -1560,7 +1560,18 @@ export const extraResources: Record<string, any> = {
         justNow: "Vừa xong",
         minutesAgo: "{{count}} phút trước",
         hoursAgo: "{{count}} giờ trước",
-        daysAgo: "{{count}} ngày trước"
+        daysAgo: "{{count}} ngày trước",
+        enableTitle: "Bật thông báo",
+        enableDescription: "Cho phép trình duyệt nhận thông báo để thông báo bàn và đơn hàng được đẩy về ngay.",
+        enableBlockedDescription: "Trình duyệt đang chặn thông báo. Vui lòng mở cài đặt website trên trình duyệt và cho phép Notification.",
+        enableAction: "Bật thông báo",
+        enableSuccess: "Đã bật thông báo",
+        enableFailed: "Chưa bật được thông báo",
+        gotIt: "Đã hiểu",
+        browserGuideTitle: "Cách bật lại trên trình duyệt",
+        browserGuideStep1: "Bấm biểu tượng ổ khoá hoặc chữ i cạnh thanh địa chỉ.",
+        browserGuideStep2: "Chọn Cài đặt trang web, đổi Thông báo thành Cho phép.",
+        browserGuideStep3: "Tải lại trang để nhận thông báo mới."
       },
       layoutSettings: {
         customizeInterface: "Tuỳ chỉnh giao diện",
@@ -3234,7 +3245,18 @@ export const extraResources: Record<string, any> = {
         justNow: "Just now",
         minutesAgo: "{{count}} minutes ago",
         hoursAgo: "{{count}} hours ago",
-        daysAgo: "{{count}} days ago"
+        daysAgo: "{{count}} days ago",
+        enableTitle: "Enable notifications",
+        enableDescription: "Allow browser notifications so table and order updates can arrive immediately.",
+        enableBlockedDescription: "Notifications are blocked in this browser. Please open this site's browser settings and allow Notification.",
+        enableAction: "Enable notifications",
+        enableSuccess: "Notifications enabled",
+        enableFailed: "Could not enable notifications",
+        gotIt: "Got it",
+        browserGuideTitle: "How to enable it again",
+        browserGuideStep1: "Click the lock or info icon next to the address bar.",
+        browserGuideStep2: "Open Site settings and set Notifications to Allow.",
+        browserGuideStep3: "Reload the page to receive new notifications."
       },
       layoutSettings: {
         customizeInterface: "Customize interface",
@@ -4914,7 +4936,18 @@ extraResources.km = {
       justNow: "ទើបតែឥឡូវ",
       minutesAgo: "{{count}} នាទីមុន",
       hoursAgo: "{{count}} ម៉ោងមុន",
-      daysAgo: "{{count}} ថ្ងៃមុន"
+      daysAgo: "{{count}} ថ្ងៃមុន",
+      enableTitle: "បើកការជូនដំណឹង",
+      enableDescription: "អនុញ្ញាតការជូនដំណឹងរបស់កម្មវិធីរុករក ដើម្បីទទួលបានបច្ចុប្បន្នភាពតុ និងការបញ្ជាទិញភ្លាមៗ។",
+      enableBlockedDescription: "កម្មវិធីរុករកកំពុងទប់ស្កាត់ការជូនដំណឹង។ សូមបើកការកំណត់គេហទំព័រនេះ ហើយអនុញ្ញាត Notification។",
+      enableAction: "បើកការជូនដំណឹង",
+      enableSuccess: "បានបើកការជូនដំណឹង",
+      enableFailed: "មិនអាចបើកការជូនដំណឹងបាន",
+      gotIt: "យល់ហើយ",
+      browserGuideTitle: "របៀបបើកឡើងវិញលើកម្មវិធីរុករក",
+      browserGuideStep1: "ចុចរូបសោ ឬរូប i នៅជាប់របារអាសយដ្ឋាន។",
+      browserGuideStep2: "បើក Site settings ហើយប្ដូរ Notifications ទៅ Allow។",
+      browserGuideStep3: "ផ្ទុកទំព័រឡើងវិញ ដើម្បីទទួលការជូនដំណឹងថ្មី។"
     },
     layoutSettings: {
       customizeInterface: "ប្ដូរផ្ទាំងចំណុចប្រទាក់",
@@ -6590,7 +6623,18 @@ extraResources.zh = {
       justNow: "刚刚",
       minutesAgo: "{{count}}分钟前",
       hoursAgo: "{{count}}小时前",
-      daysAgo: "{{count}}天前"
+      daysAgo: "{{count}}天前",
+      enableTitle: "开启通知",
+      enableDescription: "允许浏览器通知，以便桌台和订单更新能立即送达。",
+      enableBlockedDescription: "浏览器已阻止通知。请打开此网站的浏览器设置并允许 Notification。",
+      enableAction: "开启通知",
+      enableSuccess: "通知已开启",
+      enableFailed: "无法开启通知",
+      gotIt: "知道了",
+      browserGuideTitle: "如何重新开启",
+      browserGuideStep1: "点击地址栏旁边的锁或信息图标。",
+      browserGuideStep2: "打开网站设置，将通知改为允许。",
+      browserGuideStep3: "刷新页面以接收新的通知。"
     },
     layoutSettings: {
       customizeInterface: "自定义界面",

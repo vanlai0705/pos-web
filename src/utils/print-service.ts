@@ -76,7 +76,7 @@ async function postToBridge(url: string, body: unknown, printerName?: string) {
       });
     }
   } catch (e) {
-    // console.warn('[print-bridge] unreachable —', url, e)
+    console.warn("[print-bridge] unreachable —", url, e);
     // const timedOut = e instanceof DOMException && e.name === 'AbortError'
     // toast.error(`Không thể in${who}`, {
     //   description: timedOut

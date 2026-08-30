@@ -5,7 +5,7 @@ import { OBJECT_TYPE, RECEIPT_PAYMENT_FOR, RECEIPT_PAYMENT_TYPE, ReceiptPayment,
 import { Button } from '@/components/ui/button'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
 import { MoneyTag } from '@/components/ui/data-tag'
-import { DateRangeFilter, ListPageHeader, PAGE_SIZE, SearchBar, monthToDateFrom, defaultDateTo } from '@/pages/actives/shared'
+import { ListPageHeader, PAGE_SIZE, SearchBar } from '@/pages/actives/shared'
 import { useFilterReportQuery } from '@/store/slice/generic/api'
 import { Banknote, Info, MoreHorizontal, Users } from 'lucide-react'
 import { useState } from 'react'
@@ -17,10 +17,7 @@ export default function LiabilityCustomerPage() {
   const [keyword, setKeyword] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
-  const [dateFrom, setDateFrom] = useState(monthToDateFrom())
-  const [dateTo, setDateTo] = useState(defaultDateTo())
   const [customerGroup, setCustomerGroup] = useState<LookupItem | null>(null)
-  // Angular defaults to showing every customer, not just ones with a debt.
   const [showAll, setShowAll] = useState(true)
 
   const [detailFor, setDetailFor] = useState<number | null>(null)
@@ -29,7 +26,7 @@ export default function LiabilityCustomerPage() {
   const { data, isLoading, refetch } = useFilterReportQuery({
     path: 'liabilities/filter-customer',
     params: {
-      Keyword: keyword || undefined, DateFrom: dateFrom, DateTo: dateTo,
+      Keyword: keyword || undefined,
       CustomerGroupId: customerGroup?.Id || undefined, IsShowAll: showAll,
       PageIndex: page - 1, PageSize: pageSize,
     },
@@ -106,7 +103,6 @@ export default function LiabilityCustomerPage() {
           <input type="checkbox" checked={showAll} onChange={e => { setShowAll(e.target.checked); setPage(1) }} />
           Hiển thị tất cả
         </label>
-        <DateRangeFilter from={dateFrom} to={dateTo} onFrom={v => { setDateFrom(v); setPage(1) }} onTo={v => { setDateTo(v); setPage(1) }} />
       </ListPageHeader>
 
       <DataTable

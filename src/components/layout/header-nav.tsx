@@ -1,4 +1,4 @@
-import { useRef, useState, useLayoutEffect } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { NavItem, TNavChildren } from '@/constants/data'
 import { useNavItems } from '@/hooks/useNavItems'
@@ -73,7 +73,7 @@ function DropdownChildItem({ child, onClose }: { child: TNavChildren; onClose: (
         {subOpen && (
           <div className={cn(
             "absolute top-0 z-[200]",
-            openLeft ? "right-full mr-1" : "left-full ml-1",
+            openLeft ? "right-[calc(100%-4px)] pr-2" : "left-[calc(100%-4px)] pl-2",
           )}>
             <div className="min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-lg py-1">
               {child.children!.map(sub => (
@@ -130,7 +130,7 @@ function NavDropdownItem({ item, isActive }: { item: NavItem; isActive: boolean 
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 z-[200] pt-1">
+        <div className="absolute top-full left-0 z-[200]">
           <div className="min-w-[200px] rounded-md border bg-popover text-popover-foreground shadow-lg py-1">
             {(item.children ?? []).map(child => (
               <DropdownChildItem

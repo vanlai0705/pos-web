@@ -3,13 +3,22 @@ import { getMessaging, getToken, isSupported as isMessagingSupported, onMessage,
 
 const FCM_TOKEN_KEY = 'fcm_token'
 
+function normalizeFirebaseAppId(appId: string, senderId: string) {
+  const value = `${appId || ''}`.trim()
+  if (value.startsWith('1:')) return value
+  if (senderId && value.startsWith(`${senderId}:web:`)) return `1:${value}`
+  return value
+}
+
+const firebaseMessagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  messagingSenderId: firebaseMessagingSenderId,
+  appId: normalizeFirebaseAppId(import.meta.env.VITE_FIREBASE_APP_ID, firebaseMessagingSenderId),
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
@@ -45,17 +54,34 @@ class FirebaseNotifications {
     if (!messagingSupported) return
     this.messaging = getMessaging(this.app)
     this.bindForegroundMessage()
-    await this.requestPermissionAndGetToken()
   }
 
   async requestPermissionAndGetToken() {
     if (this.tokenRequest) return this.tokenRequest
 
-    this.tokenRequest = this.requestTokenInternal()
+    this.tokenRequest = this.requestTokenInternal(true)
     const token = await this.tokenRequest
     this.tokenRequest = null
     if (!token && !this.currentToken) this.currentToken = this.getStoredToken()
     return token
+  }
+
+  async getTokenIfPossible() {
+    if (this.currentToken) return this.currentToken
+    this.currentToken = this.getStoredToken()
+    if (this.currentToken) return this.currentToken
+    if (this.getNotificationPermission() !== 'granted') return ''
+    return this.requestTokenInternal(false)
+  }
+
+  getNotificationPermission(): NotificationPermission | 'unsupported' {
+    if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported'
+    return Notification.permission
+  }
+
+  shouldShowPermissionPrompt() {
+    const permission = this.getNotificationPermission()
+    return permission === 'default' || permission === 'denied'
   }
 
   onForegroundMessage(listener: (payload: MessagePayload) => void) {
@@ -76,7 +102,7 @@ class FirebaseNotifications {
     this.setStoredToken(token, true)
   }
 
-  private async requestTokenInternal() {
+  private async requestTokenInternal(askPermission: boolean) {
     if (!this.messaging || !('Notification' in window) || !('serviceWorker' in navigator)) {
       this.debug('token:unsupported')
       return ''
@@ -86,7 +112,9 @@ class FirebaseNotifications {
       return ''
     }
 
-    const permission = Notification.permission === 'granted'
+    const currentPermission = Notification.permission
+    if (currentPermission !== 'granted' && !askPermission) return ''
+    const permission = currentPermission === 'granted'
       ? 'granted'
       : await Notification.requestPermission()
     this.debug('token:permission', { permission })
@@ -105,6 +133,7 @@ class FirebaseNotifications {
       if (this.currentToken) this.setStoredToken(this.currentToken, false)
       return this.currentToken || ''
     } catch (error) {
+      console.warn('[FirebaseNotifications] token:getTokenError', error)
       this.debug('token:getTokenError', error)
       return ''
     }

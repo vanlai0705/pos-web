@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useFirebaseNotifications } from '@/hooks/useFirebaseNotifications'
 import type { MessagePayload } from '@/services/firebase-notifications'
@@ -51,6 +52,7 @@ export function NotificationBell() {
   const dispatch = useAppDispatch()
   const [open, setOpen] = useState(false)
   const [localPushItems, setLocalPushItems] = useState<TPosNotificationItem[]>([])
+  const [enablingNotifications, setEnablingNotifications] = useState(false)
 
   const { data, refetch, isFetching } = useGetNotificationsQuery(
     { PageIndex: 0, PageSize: 8 },
@@ -78,7 +80,12 @@ export function NotificationBell() {
     refetch()
   }, [dispatch, refetch, t])
 
-  useFirebaseNotifications(handleForegroundMessage)
+  const {
+    permission,
+    permissionPromptOpen,
+    setPermissionPromptOpen,
+    enableNotifications,
+  } = useFirebaseNotifications(handleForegroundMessage)
 
   const notifications = useMemo(() => {
     const serverItems = data?.Notifications ?? []
@@ -120,114 +127,162 @@ export function NotificationBell() {
     if (v) refetch()
   }
 
-  return (
-    <DropdownMenu open={open} onOpenChange={handleOpenChange} modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-full scale-95 text-white hover:bg-white/10 hover:text-white">
-          <Bell className="h-[1.2rem] w-[1.2rem]" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold leading-[18px] text-center">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
+  const handleEnableNotifications = async () => {
+    if (permission === 'denied') {
+      setPermissionPromptOpen(false)
+      return
+    }
+    setEnablingNotifications(true)
+    const token = await enableNotifications()
+    setEnablingNotifications(false)
+    if (token) {
+      toast.success(t('components.notificationBell.enableSuccess'))
+      setPermissionPromptOpen(false)
+    } else {
+      toast.error(t('components.notificationBell.enableFailed'))
+    }
+  }
 
-      <DropdownMenuContent align="end" className="w-80 p-0" sideOffset={8}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div>
-            <span className="font-semibold text-sm">{t('components.notificationBell.title')}</span>
+  return (
+    <>
+      <DropdownMenu open={open} onOpenChange={handleOpenChange} modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative rounded-full scale-95 text-white hover:bg-white/10 hover:text-white">
+            <Bell className="h-[1.2rem] w-[1.2rem]" />
             {unreadCount > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                {t('components.notificationBell.unreadCount', { count: unreadCount })}
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold leading-[18px] text-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
-          </div>
-          <div className="flex items-center gap-1">
-            {isFetching && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-            {unreadCount > 0 && (
-              <button
-                onClick={handleMarkAll}
-                disabled={markingAll}
-                title={t('common.markAllRead')}
-                className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <CheckCheck className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
+          </Button>
+        </DropdownMenuTrigger>
 
-        {/* List */}
-        <div className="max-h-[360px] overflow-y-auto divide-y">
-          {notifications.length === 0
-            ? (
-              <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-                <Bell className="w-8 h-8 opacity-25" />
-                <p className="text-sm">{t('components.notificationBell.noNotifications')}</p>
-              </div>
-            )
-            : notifications.map(item => {
-              const isUnread = item.Status?.Id === 0
-              const avatarUrl = getImageUrl(item.Image?.Url) ?? null
-              return (
-                <div
-                  key={item.Id}
-                  onClick={() => handleItemClick(item)}
-                  className={cn(
-                    'flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-accent/60 group',
-                    isUnread && 'bg-primary/5'
-                  )}
+        <DropdownMenuContent align="end" className="w-80 p-0" sideOffset={8}>
+          <div className="flex items-center justify-between px-4 py-3 border-b">
+            <div>
+              <span className="font-semibold text-sm">{t('components.notificationBell.title')}</span>
+              {unreadCount > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                  {t('components.notificationBell.unreadCount', { count: unreadCount })}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {isFetching && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAll}
+                  disabled={markingAll}
+                  title={t('common.markAllRead')}
+                  className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {/* Avatar */}
-                  <div className="flex-none w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                    {avatarUrl
-                      ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                      : <Bell className="w-4 h-4 text-primary" />
-                    }
-                  </div>
+                  <CheckCheck className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
 
-                  <div className="flex-1 min-w-0">
-                    <p className={cn('text-sm leading-snug', isUnread ? 'font-semibold' : 'font-normal text-foreground/80')}>
-                      {item.Name}
-                    </p>
-                    {item.Detail && (
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.Detail}</p>
-                    )}
-                    <p className="text-[11px] text-muted-foreground/60 mt-1">{timeAgo(t, item.Date)}</p>
-                  </div>
-
-                  <div className="flex-none flex flex-col items-center gap-1">
-                    {isUnread && (
-                      <>
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                        <button
-                          onClick={e => handleMarkRead(e, item)}
-                          title={t('common.markRead')}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted transition-all"
-                        >
-                          <Check className="w-3 h-3 text-muted-foreground" />
-                        </button>
-                      </>
-                    )}
-                  </div>
+          <div className="max-h-[360px] overflow-y-auto divide-y">
+            {notifications.length === 0
+              ? (
+                <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+                  <Bell className="w-8 h-8 opacity-25" />
+                  <p className="text-sm">{t('components.notificationBell.noNotifications')}</p>
                 </div>
               )
-            })
-          }
-        </div>
+              : notifications.map(item => {
+                const isUnread = item.Status?.Id === 0
+                const avatarUrl = getImageUrl(item.Image?.Url) ?? null
+                return (
+                  <div
+                    key={item.Id}
+                    onClick={() => handleItemClick(item)}
+                    className={cn(
+                      'flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-accent/60 group',
+                      isUnread && 'bg-primary/5'
+                    )}
+                  >
+                    <div className="flex-none w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                      {avatarUrl
+                        ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                        : <Bell className="w-4 h-4 text-primary" />
+                      }
+                    </div>
 
-        {/* Footer */}
-        <div className="border-t px-4 py-2.5">
-          <button
-            onClick={() => { setOpen(false); navigate(withDomainPath('/notifications')) }}
-            className="w-full text-center text-sm text-primary hover:text-primary/80 font-medium transition-colors"
-          >
-            {t('components.notificationBell.viewAll')}
-          </button>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn('text-sm leading-snug', isUnread ? 'font-semibold' : 'font-normal text-foreground/80')}>
+                        {item.Name}
+                      </p>
+                      {item.Detail && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.Detail}</p>
+                      )}
+                      <p className="text-[11px] text-muted-foreground/60 mt-1">{timeAgo(t, item.Date)}</p>
+                    </div>
+
+                    <div className="flex-none flex flex-col items-center gap-1">
+                      {isUnread && (
+                        <>
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                          <button
+                            onClick={e => handleMarkRead(e, item)}
+                            title={t('common.markRead')}
+                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted transition-all"
+                          >
+                            <Check className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
+            }
+          </div>
+
+          <div className="border-t px-4 py-2.5">
+            <button
+              onClick={() => { setOpen(false); navigate(withDomainPath('/notifications')) }}
+              className="w-full text-center text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+            >
+              {t('components.notificationBell.viewAll')}
+            </button>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={permissionPromptOpen} onOpenChange={setPermissionPromptOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('components.notificationBell.enableTitle')}</DialogTitle>
+            <DialogDescription>
+              {permission === 'denied'
+                ? t('components.notificationBell.enableBlockedDescription')
+                : t('components.notificationBell.enableDescription')}
+            </DialogDescription>
+          </DialogHeader>
+          {permission === 'denied' && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">{t('components.notificationBell.browserGuideTitle')}</p>
+              <ol className="mt-2 list-decimal space-y-1 pl-4">
+                <li>{t('components.notificationBell.browserGuideStep1')}</li>
+                <li>{t('components.notificationBell.browserGuideStep2')}</li>
+                <li>{t('components.notificationBell.browserGuideStep3')}</li>
+              </ol>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPermissionPromptOpen(false)}>
+              {permission === 'denied' ? t('components.notificationBell.gotIt') : t('common.later', { defaultValue: 'Để sau' })}
+            </Button>
+            {permission !== 'denied' && (
+              <Button onClick={handleEnableNotifications} disabled={enablingNotifications || permission === 'unsupported'}>
+                {enablingNotifications && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {t('components.notificationBell.enableAction')}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

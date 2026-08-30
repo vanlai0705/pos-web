@@ -53,11 +53,13 @@ function normalizeRotation(value: number) {
 
 // ─── Elapsed time ─────────────────────────────────────────────────────────────
 
-function elapsed(dateStr?: string) {
+function elapsed(dateStr?: string, now = Date.now()) {
   if (!dateStr) return null
-  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
-  if (mins < 60) return `${mins}'`
-  return `${Math.floor(mins / 60)}h${mins % 60 ? (mins % 60) + "'" : ''}`
+  const time = new Date(dateStr).getTime()
+  if (!Number.isFinite(time)) return null
+  const mins = Math.max(0, Math.floor((now - time) / 60000))
+  if (mins < 60) return `${mins}m`
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`
 }
 
 // ─── Table card ───────────────────────────────────────────────────────────────
@@ -71,9 +73,10 @@ function TableCard({ table, onClick, onPointerDown, selected, blocked, arrangeMo
   arrangeMode?: boolean
 }) {
   const { t } = useTranslation()
+  const [now, setNow] = useState(Date.now())
   const occupied = !!table.OrderId
   const isQrOrder = occupied && !!table.IsAnonymous
-  const time = elapsed(table.CreationTime)
+  const time = elapsed(table.CreationTime, now)
   const theme = isQrOrder ? 'qr' : occupied ? 'occupied' : 'empty'
   const label = isQrOrder
     ? t('pages.actives.tablesOrder.qrOrder')
@@ -90,6 +93,12 @@ function TableCard({ table, onClick, onPointerDown, selected, blocked, arrangeMo
     occupied: 'border-teal-800 bg-teal-700 text-white shadow-[0_8px_18px_rgba(15,118,110,0.22)] hover:bg-teal-800',
     qr: 'border-orange-600 bg-orange-500 text-white shadow-[0_8px_18px_rgba(249,115,22,0.24)] hover:bg-orange-600',
   }[theme]
+
+  useEffect(() => {
+    if (!occupied) return
+    const timer = window.setInterval(() => setNow(Date.now()), 60000)
+    return () => window.clearInterval(timer)
+  }, [occupied])
 
   return (
     <button
