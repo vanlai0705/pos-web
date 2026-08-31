@@ -62,6 +62,7 @@ export interface StockDocEndpoints {
 
 export interface StockDocOptions {
   stockIn?: boolean
+  stockInLabel?: string
   stockOut?: boolean
   supplier?: boolean
   customer?: boolean
@@ -123,14 +124,14 @@ export function StockDocumentDialog({
   const [form, setForm] = useState<StockDoc>(emptyStockDoc())
   const [keyword, setKeyword] = useState('')
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null)
-  const defaultStockInAppliedRef = useRef(false)
+  const defaultStockAppliedRef = useRef(false)
 
   const [fetchDetail] = useLazyGenericGetQuery()
   const [fetchInventory] = useLazyGenericGetQuery()
   const [request, { isLoading: saving }] = useGenericPostMutation()
   const [downloadFile, { isLoading: printing }] = useGenericDownloadMutation()
   const { data: settings } = useGetSettingOrderQuery()
-  const canPrintStockInput = endpoints.create.includes('stockinputs')
+  const canApplyDefaultStock = endpoints.create.includes('stockinputs') || isCheck
   const defaultStockIn = settings?.StockDefault?.Id
     ? settings.StockDefault
     : null
@@ -144,7 +145,7 @@ export function StockDocumentDialog({
   // Load the document when editing; reset to a blank one when creating.
   useEffect(() => {
     if (!open) return
-    defaultStockInAppliedRef.current = false
+    defaultStockAppliedRef.current = false
     if (!editId) {
       const empty = emptyStockDoc()
       setForm(extraDateField ? { ...empty, [extraDateField]: empty.Date } : empty)
@@ -169,17 +170,17 @@ export function StockDocumentDialog({
     if (
       !open ||
       editId ||
-      !canPrintStockInput ||
+      !canApplyDefaultStock ||
       !options.stockIn ||
       !defaultStockIn?.Id ||
-      defaultStockInAppliedRef.current
+      defaultStockAppliedRef.current
     ) {
       return
     }
 
-    defaultStockInAppliedRef.current = true
+    defaultStockAppliedRef.current = true
     setForm(f => f.StockIn?.Id ? f : ({ ...f, StockIn: defaultStockIn }))
-  }, [canPrintStockInput, defaultStockIn, editId, open, options.stockIn])
+  }, [canApplyDefaultStock, defaultStockIn, editId, open, options.stockIn])
 
   useEffect(() => () => {
     setPdfPreviewUrl(prev => {
@@ -213,7 +214,7 @@ export function StockDocumentDialog({
       // The count sheet starts each line at the system quantity, like Angular.
       let system = 0
       try {
-        const res = await fetchInventory({ url: 'inventory/get-inventory', params: { productId: p.Id } }).unwrap()
+        const res = await fetchInventory({ url: 'inventory/get-inventory', params: { productId: p.Id, stockId: form.StockIn?.Id } }).unwrap()
         system = Number(res?.Data?.[0]?.Quantity ?? 0)
       } catch { system = 0 }
       setForm(f => ({
@@ -263,7 +264,7 @@ export function StockDocumentDialog({
 
   const saveDocument = async (closeAfterSave = true) => {
     if (!(form.Items ?? []).length) { toast.error(t('components.stockDocumentDialog.selectItemRequired')); return }
-    if (options.stockIn && !form.StockIn?.Id) { toast.error(t('components.stockDocumentDialog.selectStockInRequired')); return }
+    if (options.stockIn && !form.StockIn?.Id) { toast.error(`Vui lòng chọn ${options.stockInLabel ?? t('common.stockIn')}`); return }
     if (options.stockOut && !form.StockOut?.Id) { toast.error(t('components.stockDocumentDialog.selectStockOutRequired')); return }
     try {
       const res = await request({
@@ -396,7 +397,7 @@ export function StockDocumentDialog({
               )}
               {options.stockIn && (
                 <div className="space-y-1">
-                  <Label>{t('common.stockIn')}</Label>
+                  <Label>{options.stockInLabel ?? t('common.stockIn')}</Label>
                   <LookupSelect endpoint="stock/filter-simple" placeholder={t('components.stockDocumentDialog.selectStockIn')}
                     value={form.StockIn} onChange={v => setForm(f => ({ ...f, StockIn: v }))} listPath="/stocks/stocks" />
                 </div>

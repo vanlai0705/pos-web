@@ -56,8 +56,7 @@ export default function StockChecksPage() {
     { id: 'name', header: 'Số phiếu', cell: ({ row }) => <VoucherTag value={row.original.Name} /> },
     { id: 'date', header: 'Ngày', cell: ({ row }) => <span>{fmtDateTime(row.original.Date)}</span> },
     { id: 'user', header: 'Nhân viên', cell: ({ row }) => <span>{row.original.User?.Name ?? '—'}</span> },
-    { id: 'stockIn', header: 'Kho nhập', cell: ({ row }) => <span>{row.original.StockIn?.Name ?? '—'}</span> },
-    { id: 'stockOut', header: 'Kho xuất', cell: ({ row }) => <span>{row.original.StockOut?.Name ?? '—'}</span> },
+    { id: 'stockIn', header: 'Kho kiểm kê', cell: ({ row }) => <span>{row.original.StockIn?.Name ?? '—'}</span> },
     { id: 'qtyIn', header: 'SL nhập', cell: ({ row }) => <span className="tabular-nums text-emerald-700">{row.original.QuantityIn?.toLocaleString('vi-VN') ?? '—'}</span> },
     { id: 'qtyOut', header: 'SL xuất', cell: ({ row }) => <span className="tabular-nums text-rose-700">{row.original.QuantityOut?.toLocaleString('vi-VN') ?? '—'}</span> },
     {
@@ -106,7 +105,7 @@ export default function StockChecksPage() {
         open={modal} onOpenChange={setModal}
         title="Tạo phiếu kiểm kê"
         endpoints={{ detail: 'stockchecks/detail', create: 'stockchecks/create', update: 'stockchecks/update' }}
-        options={{ stockIn: true, stockCheck: true }}
+        options={{ stockIn: true, stockInLabel: 'Kho kiểm kê', stockCheck: true }}
         editId={editId}
         onSaved={refetch}
         minDate={openingDate}
