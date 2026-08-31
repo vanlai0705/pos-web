@@ -3,10 +3,12 @@ import Sidebar from './sidebar'
 import { Button } from "@/components/ui/button"
 import { useAppState } from '@/context/app-provider'
 import { useSearch } from "@/context/search-context"
+import { useGetUserShopSettingQuery } from '@/store/slice/notifications/api'
 import { useLazyGetMenuQuery } from '@/store/slice/registration-users/api'
+import type { TPosShop } from '@/store/slice/users/types'
 import { setMenu } from "@/store/slice/users/app"
 import { withDomainPath } from "@/utils/domain-route"
-import { Check, Globe, LayoutGrid, Menu, Palette, Search, Settings, SunMoon } from "lucide-react"
+import { Check, Clock, Globe, LayoutGrid, Menu, Palette, Search, Settings, SunMoon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useDispatch } from "react-redux"
@@ -234,6 +236,63 @@ function RightActions() {
   )
 }
 
+function getRemainingDays(expirationAt?: string | null) {
+  if (!expirationAt) return null
+
+  const expirationDate = new Date(expirationAt)
+  if (Number.isNaN(expirationDate.getTime())) return null
+
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const expiredDay = new Date(
+    expirationDate.getFullYear(),
+    expirationDate.getMonth(),
+    expirationDate.getDate(),
+  )
+
+  return Math.floor((expiredDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function getShopName(shop?: TPosShop) {
+  return shop?.Name || shop?.LongName || 'Cửa hàng'
+}
+
+function ShopExpirationFooterNotice() {
+  const { data: shopSetting } = useGetUserShopSettingQuery()
+  const shops = shopSetting?.Shops ?? []
+  const currentShopId = shopSetting?.SelectedShopId ?? shops[0]?.Id
+  const currentShop = shops.find(shop => shop.Id === currentShopId) ?? shops[0]
+  const remainingDays = getRemainingDays(currentShop?.ExpirationAt)
+
+  if (remainingDays === null || remainingDays > 30) return null
+
+  const shopName = getShopName(currentShop)
+  const message = remainingDays < 0
+    ? `${shopName} đã hết hạn. Vui lòng gia hạn để tiếp tục sử dụng.`
+    : remainingDays === 0
+      ? `${shopName} hết hạn hôm nay. Vui lòng gia hạn để tránh gián đoạn.`
+      : `${shopName} còn ${remainingDays} ngày sử dụng. Vui lòng gia hạn sớm.`
+  const toneClass = remainingDays <= 7
+    ? 'border-red-400 bg-red-50 text-red-800'
+    : 'border-amber-400 bg-amber-50 text-amber-800'
+
+  return (
+    <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 text-xs text-slate-500 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div className={`flex items-center gap-2 border-b px-4 py-2 text-[13px] font-bold leading-snug ${toneClass}`}>
+        <Clock className="h-3.5 w-3.5 flex-none" />
+        <div className="min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+          <div className="footer-expiration-marquee-track">
+            <span>{message}</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex h-10 items-center justify-between px-4">
+        <span>© 2026 POS MOBILE</span>
+      </div>
+    </footer>
+  )
+}
+
 // ─── App layout ───────────────────────────────────────────────────────────────
 
 export default function AppLayout() {
@@ -268,6 +327,7 @@ export default function AppLayout() {
         <main className="flex-1 min-h-0 overflow-y-auto p-4 relative">
           <Outlet />
         </main>
+        <ShopExpirationFooterNotice />
       </div>
     )
   }
@@ -296,6 +356,7 @@ export default function AppLayout() {
         </main>
         {/* Sidebar renders as Sheet overlay regardless of screen size */}
         <Sidebar forceSheet />
+        <ShopExpirationFooterNotice />
       </div>
     )
   }
@@ -318,6 +379,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <ShopExpirationFooterNotice />
     </div>
   )
 }

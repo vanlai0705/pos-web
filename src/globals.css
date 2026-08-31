@@ -292,6 +292,27 @@ ul {
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
+
+.footer-expiration-marquee-track {
+  display: inline-flex;
+  min-width: 100%;
+  animation: footer-expiration-marquee 240s linear 1 both;
+  will-change: transform;
+}
+
+.footer-expiration-marquee-track span {
+  flex: 0 0 auto;
+}
+
+@keyframes footer-expiration-marquee {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
 /* ===== RESET CHO PRINT ===== */
 @media print {
   html,
