@@ -86,8 +86,18 @@ async function postToBridge(url: string, body: unknown, printerName?: string) {
   }
 }
 
-/** Bill printing — the bridge's own `/Printer/PrintData` endpoint. */
-export function printData(
+/**
+ * The bridge (Windows "PrinterService" or the macOS print-agent) exposes a
+ * single print endpoint: `POST {printerUrl}/Printer/PrintData`. Kitchen/label
+ * tickets go to the exact same endpoint — only the `hostUrl` differs — so
+ * `printData` and `printDatas` must build the URL the same way. (pos-mobile's
+ * `OrderServices.printData` / `connectPrinter` both hit `/Printer/PrintData`.)
+ */
+function bridgePrintUrl(printerUrl: string) {
+  return `${printerUrl.replace(/\/+$/, "")}/Printer/PrintData`;
+}
+
+function sendPrintJob(
   printerUrl: string | undefined,
   api: string,
   printerName: string | undefined,
@@ -95,7 +105,7 @@ export function printData(
 ) {
   if (!printerUrl) return;
   return postToBridge(
-    `${printerUrl}/Printer/PrintData`,
+    bridgePrintUrl(printerUrl),
     {
       printerName,
       hostUrl: printApiUrl(api),
@@ -105,23 +115,24 @@ export function printData(
   );
 }
 
-/** Kitchen ticket / label printing — POSTs directly to the printer's own URL. */
+/** Bill printing — single configured bill printer. */
+export function printData(
+  printerUrl: string | undefined,
+  api: string,
+  printerName: string | undefined,
+  data: unknown,
+) {
+  return sendPrintJob(printerUrl, api, printerName, data);
+}
+
+/** Kitchen ticket / label printing — one of possibly several group printers. */
 export function printDatas(
   printerUrl: string | undefined,
   api: string,
   printerName: string | undefined,
   data: unknown,
 ) {
-  if (!printerUrl) return;
-  return postToBridge(
-    printerUrl,
-    {
-      printerName,
-      hostUrl: printApiUrl(api),
-      jsonData: JSON.stringify(data),
-    },
-    printerName,
-  );
+  return sendPrintJob(printerUrl, api, printerName, data);
 }
 
 /** Lists the printers installed on the machine the bridge runs on (mirrors

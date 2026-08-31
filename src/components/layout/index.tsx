@@ -12,7 +12,7 @@ import { Check, Clock, Globe, LayoutGrid, Menu, Palette, Search, Settings, SunMo
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useDispatch } from "react-redux"
-import { Outlet } from "react-router-dom"
+import { Outlet, useLocation } from "react-router-dom"
 import { ProfileDropdown } from '../profile-dropdown'
 import { ThemeCustomizer } from '../theme-customizer'
 import { ThemeSwitch } from '../theme-switch'
@@ -257,13 +257,19 @@ function getShopName(shop?: TPosShop) {
   return shop?.Name || shop?.LongName || 'Cửa hàng'
 }
 
+// Màn hình không hiển thị footer/thông báo hết hạn: hoá đơn bán hàng & hoá đơn nhà hàng
+const HIDDEN_FOOTER_PATH_PATTERN = /\/actives\/(order|tables-order)(\/|$)/
+
 function ShopExpirationFooterNotice() {
+  const { pathname } = useLocation()
   const { data: shopSetting } = useGetUserShopSettingQuery()
+
   const shops = shopSetting?.Shops ?? []
   const currentShopId = shopSetting?.SelectedShopId ?? shops[0]?.Id
   const currentShop = shops.find(shop => shop.Id === currentShopId) ?? shops[0]
   const remainingDays = getRemainingDays(currentShop?.ExpirationAt)
 
+  if (HIDDEN_FOOTER_PATH_PATTERN.test(pathname)) return null
   if (remainingDays === null || remainingDays > 30) return null
 
   const shopName = getShopName(currentShop)
