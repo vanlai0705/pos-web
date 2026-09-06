@@ -108,7 +108,7 @@ export const extraResources: Record<string, any> = {
       templateCode: "Mã mẫu",
       templateType: "Loại mẫu",
       salePrice: "Giá bán",
-      inputPrice: "Giá nhập",
+      inputPrice: "Giá  nhập",
       inventory: "Tồn",
       statusShort: "TT",
       actions: "Thao tác",

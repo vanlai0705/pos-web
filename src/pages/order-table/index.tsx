@@ -4,9 +4,9 @@ import { getImageUrl } from '@/utils/common'
 import { ArrowLeft, Minus, Plus, ShoppingCart } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { fmtNum, QrOrderHeader, useDisablePageZoom } from './shared'
+import { fmtNum, QrOrderHeader, useDisablePageZoom, useQrOrderNav } from './shared'
 type CartEntry = { qty: number; note: string }
 
 const ALL_CATEGORY = 'all'
@@ -20,7 +20,7 @@ function itemAmount(product: TPosActiveProduct, qty: number) {
 
 export default function QrOrderPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const qrNavigate = useQrOrderNav()
   const [searchParams] = useSearchParams()
   const guid = searchParams.get('guid') ?? ''
 
@@ -140,7 +140,7 @@ export default function QrOrderPage() {
         Table: null,
         Total: total,
       }).unwrap()
-      navigate(`order-success?guid=${guid}`)
+      qrNavigate('order-success', guid)
     } catch {
       toast.error(t('pages.orderTable.saveOrderFailed'))
     }
@@ -159,7 +159,7 @@ export default function QrOrderPage() {
         ) : null}
         right={!reviewing ? (
           <button
-            onClick={() => navigate(`order-cart?guid=${guid}`)}
+            onClick={() => qrNavigate('order-cart', guid)}
             className="relative flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 transition hover:bg-white/30 active:scale-95"
           >
             <ShoppingCart className="h-4 w-4" />

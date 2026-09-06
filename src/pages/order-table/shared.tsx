@@ -1,4 +1,28 @@
 import { ReactNode, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+
+const QR_ROUTES = ['order-table', 'order-cart', 'order-success'] as const
+type QrRoute = (typeof QR_ROUTES)[number]
+
+/**
+ * The three QR-order screens mount at either `/order-table` or, for
+ * multi-tenant links, `/:domainName/order-table`. A bare `navigate('order-cart')`
+ * is resolved *relative to the current path*, so it becomes
+ * `/:domainName/order-table/order-cart` — which no longer matches the public
+ * QR routes, falls through to the private catch-all and bounces the diner to
+ * `/login`. Always navigate with an absolute path, carrying the tenant prefix
+ * when the current URL has one.
+ */
+export function useQrOrderNav() {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const [firstSegment] = pathname.split('/').filter(Boolean)
+  const prefix =
+    firstSegment && !QR_ROUTES.includes(firstSegment as QrRoute) ? `/${firstSegment}` : ''
+
+  return (route: QrRoute, guid: string) =>
+    navigate(`${prefix}/${route}${guid ? `?guid=${guid}` : ''}`)
+}
 
 /** Matches pos_web's exact number formatting for prices/quantities on this flow. */
 export function fmtNum(val?: number | null) {

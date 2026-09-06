@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { STATUS } from '@/constants/status'
 import { DateRangeFilter } from '@/pages/actives/shared'
-import { useFilterReportQuery } from '@/store/slice/generic/api'
+import { useFilterReportQuery, useGenericGetQuery } from '@/store/slice/generic/api'
 import { useGetSettingOrderQuery } from '@/store/slice/settings/api'
 import { cn, toDateInputValue, toUtcEndOfDay, toUtcStartOfDay } from '@/utils'
 
@@ -36,10 +36,20 @@ type ReportRequestBody = {
   ToDate?: string | null
   Date?: string | null
   CustomerGroupId?: number | null
+  CustomerId?: number | null
+  UserId?: number | null
   ProductGroupId?: number | null
   StockId?: number | null
   ProductId?: number | null
+  SupplierGroupId?: number | null
   SupplierId?: number | null
+}
+
+type TemplateTypeItem = {
+  Id?: number
+  Value?: number
+  Name?: string
+  DisplayName?: string
 }
 
 type DevExpressBinding = {
@@ -79,6 +89,36 @@ function fromDateInputValue(value: string) {
 
 function optionalSelectId(value: string) {
   return value === 'all' ? null : Number(value)
+}
+
+function normalizeTemplateTypeName(value?: string) {
+  return `${value || ''}`.replace(/[^a-z0-9]/gi, '').toLowerCase()
+}
+
+function reportCodeToTemplateTypeName(reportCode: string) {
+  const name = reportCode.split('/').filter(Boolean).pop() || ''
+  return name
+    .split('-')
+    .filter(Boolean)
+    .map(part => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join('')
+}
+
+function normalizeTemplateTypes(response: any): TemplateTypeItem[] {
+  const items = Array.isArray(response?.Data)
+    ? response.Data
+    : Array.isArray(response?.data)
+      ? response.data
+      : []
+
+  return items
+    .map((item: any) => ({
+      Id: Number(item?.Id ?? item?.Value),
+      Value: Number(item?.Value ?? item?.Id),
+      Name: item?.Name || item?.DisplayName || '',
+      DisplayName: item?.DisplayName || item?.Name || '',
+    }))
+    .filter((item: TemplateTypeItem) => Number.isFinite(item.Id) && !!item.Name)
 }
 
 function resolveActionKey(data: unknown) {
@@ -225,40 +265,70 @@ export function DevExpressReportViewer({
   reportCode,
   token,
   custom = false,
+  templateType,
 }: {
   reportCode: string
   token: string
   custom?: boolean
+  templateType?: number
 }) {
   const mobileMode = useMemo(isMobileReportMode, [])
-  const isCustomerLiabilitySampleReport = reportCode === 'sample-data/customer-liability'
-  const isInventorySampleReport = reportCode === 'sample-data/inventory'
-  const isInventoryImportExportSummarySampleReport = reportCode === 'sample-data/inventory-import-export-summary'
-  const isInventoryImportExportDetailSampleReport = reportCode === 'sample-data/inventory-import-export-detail'
-  const isInventoryCardSampleReport = reportCode === 'sample-data/inventory-card'
+  const isSampleDataReport = reportCode.startsWith('sample-data/')
+  const { data: templateTypesResponse, isFetching: templateTypesFetching } = useGenericGetQuery(
+    { url: 'reporting/reports/sample-data/template-types' },
+    { skip: !isSampleDataReport || Number.isFinite(templateType) },
+  )
+  const templateTypes = useMemo(() => normalizeTemplateTypes(templateTypesResponse), [templateTypesResponse])
+  const sampleTemplateType = useMemo(() => {
+    const currentName = normalizeTemplateTypeName(reportCodeToTemplateTypeName(reportCode))
+    return templateTypes.find(item => normalizeTemplateTypeName(item.Name) === currentName)
+  }, [reportCode, templateTypes])
+  const sampleTemplateTypeId = Number.isFinite(templateType) ? templateType : Number(sampleTemplateType?.Id)
+  const isOrderItemSampleReport = sampleTemplateTypeId === 0
+  const isOrderSampleReport = sampleTemplateTypeId === 1
+  const isMonthlyCashSampleReport = sampleTemplateTypeId === 2
+  const isCustomerLiabilitySampleReport = sampleTemplateTypeId === 8
+  const isInventorySampleReport = sampleTemplateTypeId === 9
+  const isInventoryImportExportSummarySampleReport = sampleTemplateTypeId === 10
+  const isInventoryImportExportDetailSampleReport = sampleTemplateTypeId === 11
+  const isInventoryCardSampleReport = sampleTemplateTypeId === 12
+  const isSupplierLiabilitySampleReport = sampleTemplateTypeId === 13
+  const templateTypeReady = !isSampleDataReport || Number.isFinite(templateType) || !templateTypesFetching
   const hasReportFilter = custom
     || isCustomerLiabilitySampleReport
+    || isOrderItemSampleReport
+    || isOrderSampleReport
+    || isMonthlyCashSampleReport
     || isInventorySampleReport
     || isInventoryImportExportSummarySampleReport
     || isInventoryImportExportDetailSampleReport
     || isInventoryCardSampleReport
+    || isSupplierLiabilitySampleReport
   const [dateFrom, setDateFrom] = useState(toUtcStartOfDay(dayjs().startOf('month')))
-  const [dateTo, setDateTo] = useState(toUtcEndOfDay(
-    isInventoryImportExportSummarySampleReport || isInventoryImportExportDetailSampleReport || isInventoryCardSampleReport
-      ? dayjs()
-      : dayjs().endOf('month'),
-  ))
+  const [dateTo, setDateTo] = useState(toUtcEndOfDay(dayjs().endOf('month')))
   const [inventoryDate, setInventoryDate] = useState(toUtcEndOfDay(dayjs()))
+  const [customerLiabilityDate, setCustomerLiabilityDate] = useState(toUtcEndOfDay(dayjs()))
   const [customerGroupId, setCustomerGroupId] = useState('all')
+  const [customerId, setCustomerId] = useState('all')
+  const [userId, setUserId] = useState('all')
   const [productGroupId, setProductGroupId] = useState('all')
   const [stockId, setStockId] = useState('all')
   const [productId, setProductId] = useState('all')
+  const [supplierGroupId, setSupplierGroupId] = useState('all')
   const [supplierId, setSupplierId] = useState('all')
   const [viewerKey, setViewerKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const { data: settingOrder } = useGetSettingOrderQuery()
   const { data: customerGroupsData } = useFilterReportQuery(
     { path: 'customergroups/filter-simple', params: { PageIndex: 0, PageSize: 1000, StatusId: STATUS.ACTIVE } },
+    { skip: !isCustomerLiabilitySampleReport },
+  )
+  const { data: customersData } = useFilterReportQuery(
+    { path: 'customers/filter-simple', params: { PageIndex: 0, PageSize: 1000, StatusId: STATUS.ACTIVE } },
+    { skip: !isCustomerLiabilitySampleReport },
+  )
+  const { data: usersData } = useFilterReportQuery(
+    { path: 'users/filter-simple', params: { PageIndex: 0, PageSize: 1000, StatusId: STATUS.ACTIVE } },
     { skip: !isCustomerLiabilitySampleReport },
   )
   const { data: productGroupsData } = useFilterReportQuery(
@@ -275,52 +345,26 @@ export function DevExpressReportViewer({
   )
   const { data: suppliersData } = useFilterReportQuery(
     { path: 'suppliers/filter-simple', params: { PageIndex: 0, PageSize: 1000, StatusId: STATUS.ACTIVE } },
-    { skip: !isInventoryImportExportSummarySampleReport },
+    { skip: !isInventoryImportExportSummarySampleReport && !isSupplierLiabilitySampleReport },
+  )
+  const { data: supplierGroupsData } = useFilterReportQuery(
+    { path: 'suppliergroups/filter-simple', params: { PageIndex: 0, PageSize: 1000, StatusId: STATUS.ACTIVE } },
+    { skip: !isSupplierLiabilitySampleReport },
   )
 
   const containerRef = useRef<HTMLDivElement>(null)
   const bindingRef = useRef<DevExpressBinding | null>(null)
   const ajaxBeforeSendRef = useRef<JQueryAjaxSettings['beforeSend']>()
   const defaultStockAppliedRef = useRef(false)
-  const requestBodyRef = useRef<ReportRequestBody>(
-    isInventorySampleReport
-      ? {
-          Date: formatReportDate(toUtcEndOfDay(dayjs()), 'end'),
-          ProductGroupId: null,
-          StockId: null,
-          ProductId: null,
-        }
-      : isInventoryImportExportSummarySampleReport
-        ? {
-            FromDate: formatReportDate(toUtcStartOfDay(dayjs().startOf('month')), 'start'),
-            ToDate: formatReportDate(toUtcEndOfDay(dayjs()), 'end'),
-            StockId: null,
-            ProductGroupId: null,
-            SupplierId: null,
-          }
-      : isInventoryImportExportDetailSampleReport
-        ? {
-            FromDate: formatReportDate(toUtcStartOfDay(dayjs().startOf('month')), 'start'),
-            ToDate: formatReportDate(toUtcEndOfDay(dayjs()), 'end'),
-            StockId: null,
-            ProductGroupId: null,
-          }
-      : isInventoryCardSampleReport
-        ? {
-            FromDate: formatReportDate(toUtcStartOfDay(dayjs().startOf('month')), 'start'),
-            ToDate: formatReportDate(toUtcEndOfDay(dayjs()), 'end'),
-            ProductId: null,
-            StockId: null,
-          }
-      : {
-          FromDate: formatReportDate(toUtcStartOfDay(dayjs().startOf('month')), 'start'),
-          ToDate: formatReportDate(toUtcEndOfDay(dayjs().endOf('month')), 'end'),
-          ...(isCustomerLiabilitySampleReport ? { CustomerGroupId: null } : {}),
-        },
-  )
+  const requestBodyRef = useRef<ReportRequestBody>({
+    FromDate: formatReportDate(toUtcStartOfDay(dayjs().startOf('month')), 'start'),
+    ToDate: formatReportDate(toUtcEndOfDay(dayjs().endOf('month')), 'end'),
+  })
 
   const displayCode = reportCode !== 'TestReport' ? reportCode : 'Báo cáo'
   const customerGroups = customerGroupsData?.Items ?? []
+  const customers = customersData?.Items ?? []
+  const users = usersData?.Items ?? []
   const productGroups = productGroupsData?.Items ?? []
   const stocks = useMemo(() => {
     const items = stocksData?.Items ?? []
@@ -330,6 +374,87 @@ export function DevExpressReportViewer({
   }, [settingOrder?.StockDefault, stocksData?.Items])
   const products = productsData?.Items ?? []
   const suppliers = suppliersData?.Items ?? []
+  const supplierGroups = supplierGroupsData?.Items ?? []
+
+  const buildCurrentReportRequestBody = useCallback((nextStockId = stockId): ReportRequestBody => {
+    if (isInventorySampleReport) {
+      return {
+        Date: formatReportDate(inventoryDate, 'end'),
+        ProductGroupId: optionalSelectId(productGroupId),
+        StockId: optionalSelectId(nextStockId),
+        ProductId: optionalSelectId(productId),
+      }
+    }
+
+    if (isInventoryImportExportSummarySampleReport) {
+      return {
+        FromDate: formatReportDate(dateFrom, 'start'),
+        ToDate: formatReportDate(dateTo, 'end'),
+        StockId: optionalSelectId(nextStockId),
+        ProductGroupId: optionalSelectId(productGroupId),
+        SupplierId: optionalSelectId(supplierId),
+      }
+    }
+
+    if (isInventoryImportExportDetailSampleReport) {
+      return {
+        FromDate: formatReportDate(dateFrom, 'start'),
+        ToDate: formatReportDate(dateTo, 'end'),
+        StockId: optionalSelectId(nextStockId),
+        ProductGroupId: optionalSelectId(productGroupId),
+      }
+    }
+
+    if (isInventoryCardSampleReport) {
+      return {
+        FromDate: formatReportDate(dateFrom, 'start'),
+        ToDate: formatReportDate(dateTo, 'end'),
+        ProductId: optionalSelectId(productId),
+        StockId: optionalSelectId(nextStockId),
+      }
+    }
+
+    if (isSupplierLiabilitySampleReport) {
+      return {
+        SupplierGroupId: optionalSelectId(supplierGroupId),
+        SupplierId: optionalSelectId(supplierId),
+        FromDate: formatReportDate(dateFrom, 'start'),
+        ToDate: formatReportDate(dateTo, 'end'),
+      }
+    }
+
+    return {
+      FromDate: formatReportDate(dateFrom, 'start'),
+      ToDate: formatReportDate(dateTo, 'end'),
+      ...(isCustomerLiabilitySampleReport
+        ? {
+            Date: formatReportDate(customerLiabilityDate, 'end'),
+            CustomerGroupId: optionalSelectId(customerGroupId),
+            UserId: optionalSelectId(userId),
+            CustomerId: optionalSelectId(customerId),
+          }
+        : {}),
+    }
+  }, [
+    customerId,
+    customerGroupId,
+    customerLiabilityDate,
+    dateFrom,
+    dateTo,
+    inventoryDate,
+    isCustomerLiabilitySampleReport,
+    isInventoryCardSampleReport,
+    isInventoryImportExportDetailSampleReport,
+    isInventoryImportExportSummarySampleReport,
+    isInventorySampleReport,
+    isSupplierLiabilitySampleReport,
+    productGroupId,
+    productId,
+    stockId,
+    supplierGroupId,
+    supplierId,
+    userId,
+  ])
 
   const disposeViewer = useCallback(() => {
     if (bindingRef.current?.dispose) {
@@ -339,7 +464,7 @@ export function DevExpressReportViewer({
   }, [])
 
   const initViewer = useCallback(() => {
-    if (!containerRef.current || !token) return
+    if (!containerRef.current || !token || !templateTypeReady) return
 
     try {
       setError(null)
@@ -347,6 +472,7 @@ export function DevExpressReportViewer({
       clearReportRequestHooks(ajaxBeforeSendRef.current)
 
       if (hasReportFilter) {
+        requestBodyRef.current = buildCurrentReportRequestBody()
         const ajaxHook: JQueryAjaxSettings['beforeSend'] = (_xhr, settings) => {
           settings.data = appendReportRequestBody(settings.data, requestBodyRef.current) as JQueryAjaxSettings['data']
           settings.url = appendReportRequestBodyToUrl(settings.url, requestBodyRef.current) as JQueryAjaxSettings['url']
@@ -384,7 +510,7 @@ export function DevExpressReportViewer({
       console.error('[DevExpressReportViewer] init failed:', err)
       setError('Không thể khởi tạo DevExpress Report Viewer.')
     }
-  }, [disposeViewer, hasReportFilter, mobileMode, reportCode, token])
+  }, [buildCurrentReportRequestBody, disposeViewer, hasReportFilter, mobileMode, reportCode, templateTypeReady, token])
 
   useEffect(() => {
     initViewer()
@@ -400,6 +526,28 @@ export function DevExpressReportViewer({
   }, [disposeViewer, initViewer, viewerKey])
 
   useEffect(() => {
+    defaultStockAppliedRef.current = false
+    setCustomerGroupId('all')
+    setCustomerId('all')
+    setUserId('all')
+    setProductGroupId('all')
+    setStockId('all')
+    setProductId('all')
+    setSupplierGroupId('all')
+    setSupplierId('all')
+  }, [reportCode, templateType])
+
+  useEffect(() => {
+    if (isInventoryImportExportSummarySampleReport || isInventoryImportExportDetailSampleReport || isInventoryCardSampleReport) {
+      setDateTo(toUtcEndOfDay(dayjs()))
+    }
+  }, [
+    isInventoryCardSampleReport,
+    isInventoryImportExportDetailSampleReport,
+    isInventoryImportExportSummarySampleReport,
+  ])
+
+  useEffect(() => {
     if (
       (!isInventorySampleReport &&
         !isInventoryImportExportSummarySampleReport &&
@@ -413,80 +561,33 @@ export function DevExpressReportViewer({
     if (!defaultStockId) return
 
     defaultStockAppliedRef.current = true
-    setStockId(`${defaultStockId}`)
-    requestBodyRef.current = isInventorySampleReport
-      ? {
-          Date: formatReportDate(inventoryDate, 'end'),
-          ProductGroupId: optionalSelectId(productGroupId),
-          StockId: defaultStockId,
-          ProductId: optionalSelectId(productId),
-        }
-      : {
-          FromDate: formatReportDate(dateFrom, 'start'),
-          ToDate: formatReportDate(dateTo, 'end'),
-          StockId: defaultStockId,
-          ProductGroupId: optionalSelectId(productGroupId),
-          ...(isInventoryImportExportSummarySampleReport
-            ? { SupplierId: optionalSelectId(supplierId) }
-            : {}),
-          ...(isInventoryCardSampleReport
-            ? { ProductId: optionalSelectId(productId) }
-            : {}),
-        }
+    const nextStockId = `${defaultStockId}`
+    setStockId(nextStockId)
+    requestBodyRef.current = buildCurrentReportRequestBody(nextStockId)
     setViewerKey(key => key + 1)
   }, [
-    dateFrom,
-    dateTo,
-    inventoryDate,
+    buildCurrentReportRequestBody,
     isInventoryImportExportSummarySampleReport,
     isInventoryImportExportDetailSampleReport,
     isInventoryCardSampleReport,
     isInventorySampleReport,
-    productGroupId,
-    productId,
     settingOrder?.StockDefault?.Id,
-    supplierId,
   ])
 
   const applyDateFilter = () => {
-    requestBodyRef.current = isInventorySampleReport
-      ? {
-          Date: formatReportDate(inventoryDate, 'end'),
-          ProductGroupId: optionalSelectId(productGroupId),
-          StockId: optionalSelectId(stockId),
-          ProductId: optionalSelectId(productId),
-        }
-      : isInventoryImportExportSummarySampleReport
-        ? {
-            FromDate: formatReportDate(dateFrom, 'start'),
-            ToDate: formatReportDate(dateTo, 'end'),
-            StockId: optionalSelectId(stockId),
-            ProductGroupId: optionalSelectId(productGroupId),
-            SupplierId: optionalSelectId(supplierId),
-          }
-      : isInventoryImportExportDetailSampleReport
-        ? {
-            FromDate: formatReportDate(dateFrom, 'start'),
-            ToDate: formatReportDate(dateTo, 'end'),
-            StockId: optionalSelectId(stockId),
-            ProductGroupId: optionalSelectId(productGroupId),
-          }
-      : isInventoryCardSampleReport
-        ? {
-            FromDate: formatReportDate(dateFrom, 'start'),
-            ToDate: formatReportDate(dateTo, 'end'),
-            ProductId: optionalSelectId(productId),
-            StockId: optionalSelectId(stockId),
-          }
-      : {
-          FromDate: formatReportDate(dateFrom, 'start'),
-          ToDate: formatReportDate(dateTo, 'end'),
-          ...(isCustomerLiabilitySampleReport
-            ? { CustomerGroupId: optionalSelectId(customerGroupId) }
-            : {}),
-        }
+    requestBodyRef.current = buildCurrentReportRequestBody()
     setViewerKey(key => key + 1)
   }
+
+  const dateRangeControl = (
+    <DateRangeFilter
+      from={dateFrom}
+      to={dateTo}
+      onFrom={setDateFrom}
+      onTo={setDateTo}
+      compact
+    />
+  )
 
   const action = hasReportFilter && !mobileMode ? (
     <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
@@ -538,29 +639,87 @@ export function DevExpressReportViewer({
             </SelectContent>
           </Select>
         </>
+      ) : isCustomerLiabilitySampleReport ? (
+        <>
+          <Input
+            type="date"
+            className="h-8 w-36 text-xs"
+            value={toDateInputValue(customerLiabilityDate)}
+            onChange={event => setCustomerLiabilityDate(fromDateInputValue(event.target.value))}
+          />
+          <Select value={customerGroupId} onValueChange={setCustomerGroupId}>
+            <SelectTrigger className="h-8 w-44 text-xs">
+              <SelectValue placeholder="Tất cả nhóm khách" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả nhóm khách</SelectItem>
+              {customerGroups.map(group => (
+                <SelectItem key={group.Id} value={`${group.Id}`}>
+                  {group.Name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={userId} onValueChange={setUserId}>
+            <SelectTrigger className="h-8 w-44 text-xs">
+              <SelectValue placeholder="Tất cả nhân viên" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả nhân viên</SelectItem>
+              {users.map(user => (
+                <SelectItem key={user.Id} value={`${user.Id}`}>
+                  {user.Name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={customerId} onValueChange={setCustomerId}>
+            <SelectTrigger className="h-8 w-44 text-xs">
+              <SelectValue placeholder="Tất cả khách hàng" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả khách hàng</SelectItem>
+              {customers.map(customer => (
+                <SelectItem key={customer.Id} value={`${customer.Id}`}>
+                  {customer.Name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {dateRangeControl}
+        </>
+      ) : isSupplierLiabilitySampleReport ? (
+        <>
+          <Select value={supplierGroupId} onValueChange={setSupplierGroupId}>
+            <SelectTrigger className="h-8 w-44 text-xs">
+              <SelectValue placeholder="Tất cả nhóm NCC" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả nhóm NCC</SelectItem>
+              {supplierGroups.map(group => (
+                <SelectItem key={group.Id} value={`${group.Id}`}>
+                  {group.Name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={supplierId} onValueChange={setSupplierId}>
+            <SelectTrigger className="h-8 w-44 text-xs">
+              <SelectValue placeholder="Tất cả nhà cung cấp" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả nhà cung cấp</SelectItem>
+              {suppliers.map(supplier => (
+                <SelectItem key={supplier.Id} value={`${supplier.Id}`}>
+                  {supplier.Name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {dateRangeControl}
+        </>
       ) : (
-        <DateRangeFilter
-          from={dateFrom}
-          to={dateTo}
-          onFrom={setDateFrom}
-          onTo={setDateTo}
-          compact
-        />
-      )}
-      {isCustomerLiabilitySampleReport && (
-        <Select value={customerGroupId} onValueChange={setCustomerGroupId}>
-          <SelectTrigger className="h-8 w-44 text-xs">
-            <SelectValue placeholder="Tất cả" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả</SelectItem>
-            {customerGroups.map(group => (
-              <SelectItem key={group.Id} value={`${group.Id}`}>
-                {group.Name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        dateRangeControl
       )}
       {isInventoryImportExportSummarySampleReport && (
         <>

@@ -5,29 +5,13 @@ import { useGetProductGroupsQuery } from '@/store/slice/managers/api'
 import { useGetAreasQuery } from '@/store/slice/tables/api'
 import { TPosArea, TPosInvoicePrinter, TPosKitchenPrinter, TPosProductGroup, TPosSettingPrinter } from '@/store/slice/users'
 import { cn } from '@/utils'
+import { getDeviceGuid, newGuid, setDeviceGuid } from '@/utils/device-guid'
 import { printData } from '@/utils/print-service'
 import { Check, List, Play, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { PrinterPickerDialog } from './printer-picker-dialog'
-
-// ─── GUID utils ───────────────────────────────────────────────────────────────
-
-const GUID_KEY = "pos_device_guid"
-
-function generateGuid() {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0
-    return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16)
-  })
-}
-
-function getOrCreateGuid() {
-  let g = localStorage.getItem(GUID_KEY)
-  if (!g) { g = generateGuid(); localStorage.setItem(GUID_KEY, g) }
-  return g
-}
 
 // ─── Kitchen printer grid helpers (mirrors Angular's build*/clone helpers) ─────
 
@@ -231,7 +215,7 @@ function PrinterTableRow({ index, areaLabel, groupLabel, value, onChange, onPick
 
 export default function SettingPrinterPage() {
   const { t } = useTranslation()
-  const [guid] = useState(() => getOrCreateGuid())
+  const [guid] = useState(() => getDeviceGuid())
   const [activeTab, setActiveTab] = useState<"kitchen" | "invoice">("kitchen")
   const [picker, setPicker] = useState<{ onSelect: (name: string) => void } | null>(null)
 
@@ -270,8 +254,7 @@ export default function SettingPrinterPage() {
   }, [data, areas, productGroups])
 
   const resetGuid = () => {
-    const newGuid = generateGuid()
-    localStorage.setItem(GUID_KEY, newGuid)
+    setDeviceGuid(newGuid())
     window.location.reload()
   }
 

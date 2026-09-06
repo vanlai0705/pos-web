@@ -3,6 +3,13 @@ import { selectAuth } from '@/store/slice/users/app'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { DevExpressReportViewer } from '../devexpress-surface'
 import { resolveReportCode } from '../report-code'
+
+function parseTemplateType(value: string | null) {
+  if (!value) return undefined
+  const templateType = Number(value)
+  return Number.isFinite(templateType) ? templateType : undefined
+}
+
 export default function ReportViewerPage() {
   const [searchParams] = useSearchParams()
   const location = useLocation()
@@ -10,6 +17,7 @@ export default function ReportViewerPage() {
   const token = auth.data?.SessionToken ?? ''
   const basePath = location.pathname.startsWith('/reports') ? '/reports' : '/report'
   const reportCode = resolveReportCode(location.pathname, searchParams.get('code'), basePath)
+  const templateType = parseTemplateType(searchParams.get('templateType'))
 
-  return <DevExpressReportViewer reportCode={reportCode} token={token} />
+  return <DevExpressReportViewer reportCode={reportCode} token={token} templateType={templateType} />
 }

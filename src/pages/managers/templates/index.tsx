@@ -140,10 +140,18 @@ function normalizeTemplateTypeOptions(response: any): TemplateTypeOption[] {
 
   return items
     .map((item: any) => ({
-      Value: Number(item?.Value ?? item?.value),
-      Name: item?.Name ?? item?.name ?? '',
+      Value: Number(item?.Id ?? item?.Value ?? item?.id ?? item?.value),
+      Name: item?.DisplayName ?? item?.displayName ?? item?.Name ?? item?.name ?? '',
     }))
     .filter((item: TemplateTypeOption) => Number.isFinite(item.Value) && !!item.Name)
+}
+
+function mergeTemplateTypeOptions(...groups: TemplateTypeOption[][]): TemplateTypeOption[] {
+  const merged = new Map<number, TemplateTypeOption>()
+  groups.flat().forEach(item => {
+    merged.set(Number(item.Value), item)
+  })
+  return Array.from(merged.values())
 }
 
 function getTemplateTypeName(options: TemplateTypeOption[], value?: number) {
@@ -251,8 +259,17 @@ export default function TemplatesPage() {
 
   const loadTemplateTypeOptions = useCallback(async () => {
     try {
-      const response = await request({ url: 'report-templates/get-template-type', method: 'GET' }).unwrap()
-      setTemplateTypeOptions(normalizeTemplateTypeOptions(response))
+      const [templateTypeResponse, sampleTemplateTypeResponse] = await Promise.allSettled([
+        request({ url: 'report-templates/get-template-type', method: 'GET' }).unwrap(),
+        request({ url: 'reporting/reports/sample-data/template-types', method: 'GET' }).unwrap(),
+      ])
+      const templateTypes = templateTypeResponse.status === 'fulfilled'
+        ? normalizeTemplateTypeOptions(templateTypeResponse.value)
+        : []
+      const sampleTemplateTypes = sampleTemplateTypeResponse.status === 'fulfilled'
+        ? normalizeTemplateTypeOptions(sampleTemplateTypeResponse.value)
+        : []
+      setTemplateTypeOptions(mergeTemplateTypeOptions(templateTypes, sampleTemplateTypes))
     } catch {
       setTemplateTypeOptions([])
       toast.error(t('pages.managers.templates.loadTemplateTypesError'))

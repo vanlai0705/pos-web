@@ -1,6 +1,5 @@
 import { userApiSlice } from '@/store/slice/api/base'
 import { query } from '@/utils'
-import dayjs from 'dayjs'
 import type {
   TPosFilterData,
   TPosOrder,
@@ -121,7 +120,10 @@ export const ordersApi = userApiSlice.injectEndpoints({
         method: "POST",
         body: {
           ...data,
-          Today: dayjs().format('YYYY-MM-DDTHH:mm:ss.SSS'),
+          // Completing an order stamps the real moment of payment in UTC —
+          // never the order's original/opened date (a table order or temp
+          // receipt can be completed hours or days after it was created).
+          Date: new Date().toISOString(),
         },
       }),
       transformResponse: (res: TPosResponse<TPosOrder>) => res.Data,

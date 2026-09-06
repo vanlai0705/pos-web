@@ -1,4 +1,7 @@
 import type { TPosActiveProduct, TPosCustomerInvoice, TPosOrderItem } from '@/store/slice/users/types/pos-types'
+import { getDeviceGuid, newGuid } from '@/utils/device-guid'
+
+export { getDeviceGuid, newGuid }
 
 export interface CartItem {
   product: TPosActiveProduct
@@ -38,8 +41,6 @@ export interface TotalsOpts {
   serviceFeePercent?: number
 }
 
-const DEVICE_GUID_KEY = 'storedGuid'
-const LEGACY_DEVICE_GUID_KEY = 'guid-app'
 const DEFAULT_RETAIL_CUSTOMER_NAME = 'BÁN CHO NGƯỜI TIÊU DÙNG'
 
 export const EMPTY_INVOICE_FORM: InvoiceFormData = {
@@ -75,19 +76,6 @@ export function itemTaxAmount(item: CartItem, perItemTax: boolean) {
 
 export function itemAmount(item: CartItem, perItemTax: boolean) {
   return itemSubtotal(item) + itemTaxAmount(item, perItemTax)
-}
-
-export function newGuid() {
-  return crypto.randomUUID()
-}
-
-export function getDeviceGuid() {
-  const stored = localStorage.getItem(DEVICE_GUID_KEY)
-  if (stored) return stored
-  const legacy = localStorage.getItem(LEGACY_DEVICE_GUID_KEY)
-  const guid = legacy ?? newGuid()
-  localStorage.setItem(DEVICE_GUID_KEY, guid)
-  return guid
 }
 
 export function buildCustomerInvoice(form: InvoiceFormData): TPosCustomerInvoice {

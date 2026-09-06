@@ -8,7 +8,7 @@ import { useGetUserShopSettingQuery } from '@/store/slice/notifications/api'
 import { useCompleteOrderMutation, useLazyGetOrderDetailQuery, useSaveOrderMutation } from '@/store/slice/orders/api'
 import { useGetPaymentTypesQuery, useGetSettingOrderQuery } from '@/store/slice/settings/api'
 import { useDeleteTableOrderMutation, useLazyGetOrderKitchenQuery, useLazyGetTableOrderDetailQuery, useSaveTableOrderMutation } from '@/store/slice/tables/api'
-import { printData, printDatas, type PrinterSetting } from '@/utils/print-service'
+import { printData, printDatas, resolvePrinterUrl, type PrinterSetting } from '@/utils/print-service'
 import { toDateInputValue, toUtcStartOfDay } from '@/utils/format'
 import { useOpeningBalanceSetting } from '@/hooks/useOpeningBalanceSetting'
 import { Printer } from 'lucide-react'
@@ -399,12 +399,13 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
     frameWindow.print()
   }
 
-  const printersOrDefault = (printers?: PrinterSetting[]): PrinterSetting[] =>
-    printers?.length
-      ? printers
-      : settings?.PrinterUrl
-        ? [{ PrinterUrl: settings.PrinterUrl, PrinterName: settings.BillPrinterName }]
-        : []
+  const printersOrDefault = (printers?: PrinterSetting[]): PrinterSetting[] => {
+    const usable = (printers ?? []).filter(p => resolvePrinterUrl(p))
+    if (usable.length) return usable
+    return settings?.PrinterUrl
+      ? [{ PrinterUrl: settings.PrinterUrl, PrinterName: settings.BillPrinterName }]
+      : []
+  }
 
   const printBill = (orderId: number, orderPrinters?: PrinterSetting[], onDone?: () => void) => {
     if (settings?.IsPrintProvisionalInvoice) {
@@ -413,7 +414,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
     }
     if (isTableMode) {
       printersOrDefault(orderPrinters).forEach(p =>
-        printDatas(p.PrinterUrl, 'orders/print-order', p.PrinterName, { orderId }))
+        printDatas(resolvePrinterUrl(p), 'orders/print-order', p.PrinterName, { orderId }))
     } else {
       printData(settings?.PrinterUrl, 'orders/print-order', settings?.BillPrinterName, { orderId })
     }
@@ -435,7 +436,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
   const printKitchenTicket = (api: string, orderPrinters?: PrinterSetting[]) => {
     if (!tableGuid) return
     printersOrDefault(orderPrinters).forEach(p =>
-      printDatas(p.PrinterUrl, api, p.PrinterName, { guid: tableGuid }))
+      printDatas(resolvePrinterUrl(p), api, p.PrinterName, { guid: tableGuid }))
   }
 
   const printKitchen = async () => {
@@ -445,21 +446,28 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
     }
     try {
       const groups = await fetchOrderKitchen({ tableGuid, deviceGuid: getDeviceGuid() }).unwrap()
-      if (!Array.isArray(groups) || groups.length === 0) {
-        toast.error(t('pages.actives.order.kitchenNoData'))
+
+      // Per-printer split from the server (only the lines each kitchen printer
+      // still needs). When it comes back empty or without a usable printer
+      // address, fall back to the order's assigned/bill printer and let the
+      // server render the whole ticket from the guid — same as the save flow.
+      const targets = (Array.isArray(groups) ? groups : [])
+        .map(g => ({ url: resolvePrinterUrl(g.Printer), name: g.Printer?.PrinterName, items: g.Items }))
+        .filter(g => !!g.url)
+
+      if (targets.length === 0) {
+        printKitchenTicket('tables/print-kitchen')
+        toast.success(t('pages.actives.order.kitchenPrintSent'))
         return
       }
-      let sent = 0
-      for (const g of groups) {
-        if (!g.Printer?.PrinterUrl) continue
-        await printDatas(g.Printer.PrinterUrl, 'tables/print-kitchen', g.Printer.PrinterName, {
-          guid: tableGuid, items: g.Items,
+
+      for (const target of targets) {
+        await printDatas(target.url, 'tables/print-kitchen', target.name, {
+          guid: tableGuid, items: target.items,
         })
-        sent += 1
         await wait(200)
       }
-      if (sent > 0) toast.success(t('pages.actives.order.kitchenPrintSent'))
-      else toast.error(t('pages.actives.order.kitchenNoPrinter'))
+      toast.success(t('pages.actives.order.kitchenPrintSent'))
     } catch {
       toast.error(t('pages.actives.order.kitchenDataFailed'))
     }

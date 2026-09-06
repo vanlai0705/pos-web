@@ -1,9 +1,10 @@
 import { Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
+import { useQrOrderNav } from '../order-table/shared'
 export default function QrOrderSuccessPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const qrNavigate = useQrOrderNav()
   const [searchParams] = useSearchParams()
   const guid = searchParams.get('guid') ?? ''
 
@@ -19,7 +20,7 @@ export default function QrOrderSuccessPage() {
 
         <div className="mt-8 flex gap-3">
           <button
-            onClick={() => navigate(`order-table?guid=${guid}`)}
+            onClick={() => qrNavigate('order-table', guid)}
             className="h-11 flex-1 rounded-xl border border-border font-medium transition hover:bg-accent"
           >
             {t('pages.orderTable.home')}

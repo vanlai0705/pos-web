@@ -165,3 +165,16 @@ export interface PrinterSetting {
   /** Server-computed from Ip+Port when not set explicitly. */
   PrinterUrl?: string;
 }
+
+/**
+ * The bridge base URL for a printer entry. The server usually fills in
+ * `PrinterUrl`, but some responses only carry `PrinterIp` + `PrinterPort`
+ * (mirrors pos_web's `http://${ip}:${port}` fallback in printer-settings).
+ */
+export function resolvePrinterUrl(
+  p?: Pick<PrinterSetting, "PrinterUrl" | "PrinterIp" | "PrinterPort"> | null,
+): string | undefined {
+  if (p?.PrinterUrl) return p.PrinterUrl;
+  if (p?.PrinterIp && p?.PrinterPort) return `http://${p.PrinterIp}:${p.PrinterPort}`;
+  return undefined;
+}

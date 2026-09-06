@@ -10,6 +10,7 @@ export interface TPosMenuItem {
   Url?: string
   Icon?: string
   Code?: string
+  TemplateType?: number
   Params?: Record<string, string>
   IsTitle: boolean
   IsDivider: boolean
@@ -81,16 +82,23 @@ const REPORT_CUSTOM_MAP: Record<string, string> = {
 
 function resolveMenuUrl(item: TPosMenuItem): string | undefined {
   const url = item.Url ?? ''
+  const appendTemplateType = (href: string) => {
+    const templateType = Number(item.TemplateType)
+    if (!Number.isFinite(templateType)) return href
+    const separator = href.includes('?') ? '&' : '?'
+    return `${href}${separator}templateType=${encodeURIComponent(`${templateType}`)}`
+  }
+
   if (url.startsWith('/report-custom/')) {
     if (item.Code) {
       const [path] = url.split('?')
-      return `${path}?code=${encodeURIComponent(item.Code)}`
+      return appendTemplateType(`${path}?code=${encodeURIComponent(item.Code)}`)
     }
     const mapped = REPORT_CUSTOM_MAP[url]
-    if (mapped) return mapped
-    return item.Childrens?.length ? undefined : url
+    if (mapped) return appendTemplateType(mapped)
+    return item.Childrens?.length ? undefined : appendTemplateType(url)
   }
-  return url || undefined
+  return url ? appendTemplateType(url) : undefined
 }
 
 function convertChildren(items: TPosMenuItem[]): import('@/constants/data').TNavChildren[] {
