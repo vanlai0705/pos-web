@@ -45,6 +45,7 @@ interface InvoiceTemplate {
   Name?: string
   IsDefault?: boolean
   IsActive?: boolean
+  IsVisibleToAllTenants?: boolean
   Description?: string
   FileName?: string
   OriginalFileName?: string
@@ -106,6 +107,7 @@ function emptyTemplate(): InvoiceTemplate {
     Name: '',
     IsDefault: false,
     IsActive: true,
+    IsVisibleToAllTenants: false,
     Description: '',
     FileName: '',
     OriginalFileName: '',
@@ -144,14 +146,6 @@ function normalizeTemplateTypeOptions(response: any): TemplateTypeOption[] {
       Name: item?.DisplayName ?? item?.displayName ?? item?.Name ?? item?.name ?? '',
     }))
     .filter((item: TemplateTypeOption) => Number.isFinite(item.Value) && !!item.Name)
-}
-
-function mergeTemplateTypeOptions(...groups: TemplateTypeOption[][]): TemplateTypeOption[] {
-  const merged = new Map<number, TemplateTypeOption>()
-  groups.flat().forEach(item => {
-    merged.set(Number(item.Value), item)
-  })
-  return Array.from(merged.values())
 }
 
 function getTemplateTypeName(options: TemplateTypeOption[], value?: number) {
@@ -259,17 +253,8 @@ export default function TemplatesPage() {
 
   const loadTemplateTypeOptions = useCallback(async () => {
     try {
-      const [templateTypeResponse, sampleTemplateTypeResponse] = await Promise.allSettled([
-        request({ url: 'report-templates/get-template-type', method: 'GET' }).unwrap(),
-        request({ url: 'reporting/reports/sample-data/template-types', method: 'GET' }).unwrap(),
-      ])
-      const templateTypes = templateTypeResponse.status === 'fulfilled'
-        ? normalizeTemplateTypeOptions(templateTypeResponse.value)
-        : []
-      const sampleTemplateTypes = sampleTemplateTypeResponse.status === 'fulfilled'
-        ? normalizeTemplateTypeOptions(sampleTemplateTypeResponse.value)
-        : []
-      setTemplateTypeOptions(mergeTemplateTypeOptions(templateTypes, sampleTemplateTypes))
+      const response = await request({ url: 'report-templates/get-template-type', method: 'GET' }).unwrap()
+      setTemplateTypeOptions(normalizeTemplateTypeOptions(response))
     } catch {
       setTemplateTypeOptions([])
       toast.error(t('pages.managers.templates.loadTemplateTypesError'))
@@ -513,6 +498,7 @@ export default function TemplatesPage() {
       TemplateType: Number(templateForm.TemplateType) || REPORT_TEMPLATE_PRODUCT,
       isDefault: !!templateForm.IsDefault,
       isActive: !!templateForm.IsActive,
+      isVisibleToAllTenants: !!templateForm.IsVisibleToAllTenants,
       description: templateForm.Description || '',
       fileName: templateForm.FileName || templateFile?.name || '',
       originalFileName: templateForm.OriginalFileName || templateFile?.name || '',
@@ -665,6 +651,7 @@ export default function TemplatesPage() {
           TemplateType: Number(item.TemplateType) || REPORT_TEMPLATE_PRODUCT,
           isDefault: !!item.IsDefault,
           isActive: nextActive,
+          isVisibleToAllTenants: !!item.IsVisibleToAllTenants,
           description: item.Description || '',
           templateGroup: {
             id: item.TemplateGroupId,
@@ -1064,6 +1051,10 @@ export default function TemplatesPage() {
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                 <Switch checked={!!templateForm.IsActive} onCheckedChange={value => setTemplateForm(form => ({ ...form, IsActive: value }))} />
                 {t('pages.managers.templates.statusActive')}
+              </label>
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <Switch checked={!!templateForm.IsVisibleToAllTenants} onCheckedChange={value => setTemplateForm(form => ({ ...form, IsVisibleToAllTenants: value }))} />
+                {t('pages.managers.templates.visibleToAllTenantsLabel')}
               </label>
             </div>
             <div className="sm:col-span-2">
