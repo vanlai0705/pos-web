@@ -132,6 +132,9 @@ export function StockDocumentDialog({
   const [downloadFile, { isLoading: printing }] = useGenericDownloadMutation()
   const { data: settings } = useGetSettingOrderQuery()
   const canApplyDefaultStock = endpoints.create.includes('stockinputs') || isCheck
+  // "Lưu in" / "Lưu xem in": only stock-input documents have a print template
+  // (pos_web shows these only in its stock-input detail screen).
+  const canPrintStockInput = endpoints.create.includes('stockinputs') && !isCheck
   const defaultStockIn = settings?.StockDefault?.Id
     ? settings.StockDefault
     : null
