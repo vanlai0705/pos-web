@@ -20,6 +20,7 @@ export const getBaseQuery = () => {
       if (token) {
         headers.set("authorization", `Bearer ${token}`);
       }
+      headers.set("Accept-Language", "vi");
       return headers;
     },
     timeout: TIME_OUT * 1000,

@@ -81,7 +81,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
   // (see InternalOrderPanel's "info" tab); otherwise the save just stamps
   // the real current time, same as before this field existed.
   const [orderDate, setOrderDate] = useState(() => toDateInputValue(new Date().toISOString()))
-  // Shared "ngày chốt" cutover -- the order date can't be earlier than it.
+  // Shared opening-balance cutover -- the order date can't be earlier than it.
   const { openingDate: minOrderDate } = useOpeningBalanceSetting()
   const [invoiceForm, setInvoiceForm] = useState<InvoiceFormData>(EMPTY_INVOICE_FORM)
 
@@ -452,7 +452,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       }[]
 
       // Per-printer split from the server (only the lines each kitchen printer
-      // still needs). The "In bếp" button must always send those explicit
+      // still needs). The explicit kitchen-print button must always send those
       // `items` — `tables/print-kitchen` with only a `guid` reprints just the
       // still-unprinted lines, which right after a save is usually nothing.
       const targets = groups
@@ -471,7 +471,7 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       }
 
       // No usable per-printer address from the server (e.g. this device isn't
-      // registered in "Cài đặt máy in"). Still send the items the server
+      // registered in the printer settings). Still send the items the server
       // reported, to the shop's configured / order printer(s).
       const allItems = groups.flatMap(g => g.Items ?? [])
       const fallbackPrinters = printersOrDefault()

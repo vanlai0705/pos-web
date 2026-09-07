@@ -85,7 +85,7 @@ interface Props {
   onSaved: () => void
   /**
    * YYYY-MM-DD. No stock movement can be dated before the inventory opening
-   * balance. Only passed by the 4 stock documents (nhập/xuất/chuyển/kiểm kê)
+   * balance. Only passed by the 4 stock documents (in/out/transfer/check)
    * -- quotation/booking, which reuse this same dialog, leave it unset.
    */
   minDate?: string | null
@@ -110,8 +110,8 @@ function errMsg(e: any, fallback: string) {
 }
 
 /**
- * Create/edit dialog shared by the four stock documents (nhập, xuất, chuyển,
- * kiểm kê). They differ only in which party/stock lookups they show and whether
+ * Create/edit dialog shared by the four stock documents (in, out, transfer,
+ * check). They differ only in which party/stock lookups they show and whether
  * lines carry prices or counted quantities, so those come in as options.
  */
 export function StockDocumentDialog({
@@ -132,8 +132,6 @@ export function StockDocumentDialog({
   const [downloadFile, { isLoading: printing }] = useGenericDownloadMutation()
   const { data: settings } = useGetSettingOrderQuery()
   const canApplyDefaultStock = endpoints.create.includes('stockinputs') || isCheck
-  // "Lưu in" / "Lưu xem in": only stock-input documents have a print template
-  // (pos_web shows these only in its stock-input detail screen).
   const canPrintStockInput = endpoints.create.includes('stockinputs') && !isCheck
   const defaultStockIn = settings?.StockDefault?.Id
     ? settings.StockDefault
@@ -145,7 +143,6 @@ export function StockDocumentDialog({
   )
   const products = productData?.Items ?? []
 
-  // Load the document when editing; reset to a blank one when creating.
   useEffect(() => {
     if (!open) return
     defaultStockAppliedRef.current = false
@@ -227,7 +224,6 @@ export function StockDocumentDialog({
       return
     }
 
-    // Sales-like documents use sale price; stock receiving keeps import price.
     const price = isSalesDoc ? Number(p.Price ?? 0) : Number(p.PriceInput ?? p.ImportPrice ?? 0)
     setForm(f => ({
       ...f,
@@ -311,10 +307,7 @@ export function StockDocumentDialog({
     return new Blob([blob], { type: 'application/pdf' })
   }
 
-  /**
-   * "Lưu in": không có dialog phụ nào cần mở, nên đóng dialog nhập liệu ngay
-   * là an toàn — luồng in vẫn chạy nền phía sau.
-   */
+
   const handleSaveAndPrint = async () => {
     const savedId = await saveDocument(true)
     if (!savedId) return
@@ -326,13 +319,6 @@ export function StockDocumentDialog({
     }
   }
 
-  /**
-   * "Lưu xem in": lấy PDF xong (dialog nhập liệu vẫn mở lúc chờ mạng) rồi mới
-   * đóng dialog nhập liệu, và đợi hết animation đóng của Radix mới mở dialog
-   * xem PDF. Đóng — mở đồng thời trong cùng 1 lần render khiến Radix xử lý 2
-   * dialog cùng đổi trạng thái một lúc không ổn định (dialog xem PDF không
-   * hiện lên dù không báo lỗi gì), nên phải tách làm 2 bước riêng biệt.
-   */
   const handleSavePreviewAndPrint = async () => {
     const savedId = await saveDocument(false)
     if (!savedId) return
@@ -360,226 +346,225 @@ export function StockDocumentDialog({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl">
-        <DialogHeader><DialogTitle>{form.Id ? `${t('components.stockDocumentDialog.editPrefix')} ${title.toLowerCase()}` : title}</DialogTitle></DialogHeader>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-6xl">
+          <DialogHeader><DialogTitle>{form.Id ? `${t('components.stockDocumentDialog.editPrefix')} ${title.toLowerCase()}` : title}</DialogTitle></DialogHeader>
 
-        <div className="flex min-h-0 max-h-[70vh] flex-col gap-3">
-          {/* Header fields — mirrors view-order-edit. Fixed height, never
+          <div className="flex min-h-0 max-h-[70vh] flex-col gap-3">
+            {/* Header fields — mirrors view-order-edit. Fixed height, never
               part of any scroll region, so it's always fully visible. */}
-          <div className="shrink-0">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>{t('common.date')}</Label>
-                <Input type="date" value={form.Date ?? ''} min={minDate ?? undefined}
-                  onChange={e => {
-                    const value = clampDateWithinBounds(e.target.value, { min: minDate }, toast.warning)
-                    setForm(f => ({ ...f, Date: value }))
-                  }} />
-              </div>
-              <div className="space-y-1">
-                <Label>{t('common.voucherNo')}</Label>
-                <Input value={form.Name ?? ''} disabled placeholder={t('components.stockDocumentDialog.autoPlaceholder')} />
-              </div>
-              {extraDateField && (
+            <div className="shrink-0">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>{options.extraDateLabel}</Label>
-                  <Input
-                    type="date"
-                    value={(form[extraDateField] as string | undefined) ?? ''}
-                    onChange={e => setForm(f => ({ ...f, [extraDateField]: e.target.value }))}
-                  />
+                  <Label>{t('common.date')}</Label>
+                  <Input type="date" value={form.Date ?? ''} min={minDate ?? undefined}
+                    onChange={e => {
+                      const value = clampDateWithinBounds(e.target.value, { min: minDate }, toast.warning)
+                      setForm(f => ({ ...f, Date: value }))
+                    }} />
                 </div>
-              )}
-              {options.stockOut && (
                 <div className="space-y-1">
-                  <Label>{t('common.stockOut')}</Label>
-                  <LookupSelect endpoint="stock/filter-simple" placeholder={t('components.stockDocumentDialog.selectStockOut')}
-                    value={form.StockOut} onChange={v => setForm(f => ({ ...f, StockOut: v }))} listPath="/stocks/stocks" />
+                  <Label>{t('common.voucherNo')}</Label>
+                  <Input value={form.Name ?? ''} disabled placeholder={t('components.stockDocumentDialog.autoPlaceholder')} />
                 </div>
-              )}
-              {options.stockIn && (
+                {extraDateField && (
+                  <div className="space-y-1">
+                    <Label>{options.extraDateLabel}</Label>
+                    <Input
+                      type="date"
+                      value={(form[extraDateField] as string | undefined) ?? ''}
+                      onChange={e => setForm(f => ({ ...f, [extraDateField]: e.target.value }))}
+                    />
+                  </div>
+                )}
+                {options.stockOut && (
+                  <div className="space-y-1">
+                    <Label>{t('common.stockOut')}</Label>
+                    <LookupSelect endpoint="stock/filter-simple" placeholder={t('components.stockDocumentDialog.selectStockOut')}
+                      value={form.StockOut} onChange={v => setForm(f => ({ ...f, StockOut: v }))} listPath="/stocks/stocks" />
+                  </div>
+                )}
+                {options.stockIn && (
+                  <div className="space-y-1">
+                    <Label>{options.stockInLabel ?? t('common.stockIn')}</Label>
+                    <LookupSelect endpoint="stock/filter-simple" placeholder={t('components.stockDocumentDialog.selectStockIn')}
+                      value={form.StockIn} onChange={v => setForm(f => ({ ...f, StockIn: v }))} listPath="/stocks/stocks" />
+                  </div>
+                )}
+                {options.supplier && (
+                  <div className="space-y-1">
+                    <Label>{t('common.supplier')}</Label>
+                    <SupplierSelect placeholder={t('components.stockDocumentDialog.selectSupplier')}
+                      value={form.Supplier} onChange={v => setForm(f => ({ ...f, Supplier: v }))} />
+                  </div>
+                )}
+                {options.customer && (
+                  <div className="space-y-1">
+                    <Label>{t('common.customer')}</Label>
+                    <CustomerSelect placeholder={t('components.stockDocumentDialog.selectCustomer')}
+                      value={form.Customer as TPosCustomerSimple | null} onChange={v => setForm(f => ({ ...f, Customer: v }))} />
+                  </div>
+                )}
                 <div className="space-y-1">
-                  <Label>{options.stockInLabel ?? t('common.stockIn')}</Label>
-                  <LookupSelect endpoint="stock/filter-simple" placeholder={t('components.stockDocumentDialog.selectStockIn')}
-                    value={form.StockIn} onChange={v => setForm(f => ({ ...f, StockIn: v }))} listPath="/stocks/stocks" />
+                  <Label>{t('components.stockDocumentDialog.employee')}</Label>
+                  <StaffSelect placeholder={t('components.stockDocumentDialog.selectEmployee')}
+                    value={form.User as TPosUser | null} onChange={v => setForm(f => ({ ...f, User: v }))} />
                 </div>
-              )}
-              {options.supplier && (
                 <div className="space-y-1">
-                  <Label>{t('common.supplier')}</Label>
-                  <SupplierSelect placeholder={t('components.stockDocumentDialog.selectSupplier')}
-                    value={form.Supplier} onChange={v => setForm(f => ({ ...f, Supplier: v }))} />
+                  <Label>{t('common.note')}</Label>
+                  <Input value={form.Note ?? ''} onChange={e => setForm(f => ({ ...f, Note: e.target.value }))} />
                 </div>
-              )}
-              {options.customer && (
-                <div className="space-y-1">
-                  <Label>{t('common.customer')}</Label>
-                  <CustomerSelect placeholder={t('components.stockDocumentDialog.selectCustomer')}
-                    value={form.Customer as TPosCustomerSimple | null} onChange={v => setForm(f => ({ ...f, Customer: v }))} />
-                </div>
-              )}
-              <div className="space-y-1">
-                <Label>{t('components.stockDocumentDialog.employee')}</Label>
-                <StaffSelect placeholder={t('components.stockDocumentDialog.selectEmployee')}
-                  value={form.User as TPosUser | null} onChange={v => setForm(f => ({ ...f, User: v }))} />
-              </div>
-              <div className="space-y-1">
-                <Label>{t('common.note')}</Label>
-                <Input value={form.Note ?? ''} onChange={e => setForm(f => ({ ...f, Note: e.target.value }))} />
               </div>
             </div>
-          </div>
 
-          {/* Items table (left) + product picker (right) share one bounded
+            {/* Items table (left) + product picker (right) share one bounded
               row so both fill all remaining height instead of stopping at an
               arbitrary max-height, and the grand total below stays pinned
               outside the table's own scroll — no dialog-wide scrolling
               needed to reach it. */}
-          <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-            {/* Line items */}
-            <div className="flex min-h-0 flex-col rounded-lg border overflow-hidden">
-              <div className="min-h-0 flex-1 overflow-auto">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-muted">
-                    <tr>
-                      {['#', t('components.stockDocumentDialog.item'), ...(isCheck
-                        ? [t('components.stockDocumentDialog.qtySystem'), t('components.stockDocumentDialog.qtyReal'), t('components.stockDocumentDialog.difference')]
-                        : [t('components.stockDocumentDialog.qty'), t('common.price'), t('common.amount')]), ''].map(h => (
-                        <th key={h} className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {(form.Items ?? []).length === 0 && (
-                      <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">{t('components.stockDocumentDialog.noItems')}</td></tr>
-                    )}
-                    {(form.Items ?? []).map((l, i) => (
-                      <tr key={l.Product?.Id ?? i} className="hover:bg-muted/20">
-                        <td className="px-2 py-1.5 text-muted-foreground">{i + 1}</td>
-                        <td className="px-2 py-1.5">
-                          <div className="font-medium">{l.Product?.Name}</div>
-                          <div className="text-[10px] text-muted-foreground">{l.Product?.Unit?.Name}</div>
-                        </td>
-                        {isCheck ? (
-                          <>
-                            <td className="px-2 py-1.5">
-                              <NumberInput className="h-7 w-24 text-xs" value={l.QuantitySystem ?? 0}
-                                onChange={v => setLine(i, { QuantitySystem: v })} />
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <NumberInput className="h-7 w-24 text-xs" value={l.QuantityReal ?? 0}
-                                onChange={v => setLine(i, { QuantityReal: v })} />
-                            </td>
-                            <td className={`px-2 py-1.5 tabular-nums font-semibold ${
-                              lineQty(l, true) > 0 ? 'text-emerald-600' : lineQty(l, true) < 0 ? 'text-rose-600' : ''}`}>
-                              {lineQty(l, true).toLocaleString('vi-VN')}
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-2 py-1.5">
-                              <NumberInput min={0} className="h-7 w-20 text-xs" value={l.Quantity ?? 0}
-                                onChange={v => setLine(i, { Quantity: v })} />
-                            </td>
-                            <td className="px-2 py-1.5">
-                              <NumberInput min={0} className="h-7 w-28 text-xs" value={l.Price ?? 0}
-                                onChange={v => setLine(i, { Price: v })} />
-                            </td>
-                            <td className="px-2 py-1.5 tabular-nums font-semibold">{lineTotal(l).toLocaleString('vi-VN')}</td>
-                          </>
-                        )}
-                        <td className="px-2 py-1.5">
-                          <button type="button" onClick={() => removeLine(i)}
-                            className="text-muted-foreground/50 hover:text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
+            <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+              {/* Line items */}
+              <div className="flex min-h-0 flex-col rounded-lg border overflow-hidden">
+                <div className="min-h-0 flex-1 overflow-auto">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-muted">
+                      <tr>
+                        {['#', t('components.stockDocumentDialog.item'), ...(isCheck
+                          ? [t('components.stockDocumentDialog.qtySystem'), t('components.stockDocumentDialog.qtyReal'), t('components.stockDocumentDialog.difference')]
+                          : [t('components.stockDocumentDialog.qty'), t('common.price'), t('common.amount')]), ''].map(h => (
+                            <th key={h} className="px-2 py-2 text-left font-medium text-muted-foreground whitespace-nowrap">{h}</th>
+                          ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {!isCheck && (
-                <div className="shrink-0 flex justify-between border-t bg-muted/30 px-3 py-2 text-sm">
-                  <span className="font-medium">{t('components.stockDocumentDialog.grandTotal')}</span>
-                  <span className="font-bold tabular-nums text-primary">{subTotal.toLocaleString('vi-VN')}</span>
+                    </thead>
+                    <tbody className="divide-y">
+                      {(form.Items ?? []).length === 0 && (
+                        <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">{t('components.stockDocumentDialog.noItems')}</td></tr>
+                      )}
+                      {(form.Items ?? []).map((l, i) => (
+                        <tr key={l.Product?.Id ?? i} className="hover:bg-muted/20">
+                          <td className="px-2 py-1.5 text-muted-foreground">{i + 1}</td>
+                          <td className="px-2 py-1.5">
+                            <div className="font-medium">{l.Product?.Name}</div>
+                            <div className="text-[10px] text-muted-foreground">{l.Product?.Unit?.Name}</div>
+                          </td>
+                          {isCheck ? (
+                            <>
+                              <td className="px-2 py-1.5">
+                                <NumberInput className="h-7 w-24 text-xs" value={l.QuantitySystem ?? 0}
+                                  onChange={v => setLine(i, { QuantitySystem: v })} />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <NumberInput className="h-7 w-24 text-xs" value={l.QuantityReal ?? 0}
+                                  onChange={v => setLine(i, { QuantityReal: v })} />
+                              </td>
+                              <td className={`px-2 py-1.5 tabular-nums font-semibold ${lineQty(l, true) > 0 ? 'text-emerald-600' : lineQty(l, true) < 0 ? 'text-rose-600' : ''}`}>
+                                {lineQty(l, true).toLocaleString('vi-VN')}
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-2 py-1.5">
+                                <NumberInput min={0} className="h-7 w-20 text-xs" value={l.Quantity ?? 0}
+                                  onChange={v => setLine(i, { Quantity: v })} />
+                              </td>
+                              <td className="px-2 py-1.5">
+                                <NumberInput min={0} className="h-7 w-28 text-xs" value={l.Price ?? 0}
+                                  onChange={v => setLine(i, { Price: v })} />
+                              </td>
+                              <td className="px-2 py-1.5 tabular-nums font-semibold">{lineTotal(l).toLocaleString('vi-VN')}</td>
+                            </>
+                          )}
+                          <td className="px-2 py-1.5">
+                            <button type="button" onClick={() => removeLine(i)}
+                              className="text-muted-foreground/50 hover:text-destructive">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
-
-            {/* Product picker — replaces view-product-search */}
-            <div className="flex min-h-0 flex-col gap-2 rounded-lg border p-2">
-              <div className="relative shrink-0">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input className="h-9 pl-8" placeholder={t('components.stockDocumentDialog.searchProductPlaceholder')}
-                  value={keyword} onChange={e => setKeyword(e.target.value)} />
-              </div>
-              <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
-                {loadingProducts && <div className="px-2 py-3 text-xs text-muted-foreground">{t('common.loading')}</div>}
-                {!loadingProducts && products.length === 0 && (
-                  <div className="px-2 py-3 text-xs text-muted-foreground">{t('components.stockDocumentDialog.noProductsFound')}</div>
+                {!isCheck && (
+                  <div className="shrink-0 flex justify-between border-t bg-muted/30 px-3 py-2 text-sm">
+                    <span className="font-medium">{t('components.stockDocumentDialog.grandTotal')}</span>
+                    <span className="font-bold tabular-nums text-primary">{subTotal.toLocaleString('vi-VN')}</span>
+                  </div>
                 )}
-                {products.map(p => {
-                  const img = getImageUrl(p.Image?.Url ?? p.Images?.[0]?.Url ?? undefined)
-                  return (
-                    <button key={p.Id} type="button" onClick={() => addProduct(p)}
-                      className="flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/40">
-                      {img
-                        ? <img src={img} alt="" className="h-8 w-8 rounded object-cover" />
-                        : <div className="flex h-8 w-8 items-center justify-center rounded bg-muted"><Package className="h-4 w-4 text-muted-foreground/60" /></div>}
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-xs font-medium">{p.Name}</div>
-                        <div className="text-[10px] text-muted-foreground">
-                          {p.ProductCode ?? p.Code} · {t('common.inventory')} {p.Quantity?.toLocaleString('vi-VN') ?? 0}
+              </div>
+
+              {/* Product picker — replaces view-product-search */}
+              <div className="flex min-h-0 flex-col gap-2 rounded-lg border p-2">
+                <div className="relative shrink-0">
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input className="h-9 pl-8" placeholder={t('components.stockDocumentDialog.searchProductPlaceholder')}
+                    value={keyword} onChange={e => setKeyword(e.target.value)} />
+                </div>
+                <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+                  {loadingProducts && <div className="px-2 py-3 text-xs text-muted-foreground">{t('common.loading')}</div>}
+                  {!loadingProducts && products.length === 0 && (
+                    <div className="px-2 py-3 text-xs text-muted-foreground">{t('components.stockDocumentDialog.noProductsFound')}</div>
+                  )}
+                  {products.map(p => {
+                    const img = getImageUrl(p.Image?.Url ?? p.Images?.[0]?.Url ?? undefined)
+                    return (
+                      <button key={p.Id} type="button" onClick={() => addProduct(p)}
+                        className="flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/40">
+                        {img
+                          ? <img src={img} alt="" className="h-8 w-8 rounded object-cover" />
+                          : <div className="flex h-8 w-8 items-center justify-center rounded bg-muted"><Package className="h-4 w-4 text-muted-foreground/60" /></div>}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-xs font-medium">{p.Name}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {p.ProductCode ?? p.Code} · {t('common.inventory')} {p.Quantity?.toLocaleString('vi-VN') ?? 0}
+                          </div>
                         </div>
-                      </div>
-                      <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
-                        {(p.Price ?? 0).toLocaleString('vi-VN')}
-                      </span>
-                    </button>
-                  )
-                })}
+                        <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
+                          {(p.Price ?? 0).toLocaleString('vi-VN')}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <DialogFooter className="items-center justify-between sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            {canPrintStockInput && (
-              <>
-                <Button type="button" variant="secondary" onClick={handleSaveAndPrint} disabled={saving || printing}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Lưu in
-                </Button>
-                <Button type="button" variant="outline" onClick={handleSavePreviewAndPrint} disabled={saving || printing}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Lưu xem in
-                </Button>
-              </>
-            )}
-            <span className="text-xs italic text-muted-foreground">
-              {form.CreatorUser?.FullName ? `${t('components.stockDocumentDialog.createdBy')} ${form.CreatorUser.FullName}` : ''}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? t('components.stockDocumentDialog.saving') : t('common.save')}</Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    <Dialog open={!!pdfPreviewUrl} onOpenChange={open => { if (!open) closePdfPreview() }}>
-      <DialogContent className="flex h-[86vh] max-w-4xl flex-col gap-0 p-0">
-        <DialogHeader className="shrink-0 border-b px-4 py-3">
-          <DialogTitle>Lưu xem in</DialogTitle>
-        </DialogHeader>
-        {pdfPreviewUrl && (
-          <iframe src={pdfPreviewUrl} title="stock-input-pdf" className="min-h-0 flex-1 w-full border-0" />
-        )}
-      </DialogContent>
-    </Dialog>
+          <DialogFooter className="items-center justify-between sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              {canPrintStockInput && (
+                <>
+                  <Button type="button" variant="secondary" onClick={handleSaveAndPrint} disabled={saving || printing}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Lưu in
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleSavePreviewAndPrint} disabled={saving || printing}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Lưu xem in
+                  </Button>
+                </>
+              )}
+              <span className="text-xs italic text-muted-foreground">
+                {form.CreatorUser?.FullName ? `${t('components.stockDocumentDialog.createdBy')} ${form.CreatorUser.FullName}` : ''}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
+              <Button onClick={handleSave} disabled={saving}>{saving ? t('components.stockDocumentDialog.saving') : t('common.save')}</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!pdfPreviewUrl} onOpenChange={open => { if (!open) closePdfPreview() }}>
+        <DialogContent className="flex h-[86vh] max-w-4xl flex-col gap-0 p-0">
+          <DialogHeader className="shrink-0 border-b px-4 py-3">
+            <DialogTitle>Lưu xem in</DialogTitle>
+          </DialogHeader>
+          {pdfPreviewUrl && (
+            <iframe src={pdfPreviewUrl} title="stock-input-pdf" className="min-h-0 flex-1 w-full border-0" />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

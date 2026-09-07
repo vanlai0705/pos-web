@@ -78,12 +78,6 @@ async function postToBridge(url: string, body: unknown, printerName?: string) {
     }
   } catch (e) {
     console.warn("[print-bridge] unreachable —", url, e);
-    // const timedOut = e instanceof DOMException && e.name === 'AbortError'
-    // toast.error(`Không thể in${who}`, {
-    //   description: timedOut
-    //     ? 'Phần mềm kết nối máy in không phản hồi. Kiểm tra máy in và phần mềm kết nối máy in trên máy tính.'
-    //     : 'Không kết nối được tới phần mềm kết nối máy in. Kiểm tra "Đường dẫn cục bộ máy in" trong Cài đặt đơn hàng.',
-    // })
   }
 }
 
