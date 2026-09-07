@@ -54,10 +54,16 @@ export function useFirebaseNotifications(onMessage?: (payload: MessagePayload) =
 
   const enableNotifications = useCallback(() => syncDeviceToken(true), [syncDeviceToken])
 
+  const dismissPermissionPrompt = useCallback(() => {
+    firebaseNotifications.dismissPermissionPrompt()
+    setPermissionPromptOpen(false)
+  }, [])
+
   return {
     permission,
     permissionPromptOpen,
     setPermissionPromptOpen,
     enableNotifications,
+    dismissPermissionPrompt,
   }
 }

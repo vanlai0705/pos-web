@@ -2,6 +2,7 @@ import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app'
 import { getMessaging, getToken, isSupported as isMessagingSupported, onMessage, type MessagePayload, type Messaging } from 'firebase/messaging'
 
 const FCM_TOKEN_KEY = 'fcm_token'
+const PERMISSION_PROMPT_DISMISSED_KEY = 'fcm_permission_prompt_dismissed'
 
 function normalizeFirebaseAppId(appId: string, senderId: string) {
   const value = `${appId || ''}`.trim()
@@ -81,7 +82,26 @@ class FirebaseNotifications {
 
   shouldShowPermissionPrompt() {
     const permission = this.getNotificationPermission()
-    return permission === 'default' || permission === 'denied'
+    if (permission !== 'default' && permission !== 'denied') return false
+    return !this.isPermissionPromptDismissed()
+  }
+
+  isPermissionPromptDismissed() {
+    try {
+      return localStorage.getItem(PERMISSION_PROMPT_DISMISSED_KEY) === '1'
+    } catch {
+      return false
+    }
+  }
+
+  /** Remember that the user has already seen the enable-notifications prompt so
+   * it never auto-opens again (they can still re-enable via browser settings). */
+  dismissPermissionPrompt() {
+    try {
+      localStorage.setItem(PERMISSION_PROMPT_DISMISSED_KEY, '1')
+    } catch {
+      /* storage unavailable — prompt will just show again next load */
+    }
   }
 
   onForegroundMessage(listener: (payload: MessagePayload) => void) {

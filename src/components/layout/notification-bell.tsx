@@ -85,6 +85,7 @@ export function NotificationBell() {
     permissionPromptOpen,
     setPermissionPromptOpen,
     enableNotifications,
+    dismissPermissionPrompt,
   } = useFirebaseNotifications(handleForegroundMessage)
 
   const notifications = useMemo(() => {
@@ -129,7 +130,7 @@ export function NotificationBell() {
 
   const handleEnableNotifications = async () => {
     if (permission === 'denied') {
-      setPermissionPromptOpen(false)
+      dismissPermissionPrompt()
       return
     }
     setEnablingNotifications(true)
@@ -250,7 +251,7 @@ export function NotificationBell() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={permissionPromptOpen} onOpenChange={setPermissionPromptOpen}>
+      <Dialog open={permissionPromptOpen} onOpenChange={v => (v ? setPermissionPromptOpen(true) : dismissPermissionPrompt())}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t('components.notificationBell.enableTitle')}</DialogTitle>
@@ -271,7 +272,7 @@ export function NotificationBell() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPermissionPromptOpen(false)}>
+            <Button variant="outline" onClick={dismissPermissionPrompt}>
               {permission === 'denied' ? t('components.notificationBell.gotIt') : t('common.later', { defaultValue: 'Để sau' })}
             </Button>
             {permission !== 'denied' && (

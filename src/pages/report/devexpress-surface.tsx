@@ -221,6 +221,7 @@ function setAuthorization(token: string) {
 
   ajaxSetup.ajaxSettings.headers = {
     ...(ajaxSetup.ajaxSettings.headers || {}),
+    'Accept-Language': 'vi',
     Authorization: `Bearer ${token}`,
   }
 }
