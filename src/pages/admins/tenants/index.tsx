@@ -96,6 +96,7 @@ interface TTenantShop {
   CreationTime?: string
   ExpirationAt?: string
   TenantStatus?: TenantStatusEnum
+  Status?: TNamed
   IsDefault?: boolean
   License?: string
   Key?: string
@@ -110,6 +111,7 @@ interface TTenant {
   IsActive?: boolean
   ExpiredDate?: string
   TenantStatus?: TenantStatusEnum
+  Status?: TNamed
   TenantSetting?: {
     Email?: string
     CompanyName?: string
@@ -163,6 +165,37 @@ function statusLabel(status?: TenantStatusEnum) {
   return TENANT_STATUS_LABEL[status ?? TenantStatusEnum.NotActivated] || TENANT_STATUS_LABEL[TenantStatusEnum.NotActivated]
 }
 
+function statusFromExpiry(expiredDate?: string) {
+  if (!expiredDate) return undefined
+  const expiredAt = dayjs(expiredDate)
+  if (!expiredAt.isValid()) return undefined
+  const diffDays = expiredAt.diff(dayjs(), 'day', true)
+  if (diffDays < 0) return TenantStatusEnum.Expired
+  if (diffDays <= 7) return TenantStatusEnum.ExpiringSoon
+  return undefined
+}
+
+function resolveTenantStatus(item?: TTenant): TenantStatusEnum {
+  const explicit = item?.TenantStatus ?? item?.Status?.Id
+  if (explicit !== undefined && explicit !== null && !Number.isNaN(Number(explicit))) {
+    return Number(explicit)
+  }
+  if (item?.IsActive === false) return TenantStatusEnum.NotActivated
+  return statusFromExpiry(item?.ExpiredDate) ?? TenantStatusEnum.Active
+}
+
+function resolveShopStatus(shop?: TTenantShop): TenantStatusEnum {
+  if (shop?.TenantStatus !== undefined && shop?.TenantStatus !== null && !Number.isNaN(Number(shop.TenantStatus))) {
+    return Number(shop.TenantStatus)
+  }
+  return statusFromExpiry(shop?.ExpirationAt) ?? TenantStatusEnum.Active
+}
+
+function shopStatusLabel(shop?: TTenantShop): string {
+  const name = shop?.Status?.Name?.trim()
+  return name || statusLabel(resolveShopStatus(shop))
+}
+
 function tenantStatusTone(status?: TenantStatusEnum): React.ComponentProps<typeof StatusBadge>['tone'] {
   if (status === TenantStatusEnum.Active) return 'active'
   if (status === TenantStatusEnum.Trial) return 'paid'
@@ -184,7 +217,7 @@ function statusDotClass(status?: TenantStatusEnum) {
 }
 
 function tenantRowClass(item: TTenant) {
-  const status = item.TenantStatus
+  const status = resolveTenantStatus(item)
   if (status === TenantStatusEnum.Active) return 'bg-emerald-50/50 dark:bg-emerald-950/10'
   if (status === TenantStatusEnum.Trial) return 'bg-blue-50/50 dark:bg-blue-950/10'
   if (status === TenantStatusEnum.ExpiringSoon) return 'bg-amber-50/60 dark:bg-amber-950/10'
@@ -498,12 +531,15 @@ export default function AdminTenantsPage() {
       id: 'status',
       header: 'Trạng thái',
       meta: { className: 'min-w-[140px] text-center' },
-      cell: ({ row }) => (
-        <StatusBadge
-          label={statusLabel(row.original.TenantStatus)}
-          tone={tenantStatusTone(row.original.TenantStatus)}
-        />
-      ),
+      cell: ({ row }) => {
+        const status = resolveTenantStatus(row.original)
+        return (
+          <StatusBadge
+            label={statusLabel(status)}
+            tone={tenantStatusTone(status)}
+          />
+        )
+      },
     },
     {
       id: 'actions',
@@ -737,7 +773,7 @@ function TenantShopsDialog({
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <StatusBadge label={statusLabel(shop.TenantStatus)} tone={tenantStatusTone(shop.TenantStatus)} />
+                      <StatusBadge label={shopStatusLabel(shop)} tone={tenantStatusTone(resolveShopStatus(shop))} />
                     </td>
                     <td className="max-w-[180px] truncate px-3 py-2" title={shop.License || shop.Key || '-'}>
                       {shop.License || shop.Key || '-'}
