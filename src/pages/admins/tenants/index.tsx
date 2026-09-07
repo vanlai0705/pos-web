@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button'
 import { CodeTag } from '@/components/ui/data-tag'
 import { DataPagination } from '@/components/ui/data-pagination'
 import { DataTable, type ColumnDef } from '@/components/ui/data-table'
-import { Dialog, DialogTitle, FormDialogBody, FormDialogContent, FormDialogFooter, FormDialogHeader } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, FormDialogBody, FormDialogContent, FormDialogFooter, FormDialogHeader } from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -905,36 +905,35 @@ function LoginAsDialog({
         </FormDialogContent>
       </Dialog>
 
-      {promptUser ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-sm rounded-md bg-background p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-foreground">Xác nhận đăng nhập</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Nhập mật khẩu để đăng nhập với tài khoản{' '}
-              <strong className="text-foreground">{promptUser.FullName} ({promptUser.Email})</strong>
-            </p>
+      <Dialog open={!!promptUser} onOpenChange={value => !value && closePrompt()}>
+        <DialogContent className="max-w-sm">
+          <DialogTitle>Xác nhận đăng nhập</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Nhập mật khẩu để đăng nhập với tài khoản{' '}
+            <strong className="text-foreground">{promptUser?.FullName} ({promptUser?.Email})</strong>
+          </p>
 
-            <div className="mt-4 space-y-1.5">
-              <Label>Mật khẩu</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={event => setPassword(event.target.value)}
-                onKeyDown={event => { if (event.key === 'Enter') confirmLogin() }}
-                placeholder="Nhập mật khẩu"
-                disabled={loggingIn}
-              />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={closePrompt} disabled={loggingIn}>Hủy</Button>
-              <Button onClick={confirmLogin} disabled={loggingIn}>
-                {loggingIn ? 'Đang đăng nhập...' : 'Đăng nhập'}
-              </Button>
-            </div>
+          <div className="space-y-1.5">
+            <Label>Mật khẩu</Label>
+            <Input
+              type="password"
+              autoFocus
+              value={password}
+              onChange={event => setPassword(event.target.value)}
+              onKeyDown={event => { if (event.key === 'Enter') confirmLogin() }}
+              placeholder="Nhập mật khẩu"
+              disabled={loggingIn}
+            />
           </div>
-        </div>
-      ) : null}
+
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={closePrompt} disabled={loggingIn}>Hủy</Button>
+            <Button onClick={confirmLogin} disabled={loggingIn}>
+              {loggingIn ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
