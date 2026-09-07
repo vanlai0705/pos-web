@@ -63,11 +63,12 @@ async function postToBridge(url: string, body: unknown, printerName?: string) {
     const res = await fetchWithTimeout(url, {
       method: "POST",
       headers: getBridgeHeaders(token),
-      body: JSON.stringify({
-        ...(body && typeof body === "object" ? body : { data: body }),
-        token,
-        accessToken: token,
-      }),
+      // Send the exact shape pos_web sends the bridge — `{ printerName, hostUrl,
+      // jsonData }` and nothing else. Extra top-level keys (`token`/`accessToken`)
+      // made some PrinterService builds reject the request.
+      body: JSON.stringify(
+        body && typeof body === "object" ? body : { data: body },
+      ),
     });
     if (!res.ok) {
       console.warn("[print-bridge]", url, res.status);
@@ -94,7 +95,13 @@ async function postToBridge(url: string, body: unknown, printerName?: string) {
  * `OrderServices.printData` / `connectPrinter` both hit `/Printer/PrintData`.)
  */
 function bridgePrintUrl(printerUrl: string) {
-  return `${printerUrl.replace(/\/+$/, "")}/Printer/PrintData`;
+  const base = printerUrl.replace(/\/+$/, "");
+  // The server sometimes hands back a bridge address that already ends in
+  // `/Printer/PrintData` (kitchen-printer groups from `get-order-kitchen`),
+  // sometimes just the origin (the shop's configured `PrinterUrl`). Don't
+  // append a second copy — pos_web posts kitchen jobs straight to the value.
+  if (/\/Printer\/PrintData\/?$/i.test(base)) return base;
+  return `${base}/Printer/PrintData`;
 }
 
 function sendPrintJob(

@@ -445,27 +445,45 @@ function SalesTab({ tableLabel, bookingId, initialOrderId, tableId, tableGuid, f
       return
     }
     try {
-      const groups = await fetchOrderKitchen({ tableGuid, deviceGuid: getDeviceGuid() }).unwrap()
+      const kitchenResult = await fetchOrderKitchen({ tableGuid, deviceGuid: getDeviceGuid() }).unwrap()
+      const groups = (Array.isArray(kitchenResult) ? kitchenResult : []) as {
+        Items?: { ProductName?: string }[]
+        Printer?: PrinterSetting
+      }[]
 
       // Per-printer split from the server (only the lines each kitchen printer
-      // still needs). When it comes back empty or without a usable printer
-      // address, fall back to the order's assigned/bill printer and let the
-      // server render the whole ticket from the guid — same as the save flow.
-      const targets = (Array.isArray(groups) ? groups : [])
-        .map(g => ({ url: resolvePrinterUrl(g.Printer), name: g.Printer?.PrinterName, items: g.Items }))
+      // still needs). The "In bếp" button must always send those explicit
+      // `items` — `tables/print-kitchen` with only a `guid` reprints just the
+      // still-unprinted lines, which right after a save is usually nothing.
+      const targets = groups
+        .map(g => ({ url: resolvePrinterUrl(g.Printer), name: g.Printer?.PrinterName, items: g.Items ?? [] }))
         .filter(g => !!g.url)
 
-      if (targets.length === 0) {
-        printKitchenTicket('tables/print-kitchen')
+      if (targets.length > 0) {
+        for (const target of targets) {
+          await printDatas(target.url, 'tables/print-kitchen', target.name, {
+            guid: tableGuid, items: target.items,
+          })
+          await wait(200)
+        }
         toast.success(t('pages.actives.order.kitchenPrintSent'))
         return
       }
 
-      for (const target of targets) {
-        await printDatas(target.url, 'tables/print-kitchen', target.name, {
-          guid: tableGuid, items: target.items,
-        })
-        await wait(200)
+      // No usable per-printer address from the server (e.g. this device isn't
+      // registered in "Cài đặt máy in"). Still send the items the server
+      // reported, to the shop's configured / order printer(s).
+      const allItems = groups.flatMap(g => g.Items ?? [])
+      const fallbackPrinters = printersOrDefault()
+      if (allItems.length && fallbackPrinters.length) {
+        for (const p of fallbackPrinters) {
+          await printDatas(resolvePrinterUrl(p), 'tables/print-kitchen', p.PrinterName, {
+            guid: tableGuid, items: allItems,
+          })
+          await wait(200)
+        }
+      } else {
+        printKitchenTicket('tables/print-kitchen')
       }
       toast.success(t('pages.actives.order.kitchenPrintSent'))
     } catch {
